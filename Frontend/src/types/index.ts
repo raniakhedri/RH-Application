@@ -48,6 +48,18 @@ export enum SourcePointage {
   AUTOMATIQUE = 'AUTOMATIQUE',
 }
 
+export enum TypeJour {
+  OUVRABLE = 'OUVRABLE',
+  FERIE = 'FERIE',
+  CONGE_PAYE = 'CONGE_PAYE',
+  CONGE_NON_PAYE = 'CONGE_NON_PAYE',
+}
+
+export enum OrigineJour {
+  NATIONAL = 'NATIONAL',
+  INTERNATIONAL = 'INTERNATIONAL',
+}
+
 // =====================
 // INTERFACES
 // =====================
@@ -170,6 +182,87 @@ export interface ApiResponse<T> {
   success: boolean;
   message: string | null;
   data: T;
+}
+
+// =====================
+// REFERENTIELS
+// =====================
+export enum TypeReferentiel {
+  DEPARTEMENT = 'DEPARTEMENT',
+  TYPE_CONTRAT = 'TYPE_CONTRAT',
+  SITE_ETABLISSEMENT = 'SITE_ETABLISSEMENT',
+  POSTE = 'POSTE',
+  NIVEAU_HIERARCHIQUE = 'NIVEAU_HIERARCHIQUE',
+  TYPE_CONGE = 'TYPE_CONGE',
+  TYPE_DEMANDE = 'TYPE_DEMANDE',
+  GENRE = 'GENRE',
+}
+
+export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
+  [TypeReferentiel.DEPARTEMENT]: 'Département',
+  [TypeReferentiel.TYPE_CONTRAT]: 'Type contrat',
+  [TypeReferentiel.SITE_ETABLISSEMENT]: 'Site / Établissement',
+  [TypeReferentiel.POSTE]: 'Poste',
+  [TypeReferentiel.NIVEAU_HIERARCHIQUE]: 'Niveau hiérarchique',
+  [TypeReferentiel.TYPE_CONGE]: 'Type congé',
+  [TypeReferentiel.TYPE_DEMANDE]: 'Type demande',
+  [TypeReferentiel.GENRE]: 'Genre',
+};
+
+export interface Referentiel {
+  id: number;
+  libelle: string;
+  description: string;
+  actif: boolean;
+  typeReferentiel: string;
+  typeReferentielLabel: string;
+}
+
+export interface ReferentielRequest {
+  libelle: string;
+  description: string;
+  typeReferentiel: string;
+}
+
+// =====================
+// CALENDRIER
+// =====================
+export interface CalendrierJour {
+  id: number;
+  dateJour: string;
+  nomJour: string;
+  typeJour: TypeJour;
+  origine: OrigineJour | null;
+  description: string | null;
+  estPaye: boolean;
+}
+
+export interface CalendrierRequest {
+  dateJour: string;
+  nomJour: string;
+  typeJour: TypeJour;
+  origine: OrigineJour | null;
+  description: string;
+  estPaye: boolean;
+}
+
+export interface HoraireTravail {
+  id: number;
+  nom: string;
+  heureDebut: string;
+  heureFin: string;
+  pauseDebutMidi: string | null;
+  pauseFinMidi: string | null;
+  joursTravail: string;
+}
+
+export interface HoraireTravailRequest {
+  nom: string;
+  heureDebut: string;
+  heureFin: string;
+  pauseDebutMidi: string | null;
+  pauseFinMidi: string | null;
+  joursTravail: string;
 }
 
 export interface SidebarItem {

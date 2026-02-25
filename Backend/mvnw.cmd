@@ -4,6 +4,9 @@
 @echo off
 setlocal
 
+@REM Force JDK 17
+set "JAVA_HOME=C:\Program Files\Java\jdk-17"
+
 set "MAVEN_PROJECTBASEDIR=%~dp0"
 set "MAVEN_WRAPPER_PROPERTIES=%MAVEN_PROJECTBASEDIR%.mvn\wrapper\maven-wrapper.properties"
 set "MAVEN_VERSION=3.9.9"

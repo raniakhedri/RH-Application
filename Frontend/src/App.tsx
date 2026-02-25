@@ -12,6 +12,8 @@ import PointagePage from './pages/PointagePage';
 import ProjetsPage from './pages/ProjetsPage';
 import TachesPage from './pages/TachesPage';
 import EquipesPage from './pages/EquipesPage';
+import ReferentielsPage from './pages/ReferentielsPage';
+import CalendrierPage from './pages/CalendrierPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -41,6 +43,8 @@ const App: React.FC = () => {
         <Route path="projets" element={<ProjetsPage />} />
         <Route path="taches" element={<TachesPage />} />
         <Route path="equipes" element={<EquipesPage />} />
+        <Route path="referentiels" element={<ReferentielsPage />} />
+        <Route path="calendrier" element={<CalendrierPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

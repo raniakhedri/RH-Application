@@ -1,0 +1,20 @@
+package com.antigone.rh.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class HoraireTravailDTO {
+    private Long id;
+    private String nom;
+    private String heureDebut;
+    private String heureFin;
+    private String pauseDebutMidi;
+    private String pauseFinMidi;
+    private String joursTravail;
+}

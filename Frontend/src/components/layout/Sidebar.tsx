@@ -9,6 +9,8 @@ import {
   HiOutlineBriefcase,
   HiOutlineUserGroup,
   HiOutlineChevronDown,
+  HiOutlineCollection,
+  HiOutlineCalendar,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
 
@@ -59,6 +61,13 @@ const menuGroups = [
         ],
       },
       { key: 'equipes', label: 'Équipes', path: '/equipes', icon: <HiOutlineUserGroup size={20} /> },
+    ] as NavItemDef[],
+  },
+  {
+    title: 'ADMINISTRATION',
+    items: [
+      { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} /> },
+      { key: 'calendrier', label: 'Calendrier', path: '/calendrier', icon: <HiOutlineCalendar size={20} /> },
     ] as NavItemDef[],
   },
 ];

@@ -26,6 +26,10 @@ public class HoraireTravail {
     @Column(nullable = false)
     private LocalTime heureFin;
 
+    private LocalTime pauseDebutMidi;
+
+    private LocalTime pauseFinMidi;
+
     @Column(nullable = false)
     private String joursTravail; // Comma-separated: "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI"
 }
