@@ -160,6 +160,9 @@ export interface Projet {
   statut: StatutProjet;
   dateDebut: string;
   dateFin: string;
+  chefDeProjet?: Employe | null;
+  equipeId?: number | null;
+  equipeNoms?: string[];
 }
 
 export interface Equipe {
@@ -167,6 +170,12 @@ export interface Equipe {
   nom: string;
   projetId: number;
   membres: Employe[];
+}
+
+export interface EquipeCreateRequest {
+  nom: string;
+  projetId: number | null;
+  memberIds: number[];
 }
 
 export interface Tache {

@@ -1,0 +1,1 @@
+ALTER TABLE equipes ALTER COLUMN projet_id DROP NOT NULL;
