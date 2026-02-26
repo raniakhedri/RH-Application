@@ -49,7 +49,10 @@ public class DemandeController {
     }
 
     @PatchMapping("/{id}/cancel")
-    public ResponseEntity<ApiResponse<DemandeResponse>> cancel(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.ok("Demande annulée", demandeService.cancel(id)));
+    public ResponseEntity<ApiResponse<DemandeResponse>> cancel(
+            @PathVariable Long id,
+            @RequestBody(required = false) DemandeRequest request) {
+        String motif = request != null ? request.getMotifAnnulation() : null;
+        return ResponseEntity.ok(ApiResponse.ok("Demande annulée", demandeService.cancel(id, motif)));
     }
 }

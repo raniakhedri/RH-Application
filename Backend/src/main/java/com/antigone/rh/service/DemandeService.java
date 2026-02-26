@@ -73,6 +73,9 @@ public class DemandeService {
                 teletravail.setDateFin(request.getDateFin());
                 demande = teletravail;
                 break;
+            case ADMINISTRATION:
+                demande = new Demande();
+                break;
             default:
                 throw new RuntimeException("Type de demande non supporté: " + request.getType());
         }
@@ -103,7 +106,7 @@ public class DemandeService {
         return toResponse(demande);
     }
 
-    public DemandeResponse cancel(Long demandeId) {
+    public DemandeResponse cancel(Long demandeId, String motif) {
         Demande demande = demandeRepository.findById(demandeId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
 
@@ -113,6 +116,9 @@ public class DemandeService {
 
         StatutDemande ancien = demande.getStatut();
         demande.setStatut(StatutDemande.ANNULEE);
+        if (motif != null && !motif.isBlank()) {
+            demande.setRaisonAnnulation(motif);
+        }
         demandeRepository.save(demande);
 
         saveHistorique(demande, ancien, StatutDemande.ANNULEE, demande.getEmploye());
@@ -152,7 +158,8 @@ public class DemandeService {
                 .statut(demande.getStatut())
                 .raison(demande.getRaison())
                 .employeId(demande.getEmploye().getId())
-                .employeNom(demande.getEmploye().getNom() + " " + demande.getEmploye().getPrenom());
+                .employeNom(demande.getEmploye().getNom() + " " + demande.getEmploye().getPrenom())
+                .raisonAnnulation(demande.getRaisonAnnulation());
 
         if (demande instanceof Conge conge) {
             builder.dateDebut(conge.getDateDebut());

@@ -21,6 +21,7 @@ public class DemandeResponse {
     private LocalDateTime dateCreation;
     private StatutDemande statut;
     private String raison;
+    private String raisonAnnulation;
     private Long employeId;
     private String employeNom;
 

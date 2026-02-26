@@ -8,5 +8,5 @@ export const demandeService = {
   getByStatut: (statut: StatutDemande) => api.get<ApiResponse<DemandeResponse[]>>(`/demandes/statut/${statut}`),
   create: (data: DemandeRequest) => api.post<ApiResponse<DemandeResponse>>('/demandes', data),
   submit: (id: number) => api.patch<ApiResponse<DemandeResponse>>(`/demandes/${id}/submit`),
-  cancel: (id: number) => api.patch<ApiResponse<DemandeResponse>>(`/demandes/${id}/cancel`),
+  cancel: (id: number, motif?: string) => api.patch<ApiResponse<DemandeResponse>>(`/demandes/${id}/cancel`, motif ? { motifAnnulation: motif } : {}),
 };

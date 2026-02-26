@@ -10,6 +10,7 @@ import java.time.LocalTime;
 public class DemandeRequest {
     private TypeDemande type;
     private String raison;
+    private String motifAnnulation;
     private Long employeId;
 
     // For Conge and Teletravail

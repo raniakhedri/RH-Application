@@ -7,6 +7,8 @@ import DashboardPage from './pages/DashboardPage';
 import EmployesPage from './pages/EmployesPage';
 import DemandesPage from './pages/DemandesPage';
 import NewDemandePage from './pages/NewDemandePage';
+import NewDemandePapierPage from './pages/NewDemandePapierPage';
+import DemandesPapierPage from './pages/DemandesPapierPage';
 import ValidationsPage from './pages/ValidationsPage';
 import PointagePage from './pages/PointagePage';
 import ProjetsPage from './pages/ProjetsPage';
@@ -38,6 +40,8 @@ const App: React.FC = () => {
         <Route path="employes" element={<EmployesPage />} />
         <Route path="demandes" element={<DemandesPage />} />
         <Route path="demandes/new" element={<NewDemandePage />} />
+        <Route path="demandes/papier" element={<NewDemandePapierPage />} />
+        <Route path="demandes/liste-papier" element={<DemandesPapierPage />} />
         <Route path="validations" element={<ValidationsPage />} />
         <Route path="pointage" element={<PointagePage />} />
         <Route path="projets" element={<ProjetsPage />} />

@@ -35,6 +35,9 @@ public class Demande {
 
     private String raison;
 
+    @Column(columnDefinition = "TEXT")
+    private String raisonAnnulation;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employe_id", nullable = false)
     @ToString.Exclude

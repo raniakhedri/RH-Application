@@ -41,6 +41,8 @@ const menuGroups = [
         children: [
           { label: 'Toutes les demandes', path: '/demandes' },
           { label: 'Nouvelle demande', path: '/demandes/new' },
+          { label: 'Demande papier', path: '/demandes/papier' },
+          { label: 'Toutes les demandes papier', path: '/demandes/liste-papier' },
         ],
       },
       { key: 'validations', label: 'Validations', path: '/validations', icon: <HiOutlineClipboardCheck size={20} /> },

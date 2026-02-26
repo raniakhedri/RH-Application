@@ -117,6 +117,7 @@ export interface DemandeResponse {
   dateCreation: string;
   statut: StatutDemande;
   raison: string;
+  raisonAnnulation?: string;
   employeId: number;
   employeNom: string;
   dateDebut?: string;
