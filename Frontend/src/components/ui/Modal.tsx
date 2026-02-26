@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
+  onSubmit?: () => void;
 }
 
 const sizeClasses = {
@@ -15,7 +16,7 @@ const sizeClasses = {
   lg: 'max-w-2xl',
 };
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md' }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md', onSubmit }) => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -29,11 +30,26 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
 
   if (!isOpen) return null;
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && onSubmit) {
+      // Don't submit when pressing Enter in textarea or select
+      const target = e.target as HTMLElement;
+      if (target.tagName !== 'TEXTAREA' && target.tagName !== 'SELECT') {
+        e.preventDefault();
+        onSubmit();
+      }
+    }
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="absolute inset-0 bg-gray-900/50" onClick={onClose} />
       <div
         className={`relative ${sizeClasses[size]} mx-4 w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-700 dark:bg-gray-800`}
+        onKeyDown={onSubmit ? handleKeyDown : undefined}
       >
         <div className="flex items-center justify-between border-b border-gray-200 p-5 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{title}</h3>

@@ -10,6 +10,7 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
   onRowClick?: (item: T) => void;
+  onRowDoubleClick?: (item: T) => void;
   emptyMessage?: string;
 }
 
@@ -17,6 +18,7 @@ function DataTable<T extends { id: number }>({
   columns,
   data,
   onRowClick,
+  onRowDoubleClick,
   emptyMessage = 'Aucune donnée disponible',
 }: DataTableProps<T>) {
   return (
@@ -47,9 +49,9 @@ function DataTable<T extends { id: number }>({
                 <tr
                   key={item.id}
                   onClick={() => onRowClick?.(item)}
-                  className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${
-                    onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''
-                  } transition-colors`}
+                  onDoubleClick={() => onRowDoubleClick?.(item)}
+                  className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${onRowClick || onRowDoubleClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''
+                    } transition-colors`}
                 >
                   {columns.map((col) => (
                     <td key={col.key} className="px-5 py-4 text-theme-sm text-gray-700 dark:text-gray-300">

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { HiOutlinePlus, HiOutlineUserAdd, HiOutlineUserRemove, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineUserRemove, HiOutlineTrash, HiOutlineStar } from 'react-icons/hi';
 import { equipeService } from '../api/equipeService';
 import { projetService } from '../api/projetService';
 import { employeService } from '../api/employeService';
-import { Equipe, Projet, Employe } from '../types';
+import { Equipe, Projet, Employe, EquipeCreateRequest } from '../types';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 
@@ -15,9 +15,16 @@ const EquipesPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [selectedEquipe, setSelectedEquipe] = useState<Equipe | null>(null);
-  const [newEquipeNom, setNewEquipeNom] = useState('');
-  const [newEquipeProjetId, setNewEquipeProjetId] = useState<number>(0);
+  const [editingEquipe, setEditingEquipe] = useState<Equipe | null>(null);
   const [selectedEmployeId, setSelectedEmployeId] = useState<number>(0);
+
+  // Create form state
+  const [createForm, setCreateForm] = useState<EquipeCreateRequest>({
+    nom: '',
+    projetId: null,
+    memberIds: [],
+  });
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -41,14 +48,54 @@ const EquipesPage: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    try {
-      await equipeService.create(newEquipeProjetId, newEquipeNom);
-      setShowCreateModal(false);
-      setNewEquipeNom('');
-      loadData();
-    } catch (err) {
-      console.error('Erreur création:', err);
+    if (!createForm.nom.trim()) {
+      setCreateError('Le nom de l\'équipe est obligatoire');
+      return;
     }
+    setCreateError(null);
+    try {
+      if (editingEquipe) {
+        await equipeService.update(editingEquipe.id, createForm);
+      } else {
+        await equipeService.create(createForm);
+      }
+      setShowCreateModal(false);
+      setEditingEquipe(null);
+      resetCreateForm();
+      loadData();
+    } catch (err: any) {
+      console.error('Erreur sauvegarde:', err);
+      const msg = err?.response?.data?.message || 'Erreur lors de la sauvegarde';
+      setCreateError(msg);
+    }
+  };
+
+  const handleEdit = (equipe: Equipe) => {
+    setEditingEquipe(equipe);
+    setCreateForm({
+      nom: equipe.nom,
+      projetId: equipe.projetId,
+      memberIds: equipe.membres?.map(m => m.id) || [],
+    });
+    setCreateError(null);
+    setShowCreateModal(true);
+  };
+
+  const resetCreateForm = () => {
+    setCreateForm({ nom: '', projetId: null, memberIds: [] });
+    setCreateError(null);
+  };
+
+  const toggleMember = (employeId: number) => {
+    setCreateForm(prev => {
+      const exists = prev.memberIds.includes(employeId);
+      return {
+        ...prev,
+        memberIds: exists
+          ? prev.memberIds.filter(id => id !== employeId)
+          : [...prev.memberIds, employeId],
+      };
+    });
   };
 
   const handleAddMember = async () => {
@@ -82,7 +129,10 @@ const EquipesPage: React.FC = () => {
     }
   };
 
-  const getProjetNom = (id: number) => projets.find((p) => p.id === id)?.nom || '-';
+  const getProjetNom = (id: number | null) => {
+    if (!id) return 'Aucun projet';
+    return projets.find((p) => p.id === id)?.nom || '-';
+  };
 
   const inputClass =
     'h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300';
@@ -96,7 +146,7 @@ const EquipesPage: React.FC = () => {
             Gérer les équipes et leurs membres
           </p>
         </div>
-        <Button onClick={() => { setNewEquipeNom(''); setNewEquipeProjetId(projets[0]?.id || 0); setShowCreateModal(true); }}>
+        <Button onClick={() => { resetCreateForm(); setShowCreateModal(true); }}>
           <HiOutlinePlus size={18} /> Nouvelle équipe
         </Button>
       </div>
@@ -112,7 +162,8 @@ const EquipesPage: React.FC = () => {
           {equipes.map((equipe) => (
             <div
               key={equipe.id}
-              className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark"
+              onDoubleClick={() => handleEdit(equipe)}
+              className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark cursor-pointer hover:border-brand-300 transition-colors"
             >
               {/* Equipe Header */}
               <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
@@ -130,7 +181,7 @@ const EquipesPage: React.FC = () => {
                     className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50"
                     title="Ajouter un membre"
                   >
-                    <HiOutlineUserAdd size={18} />
+                    <HiOutlinePlus size={18} />
                   </button>
                   <button
                     onClick={() => handleDelete(equipe.id)}
@@ -141,6 +192,7 @@ const EquipesPage: React.FC = () => {
                   </button>
                 </div>
               </div>
+
 
               {/* Members */}
               <div className="p-4">
@@ -182,34 +234,83 @@ const EquipesPage: React.FC = () => {
       )}
 
       {/* Create Equipe Modal */}
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Nouvelle équipe">
-        <div className="space-y-4">
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => { setShowCreateModal(false); setEditingEquipe(null); }}
+        title={editingEquipe ? 'Modifier l\'équipe' : 'Nouvelle équipe'}
+        size="lg"
+        onSubmit={handleCreate}
+      >
+        <div className="space-y-5">
+          {/* Team Name */}
           <div>
-            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Nom de l'équipe</label>
+            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Nom de l'équipe *</label>
             <input
               type="text"
-              value={newEquipeNom}
-              onChange={(e) => setNewEquipeNom(e.target.value)}
+              value={createForm.nom}
+              onChange={(e) => setCreateForm({ ...createForm, nom: e.target.value })}
               className={inputClass}
               placeholder="Ex: Équipe Design"
               required
             />
           </div>
+
+          {/* Project (optional) */}
           <div>
-            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Projet</label>
+            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Projet (optionnel)</label>
             <select
-              value={newEquipeProjetId}
-              onChange={(e) => setNewEquipeProjetId(Number(e.target.value))}
+              value={createForm.projetId || ''}
+              onChange={(e) => setCreateForm({ ...createForm, projetId: e.target.value ? Number(e.target.value) : null })}
               className={inputClass}
             >
+              <option value="">Aucun projet</option>
               {projets.map((p) => (
                 <option key={p.id} value={p.id}>{p.nom}</option>
               ))}
             </select>
           </div>
+
+
+          {/* Members (optional, multi-select) */}
+          <div>
+            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+              Membres ({createForm.memberIds.length} sélectionné{createForm.memberIds.length > 1 ? 's' : ''})
+            </label>
+            <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600">
+              {employes.map((emp) => (
+                <label
+                  key={emp.id}
+                  className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${createForm.memberIds.includes(emp.id)
+                    ? 'bg-secondary-50 dark:bg-secondary-500/10'
+                    : ''
+                    }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={createForm.memberIds.includes(emp.id)}
+                    onChange={() => toggleMember(emp.id)}
+                    className="h-4 w-4 rounded text-brand-500 focus:ring-brand-500"
+                  />
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary-50 text-secondary-500 text-theme-xs font-semibold dark:bg-secondary-500/[0.12] dark:text-secondary-400">
+                    {emp.prenom[0]}{emp.nom[0]}
+                  </div>
+                  <span className="text-theme-sm text-gray-700 dark:text-gray-300">
+                    {emp.prenom} {emp.nom}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {createError && (
+            <div className="rounded-lg bg-error-50 px-4 py-2 text-theme-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">
+              {createError}
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setShowCreateModal(false)}>Annuler</Button>
-            <Button onClick={handleCreate}>Créer</Button>
+            <Button onClick={handleCreate}>{editingEquipe ? 'Modifier' : 'Créer'}</Button>
           </div>
         </div>
       </Modal>
@@ -235,7 +336,7 @@ const EquipesPage: React.FC = () => {
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setShowAddMemberModal(false)}>Annuler</Button>
             <Button onClick={handleAddMember}>
-              <HiOutlineUserAdd size={16} /> Ajouter
+              <HiOutlinePlus size={16} /> Ajouter
             </Button>
           </div>
         </div>
