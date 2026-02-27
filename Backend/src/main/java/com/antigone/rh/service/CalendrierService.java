@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -131,6 +132,8 @@ public class CalendrierService {
                 .pauseDebutMidi(request.getPauseDebutMidi() != null ? LocalTime.parse(request.getPauseDebutMidi()) : null)
                 .pauseFinMidi(request.getPauseFinMidi() != null ? LocalTime.parse(request.getPauseFinMidi()) : null)
                 .joursTravail(request.getJoursTravail())
+                .dateDebut(request.getDateDebut() != null ? LocalDate.parse(request.getDateDebut()) : null)
+                .dateFin(request.getDateFin() != null ? LocalDate.parse(request.getDateFin()) : null)
                 .build();
 
         return toHoraireDTO(horaireTravailRepository.save(h));
@@ -146,6 +149,8 @@ public class CalendrierService {
         h.setPauseDebutMidi(request.getPauseDebutMidi() != null ? LocalTime.parse(request.getPauseDebutMidi()) : null);
         h.setPauseFinMidi(request.getPauseFinMidi() != null ? LocalTime.parse(request.getPauseFinMidi()) : null);
         h.setJoursTravail(request.getJoursTravail());
+        h.setDateDebut(request.getDateDebut() != null ? LocalDate.parse(request.getDateDebut()) : null);
+        h.setDateFin(request.getDateFin() != null ? LocalDate.parse(request.getDateFin()) : null);
 
         return toHoraireDTO(horaireTravailRepository.save(h));
     }
@@ -182,6 +187,8 @@ public class CalendrierService {
                 .pauseDebutMidi(h.getPauseDebutMidi() != null ? h.getPauseDebutMidi().toString() : null)
                 .pauseFinMidi(h.getPauseFinMidi() != null ? h.getPauseFinMidi().toString() : null)
                 .joursTravail(h.getJoursTravail())
+                .dateDebut(h.getDateDebut() != null ? h.getDateDebut().toString() : null)
+                .dateFin(h.getDateFin() != null ? h.getDateFin().toString() : null)
                 .build();
     }
 }

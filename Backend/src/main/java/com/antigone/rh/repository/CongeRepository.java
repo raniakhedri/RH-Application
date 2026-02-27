@@ -14,7 +14,9 @@ public interface CongeRepository extends JpaRepository<Conge, Long> {
     List<Conge> findByEmployeId(Long employeId);
 
     @Query("SELECT c FROM Conge c WHERE c.employe.id = :employeId AND " +
-           "((c.dateDebut BETWEEN :debut AND :fin) OR (c.dateFin BETWEEN :debut AND :fin))")
+           "c.statut NOT IN (com.antigone.rh.enums.StatutDemande.REFUSEE, com.antigone.rh.enums.StatutDemande.ANNULEE) AND " +
+           "((c.dateDebut BETWEEN :debut AND :fin) OR (c.dateFin BETWEEN :debut AND :fin) OR " +
+           "(c.dateDebut <= :debut AND c.dateFin >= :fin))")
     List<Conge> findOverlapping(@Param("employeId") Long employeId,
                                  @Param("debut") LocalDate debut,
                                  @Param("fin") LocalDate fin);

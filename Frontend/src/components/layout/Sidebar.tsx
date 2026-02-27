@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   HiOutlineHome,
@@ -13,12 +13,15 @@ import {
   HiOutlineCalendar,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
+import { useAuth } from '../../context/AuthContext';
+import { demandeService } from '../../api/demandeService';
 
 interface NavItemDef {
   label: string;
   path: string;
   icon: React.ReactNode;
   key: string;
+  badge?: number;
   children?: { label: string; path: string }[];
 }
 
@@ -74,7 +77,25 @@ const menuGroups = [
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const { isExpanded, isMobileOpen, isHovered, openSubmenu, setIsHovered, setOpenSubmenu, toggleMobileSidebar } = useSidebar();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const isAdmin = user?.roles?.includes('SUPER_ADMIN');
+
+  // Fetch pending demandes count for admin
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchPending = async () => {
+      try {
+        const res = await demandeService.getByStatut('EN_ATTENTE' as any);
+        setPendingCount((res.data.data || []).length);
+      } catch { /* ignore */ }
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + '/');
@@ -126,7 +147,7 @@ const Sidebar: React.FC = () => {
                 {group.items.map((item) => (
                   <SidebarItem
                     key={item.key}
-                    item={item}
+                    item={item.key === 'demandes' && isAdmin && pendingCount > 0 ? { ...item, badge: pendingCount } : item}
                     isActive={isActive}
                     showText={showText}
                     openSubmenu={openSubmenu}
@@ -165,6 +186,11 @@ const SidebarItem: React.FC<{
           {showText && (
             <>
               <span className="flex-1 text-left">{item.label}</span>
+              {item.badge && item.badge > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-warning-500 text-white text-[10px] font-bold">
+                  {item.badge}
+                </span>
+              )}
               <HiOutlineChevronDown
                 size={16}
                 className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}

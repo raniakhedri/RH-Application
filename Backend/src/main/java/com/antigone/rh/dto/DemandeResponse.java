@@ -24,12 +24,19 @@ public class DemandeResponse {
     private Long employeId;
     private String employeNom;
 
-    // For Conge and Teletravail
+    // For Conge
+    private String typeConge;
+    private String typeCongeLabel;
+    private Integer nombreJours;
     private LocalDate dateDebut;
     private LocalDate dateFin;
+    private String justificatifPath;
 
     // For Autorisation
     private LocalDate date;
     private LocalTime heureDebut;
     private LocalTime heureFin;
+    private Long dureeMinutes;
+
+    // For Teletravail (uses dateDebut/dateFin above)
 }

@@ -21,6 +21,7 @@ public class EmployeDTO {
     private String telephone;
     private LocalDate dateEmbauche;
     private Double soldeConge;
+    private String sexe;
     private Long managerId;
     private String managerNom;
 }

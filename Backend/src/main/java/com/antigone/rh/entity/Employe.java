@@ -1,5 +1,6 @@
 package com.antigone.rh.entity;
 
+import com.antigone.rh.enums.Sexe;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -40,6 +41,9 @@ public class Employe {
 
     @Column(columnDefinition = "double precision default 0")
     private Double soldeConge;
+
+    @Enumerated(EnumType.STRING)
+    private Sexe sexe;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")

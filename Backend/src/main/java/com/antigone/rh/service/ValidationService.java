@@ -50,8 +50,8 @@ public class ValidationService {
                 .decision(DecisionValidation.EN_ATTENTE)
                 .build();
 
-        if (demande.getStatut() == StatutDemande.SOUMISE) {
-            demande.setStatut(StatutDemande.EN_VALIDATION);
+        if (demande.getStatut() == StatutDemande.EN_ATTENTE) {
+            // Demande is already in EN_ATTENTE state
             demandeRepository.save(demande);
         }
 
@@ -106,7 +106,7 @@ public class ValidationService {
         if (allApproved && !validations.isEmpty()) {
             Demande demande = demandeRepository.findById(demandeId)
                     .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
-            demande.setStatut(StatutDemande.VALIDEE);
+            demande.setStatut(StatutDemande.APPROUVEE);
             demandeRepository.save(demande);
         }
     }

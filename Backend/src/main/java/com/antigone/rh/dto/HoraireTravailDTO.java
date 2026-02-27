@@ -17,4 +17,6 @@ public class HoraireTravailDTO {
     private String pauseDebutMidi;
     private String pauseFinMidi;
     private String joursTravail;
+    private String dateDebut;
+    private String dateFin;
 }

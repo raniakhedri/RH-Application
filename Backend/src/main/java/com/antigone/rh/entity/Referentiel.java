@@ -27,6 +27,8 @@ public class Referentiel {
     @Builder.Default
     private Boolean actif = true;
 
+    private String valeur;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "type_referentiel", nullable = false)
     private TypeReferentiel typeReferentiel;

@@ -59,7 +59,7 @@ public class Demande {
             dateCreation = LocalDateTime.now();
         }
         if (statut == null) {
-            statut = StatutDemande.BROUILLON;
+            statut = StatutDemande.EN_ATTENTE;
         }
     }
 }

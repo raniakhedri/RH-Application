@@ -50,6 +50,7 @@ public class CompteService {
                 .prenom(employe.getPrenom())
                 .email(employe.getEmail())
                 .roles(roles)
+                .sexe(employe.getSexe() != null ? employe.getSexe().name() : null)
                 .message("Connexion réussie")
                 .build();
     }

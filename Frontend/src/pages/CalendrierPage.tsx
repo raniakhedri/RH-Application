@@ -64,6 +64,8 @@ const CalendrierPage: React.FC = () => {
     pauseDebutMidi: '12:00',
     pauseFinMidi: '13:00',
     joursTravail: ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI'] as string[],
+    dateDebut: '',
+    dateFin: '',
   });
 
   useEffect(() => {
@@ -168,6 +170,8 @@ const CalendrierPage: React.FC = () => {
         joursTravail: horaireForm.joursTravail.join(','),
         pauseDebutMidi: horaireForm.pauseDebutMidi || null,
         pauseFinMidi: horaireForm.pauseFinMidi || null,
+        dateDebut: horaireForm.dateDebut || null,
+        dateFin: horaireForm.dateFin || null,
       };
       if (editingHoraire) {
         await calendrierService.updateHoraire(editingHoraire.id, payload);
@@ -192,6 +196,8 @@ const CalendrierPage: React.FC = () => {
       pauseDebutMidi: horaire.pauseDebutMidi || '',
       pauseFinMidi: horaire.pauseFinMidi || '',
       joursTravail: horaire.joursTravail.split(',').filter(Boolean),
+      dateDebut: horaire.dateDebut || '',
+      dateFin: horaire.dateFin || '',
     });
     setShowHoraireModal(true);
   };
@@ -215,6 +221,8 @@ const CalendrierPage: React.FC = () => {
       pauseDebutMidi: '12:00',
       pauseFinMidi: '13:00',
       joursTravail: ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI'],
+      dateDebut: '',
+      dateFin: '',
     });
   };
 
@@ -355,6 +363,21 @@ const CalendrierPage: React.FC = () => {
           ))}
         </div>
       ),
+    },
+    {
+      key: 'periode',
+      label: 'Période',
+      render: (item: HoraireTravail) => {
+        if (!item.dateDebut && !item.dateFin) {
+          return <span className="text-theme-xs text-gray-400 italic">Toute l'année</span>;
+        }
+        const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+        return (
+          <span className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">
+            {item.dateDebut ? fmt(item.dateDebut) : '...'} → {item.dateFin ? fmt(item.dateFin) : '...'}
+          </span>
+        );
+      },
     },
     {
       key: 'actions',
@@ -638,6 +661,30 @@ const CalendrierPage: React.FC = () => {
                   {jour.substring(0, 3)}
                 </button>
               ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Période d'application</label>
+            <p className="text-theme-xs text-gray-400 dark:text-gray-500 mb-2">Laisser vide pour appliquer toute l'année</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Du</label>
+                <input
+                  type="date"
+                  value={horaireForm.dateDebut}
+                  onChange={(e) => setHoraireForm({ ...horaireForm, dateDebut: e.target.value })}
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+                />
+              </div>
+              <div>
+                <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Au</label>
+                <input
+                  type="date"
+                  value={horaireForm.dateFin}
+                  onChange={(e) => setHoraireForm({ ...horaireForm, dateFin: e.target.value })}
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+                />
+              </div>
             </div>
           </div>
         </div>

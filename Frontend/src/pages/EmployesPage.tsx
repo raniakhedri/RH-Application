@@ -13,7 +13,7 @@ const EmployesPage: React.FC = () => {
   const [editingEmploye, setEditingEmploye] = useState<Employe | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
-    matricule: '', cin: '', nom: '', prenom: '', email: '', telephone: '', dateEmbauche: '', soldeConge: 0, managerId: null as number | null,
+    matricule: '', cin: '', nom: '', prenom: '', email: '', telephone: '', dateEmbauche: '', soldeConge: 0, sexe: '' as string, managerId: null as number | null,
   });
 
   useEffect(() => {
@@ -52,7 +52,7 @@ const EmployesPage: React.FC = () => {
     setFormData({
       matricule: employe.matricule, cin: employe.cin, nom: employe.nom, prenom: employe.prenom,
       email: employe.email, telephone: employe.telephone, dateEmbauche: employe.dateEmbauche,
-      soldeConge: employe.soldeConge, managerId: employe.managerId,
+      soldeConge: employe.soldeConge, sexe: employe.sexe || '', managerId: employe.managerId,
     });
     setShowModal(true);
   };
@@ -69,7 +69,7 @@ const EmployesPage: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({ matricule: '', cin: '', nom: '', prenom: '', email: '', telephone: '', dateEmbauche: '', soldeConge: 0, managerId: null });
+    setFormData({ matricule: '', cin: '', nom: '', prenom: '', email: '', telephone: '', dateEmbauche: '', soldeConge: 0, sexe: '', managerId: null });
   };
 
   const filteredEmployes = employes.filter(
@@ -97,6 +97,11 @@ const EmployesPage: React.FC = () => {
     { key: 'email', label: 'Email' },
     { key: 'telephone', label: 'Téléphone' },
     { key: 'soldeConge', label: 'Solde congé', render: (item: Employe) => <span>{item.soldeConge} jours</span> },
+    {
+      key: 'sexe',
+      label: 'Sexe',
+      render: (item: Employe) => <span>{item.sexe === 'HOMME' ? 'Homme' : item.sexe === 'FEMME' ? 'Femme' : '-'}</span>,
+    },
     {
       key: 'actions',
       label: 'Actions',
@@ -179,6 +184,14 @@ const EmployesPage: React.FC = () => {
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Solde congé</label>
             <input type="number" value={formData.soldeConge} onChange={(e) => setFormData({ ...formData, soldeConge: Number(e.target.value) })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300" />
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sexe</label>
+            <select value={formData.sexe} onChange={(e) => setFormData({ ...formData, sexe: e.target.value })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300">
+              <option value="">-- Sélectionner --</option>
+              <option value="HOMME">Homme</option>
+              <option value="FEMME">Femme</option>
+            </select>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-6">

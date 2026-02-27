@@ -3,6 +3,7 @@ package com.antigone.rh.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
@@ -32,4 +33,8 @@ public class HoraireTravail {
 
     @Column(nullable = false)
     private String joursTravail; // Comma-separated: "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI"
+
+    private LocalDate dateDebut; // Applicable from (inclusive)
+
+    private LocalDate dateFin;   // Applicable until (inclusive)
 }

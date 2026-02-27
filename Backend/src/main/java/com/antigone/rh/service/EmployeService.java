@@ -2,6 +2,7 @@ package com.antigone.rh.service;
 
 import com.antigone.rh.dto.EmployeDTO;
 import com.antigone.rh.entity.Employe;
+import com.antigone.rh.enums.Sexe;
 import com.antigone.rh.repository.EmployeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -68,6 +69,11 @@ public class EmployeService {
         employe.setTelephone(dto.getTelephone());
         employe.setDateEmbauche(dto.getDateEmbauche());
         employe.setSoldeConge(dto.getSoldeConge());
+        if (dto.getSexe() != null) {
+            employe.setSexe(Sexe.valueOf(dto.getSexe()));
+        } else {
+            employe.setSexe(null);
+        }
         if (dto.getManagerId() != null) {
             Employe manager = employeRepository.findById(dto.getManagerId())
                     .orElseThrow(() -> new RuntimeException("Manager non trouvé"));
@@ -103,6 +109,7 @@ public class EmployeService {
                 .telephone(employe.getTelephone())
                 .dateEmbauche(employe.getDateEmbauche())
                 .soldeConge(employe.getSoldeConge())
+                .sexe(employe.getSexe() != null ? employe.getSexe().name() : null)
                 .managerId(employe.getManager() != null ? employe.getManager().getId() : null)
                 .managerNom(employe.getManager() != null ? employe.getManager().getNom() + " " + employe.getManager().getPrenom() : null)
                 .build();
@@ -118,6 +125,7 @@ public class EmployeService {
                 .telephone(dto.getTelephone())
                 .dateEmbauche(dto.getDateEmbauche())
                 .soldeConge(dto.getSoldeConge() != null ? dto.getSoldeConge() : 0.0)
+                .sexe(dto.getSexe() != null ? Sexe.valueOf(dto.getSexe()) : null)
                 .build();
     }
 }
