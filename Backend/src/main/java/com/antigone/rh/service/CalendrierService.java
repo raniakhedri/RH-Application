@@ -132,6 +132,7 @@ public class CalendrierService {
                 .pauseDebutMidi(request.getPauseDebutMidi() != null ? LocalTime.parse(request.getPauseDebutMidi()) : null)
                 .pauseFinMidi(request.getPauseFinMidi() != null ? LocalTime.parse(request.getPauseFinMidi()) : null)
                 .joursTravail(request.getJoursTravail())
+                .joursTeletravail(request.getJoursTeletravail())
                 .dateDebut(request.getDateDebut() != null ? LocalDate.parse(request.getDateDebut()) : null)
                 .dateFin(request.getDateFin() != null ? LocalDate.parse(request.getDateFin()) : null)
                 .build();
@@ -149,6 +150,7 @@ public class CalendrierService {
         h.setPauseDebutMidi(request.getPauseDebutMidi() != null ? LocalTime.parse(request.getPauseDebutMidi()) : null);
         h.setPauseFinMidi(request.getPauseFinMidi() != null ? LocalTime.parse(request.getPauseFinMidi()) : null);
         h.setJoursTravail(request.getJoursTravail());
+        h.setJoursTeletravail(request.getJoursTeletravail());
         h.setDateDebut(request.getDateDebut() != null ? LocalDate.parse(request.getDateDebut()) : null);
         h.setDateFin(request.getDateFin() != null ? LocalDate.parse(request.getDateFin()) : null);
 
@@ -187,6 +189,7 @@ public class CalendrierService {
                 .pauseDebutMidi(h.getPauseDebutMidi() != null ? h.getPauseDebutMidi().toString() : null)
                 .pauseFinMidi(h.getPauseFinMidi() != null ? h.getPauseFinMidi().toString() : null)
                 .joursTravail(h.getJoursTravail())
+                .joursTeletravail(h.getJoursTeletravail())
                 .dateDebut(h.getDateDebut() != null ? h.getDateDebut().toString() : null)
                 .dateFin(h.getDateFin() != null ? h.getDateFin().toString() : null)
                 .build();

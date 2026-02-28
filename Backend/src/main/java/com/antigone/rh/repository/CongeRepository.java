@@ -6,6 +6,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.antigone.rh.enums.StatutDemande;
+import com.antigone.rh.enums.TypeConge;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -20,4 +23,32 @@ public interface CongeRepository extends JpaRepository<Conge, Long> {
     List<Conge> findOverlapping(@Param("employeId") Long employeId,
                                  @Param("debut") LocalDate debut,
                                  @Param("fin") LocalDate fin);
+
+    /**
+     * Find congés by employee, type, status, and date range (for solde computation).
+     */
+    @Query("SELECT c FROM Conge c WHERE c.employe.id = :employeId " +
+           "AND c.typeConge = :typeConge " +
+           "AND c.statut = :statut " +
+           "AND c.dateDebut >= :debut AND c.dateDebut <= :fin")
+    List<Conge> findByEmployeIdAndTypeCongeAndStatutAndDateDebutBetween(
+            @Param("employeId") Long employeId,
+            @Param("typeConge") TypeConge typeConge,
+            @Param("statut") StatutDemande statut,
+            @Param("debut") LocalDate debut,
+            @Param("fin") LocalDate fin);
+
+    /**
+     * Find congés by employee, type, statut IN list, and date range.
+     */
+    @Query("SELECT c FROM Conge c WHERE c.employe.id = :employeId " +
+           "AND c.typeConge = :typeConge " +
+           "AND c.statut IN :statuts " +
+           "AND c.dateDebut >= :debut AND c.dateDebut <= :fin")
+    List<Conge> findByEmployeIdAndTypeCongeAndStatutInAndDateDebutBetween(
+            @Param("employeId") Long employeId,
+            @Param("typeConge") TypeConge typeConge,
+            @Param("statuts") List<StatutDemande> statuts,
+            @Param("debut") LocalDate debut,
+            @Param("fin") LocalDate fin);
 }

@@ -35,6 +35,8 @@ public class Demande {
 
     private String raison;
 
+    private String motifRefus;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employe_id", nullable = false)
     @ToString.Exclude

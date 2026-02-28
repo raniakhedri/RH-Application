@@ -21,6 +21,7 @@ public class DemandeResponse {
     private LocalDateTime dateCreation;
     private StatutDemande statut;
     private String raison;
+    private String motifRefus;
     private Long employeId;
     private String employeNom;
 
@@ -28,6 +29,7 @@ public class DemandeResponse {
     private String typeConge;
     private String typeCongeLabel;
     private Integer nombreJours;
+    private Integer joursOuvrables;
     private LocalDate dateDebut;
     private LocalDate dateFin;
     private String justificatifPath;

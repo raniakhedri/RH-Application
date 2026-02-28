@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { demandeService } from '../api/demandeService';
 import { referentielService } from '../api/referentielService';
 import { calendrierService } from '../api/calendrierService';
-import { TypeDemande, Referentiel, CalendrierJour, HoraireTravail } from '../types';
+import { employeService } from '../api/employeService';
+import { TypeDemande, Referentiel, CalendrierJour, HoraireTravail, CalculateDaysResult, SoldeCongeInfo, EmployeHoraire } from '../types';
 import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi';
@@ -90,7 +91,10 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFi
     const end = new Date(dateFin + 'T00:00:00');
     const cur = new Date(start);
     while (cur <= end) {
-      set.add(cur.toISOString().slice(0, 10));
+      const y = cur.getFullYear();
+      const m = String(cur.getMonth() + 1).padStart(2, '0');
+      const d = String(cur.getDate()).padStart(2, '0');
+      set.add(`${y}-${m}-${d}`);
       cur.setDate(cur.getDate() + 1);
     }
     return set;
@@ -224,6 +228,11 @@ const NewDemandePage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [justificatif, setJustificatif] = useState<File | null>(null);
+  const [calcResult, setCalcResult] = useState<CalculateDaysResult | null>(null);
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [soldeInfo, setSoldeInfo] = useState<SoldeCongeInfo | null>(null);
+  const [employeHoraire, setEmployeHoraire] = useState<EmployeHoraire | null>(null);
+  const [autorisationWarnings, setAutorisationWarnings] = useState<string[]>([]);
 
   // Types requiring mandatory justificatif
   const TYPES_REQUIRING_JUSTIFICATIF = [
@@ -233,9 +242,137 @@ const NewDemandePage: React.FC = () => {
     'CONGE_MATERNITE',
   ];
 
+  // Types where nombre de jours is fixed (not user-chosen)
+  const FIXED_DAYS_TYPES: Record<string, number> = {
+    CONGE_DECES_PROCHE: 5,
+    CONGE_DECES_FAMILLE: 1,
+  };
+
+  const isFixedDays = typeConge in FIXED_DAYS_TYPES;
+
   const needsJustificatif = type === TypeDemande.CONGE && TYPES_REQUIRING_JUSTIFICATIF.includes(typeConge);
 
-  // Load active congé types from referentiels
+  // Call backend to compute effective days when dates change
+  const computeDays = useCallback(async (debut: string, fin: string, tc: string) => {
+    if (!debut || !fin) {
+      setCalcResult(null);
+      return;
+    }
+    setCalcLoading(true);
+    try {
+      const res = await demandeService.calculateDays(debut, fin, tc || 'CONGE_PAYE');
+      setCalcResult(res.data.data);
+    } catch {
+      setCalcResult(null);
+    } finally {
+      setCalcLoading(false);
+    }
+  }, []);
+
+  // When dates or type change, auto-compute effective days
+  useEffect(() => {
+    if (type !== TypeDemande.CONGE || isFixedDays) return;
+    const timer = setTimeout(() => {
+      computeDays(dateDebut, dateFin, typeConge);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [dateDebut, dateFin, typeConge, type, isFixedDays, computeDays]);
+
+  // For single-day leave, auto-match dateFin to dateDebut
+  useEffect(() => {
+    if (type === TypeDemande.CONGE && dateDebut && !dateFin) {
+      setDateFin(dateDebut);
+    }
+  }, [dateDebut, type]);
+
+  // Effective nombre de jours (from API or fixed)
+  const effectiveNombreJours = isFixedDays
+    ? FIXED_DAYS_TYPES[typeConge]
+    : calcResult?.nombreJours ?? 0;
+
+  // 4× rule: la demande doit être faite 4 × nombre_de_jours jours à l'avance
+  const delaiMinJours = effectiveNombreJours * 4;
+  const rule4xWarning = useMemo(() => {
+    if (effectiveNombreJours <= 0 || !dateDebut) return null;
+    const EXEMPT_TYPES = ['CONGE_MALADIE', 'CONGE_DECES_PROCHE', 'CONGE_DECES_FAMILLE', 'CONGE_EXCEPTIONNEL'];
+    if (EXEMPT_TYPES.includes(typeConge)) return null;
+    const today = new Date();
+    const limit = new Date();
+    limit.setDate(limit.getDate() + delaiMinJours);
+    const debutDate = new Date(dateDebut + 'T00:00:00');
+    if (debutDate < limit) {
+      return `Selon le règlement, cette demande de ${effectiveNombreJours} jour(s) effectif(s) doit être faite au moins ${delaiMinJours} jours à l'avance (4 × ${effectiveNombreJours}). Date début au plus tôt : ${limit.toLocaleDateString('fr-FR')}`;
+    }
+    return null;
+  }, [effectiveNombreJours, delaiMinJours, dateDebut, typeConge]);
+
+  // ─── Autorisation: fetch company horaire once on mount ───
+  useEffect(() => {
+    if (type !== TypeDemande.AUTORISATION) {
+      return;
+    }
+    const fetchHoraire = async () => {
+      try {
+        const res = await employeService.getHoraireEntreprise();
+        setEmployeHoraire(res.data.data || null);
+      } catch {
+        setEmployeHoraire(null);
+      }
+    };
+    fetchHoraire();
+  }, [type]);
+
+  // ─── Autorisation: validate times against horaire ───
+  useEffect(() => {
+    if (type !== TypeDemande.AUTORISATION) {
+      setAutorisationWarnings([]);
+      return;
+    }
+    const warnings: string[] = [];
+
+    if (employeHoraire && date) {
+      // Check if the day is a working day
+      const DOW_MAP: Record<number, string> = {
+        0: 'DIMANCHE', 1: 'LUNDI', 2: 'MARDI', 3: 'MERCREDI',
+        4: 'JEUDI', 5: 'VENDREDI', 6: 'SAMEDI',
+      };
+      const dayOfWeek = new Date(date + 'T00:00:00').getDay();
+      const jourName = DOW_MAP[dayOfWeek];
+      const joursTravail = employeHoraire.joursTravail.split(',').map((j) => j.trim().toUpperCase());
+      if (!joursTravail.includes(jourName)) {
+        warnings.push(`Vous ne travaillez pas le ${jourName.charAt(0) + jourName.slice(1).toLowerCase()}. Jours de travail : ${joursTravail.join(', ')}`);
+      }
+
+      // Check times within working hours
+      if (heureDebut && heureDebut < employeHoraire.heureDebut) {
+        warnings.push(`L'heure de début (${heureDebut}) est avant le début du travail (${employeHoraire.heureDebut})`);
+      }
+      if (heureFin && heureFin > employeHoraire.heureFin) {
+        warnings.push(`L'heure de fin (${heureFin}) est après la fin du travail (${employeHoraire.heureFin})`);
+      }
+    }
+
+    // Check duration (max from referentiels — MAX_AUTORISATION_MINUTES)
+    const maxMinutes = employeHoraire ? parseInt(employeHoraire.maxAutorisationMinutes, 10) || 120 : 120;
+    if (heureDebut && heureFin && heureFin > heureDebut) {
+      const [hd, md] = heureDebut.split(':').map(Number);
+      const [hf, mf] = heureFin.split(':').map(Number);
+      const dureeMin = (hf * 60 + mf) - (hd * 60 + md);
+      if (dureeMin > maxMinutes) {
+        const maxH = Math.floor(maxMinutes / 60);
+        const maxM = maxMinutes % 60;
+        warnings.push(`La durée (${Math.floor(dureeMin / 60)}h${String(dureeMin % 60).padStart(2, '0')}) dépasse le maximum autorisé de ${maxH}h${String(maxM).padStart(2, '0')}`);
+      }
+    }
+
+    if (heureDebut && heureFin && heureFin <= heureDebut) {
+      warnings.push("L'heure de fin doit être après l'heure de début");
+    }
+
+    setAutorisationWarnings(warnings);
+  }, [type, date, heureDebut, heureFin, employeHoraire]);
+
+  // Load active congé types from referentiels + solde info
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -244,7 +381,13 @@ const NewDemandePage: React.FC = () => {
           calendrierService.getAllJours(),
           calendrierService.getAllHoraires(),
         ]);
-        let types = congeRes.data.data || [];
+        if (user?.employeId) {
+          try {
+            const soldeRes = await employeService.getSoldeInfo(user.employeId);
+            setSoldeInfo(soldeRes.data.data || null);
+          } catch { /* ignore */ }
+        }
+        let types: Referentiel[] = congeRes.data.data || [];
 
         // Gender-based filtering (Super Admin sees all)
         const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN');
@@ -300,7 +443,7 @@ const NewDemandePage: React.FC = () => {
       if (type === TypeDemande.CONGE) {
         data.typeConge = typeConge;
         data.dateDebut = dateDebut;
-        data.dateFin = dateFin;
+        data.dateFin = dateFin || dateDebut;
       } else if (type === TypeDemande.TELETRAVAIL) {
         data.dateDebut = dateDebut;
         data.dateFin = dateFin;
@@ -384,8 +527,124 @@ const NewDemandePage: React.FC = () => {
               </div>
             )}
 
-            {/* Date fields for CONGE / TELETRAVAIL */}
-            {(type === TypeDemande.CONGE || type === TypeDemande.TELETRAVAIL) && (
+            {/* Date fields for CONGE */}
+            {type === TypeDemande.CONGE && (
+              <div className="space-y-4">
+                {isFixedDays && (
+                  <div>
+                    <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                      Nombre de jours
+                    </label>
+                    <div className="h-11 flex items-center px-4 rounded-lg border border-gray-200 bg-gray-50 text-theme-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                      {FIXED_DAYS_TYPES[typeConge]} jour(s) <span className="text-theme-xs text-gray-400 ml-2">(fixé par le règlement)</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                      Date début
+                    </label>
+                    <input
+                      type="date"
+                      value={dateDebut}
+                      onChange={(e) => setDateDebut(e.target.value)}
+                      min={new Date().toISOString().slice(0, 10)}
+                      className={inputClass}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                      Date fin
+                    </label>
+                    <input
+                      type="date"
+                      value={dateFin}
+                      onChange={(e) => setDateFin(e.target.value)}
+                      min={dateDebut || undefined}
+                      className={inputClass}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Computed effective days info */}
+                {!isFixedDays && dateDebut && dateFin && (
+                  <div className={`rounded-lg border p-3 text-theme-sm ${
+                    calcLoading
+                      ? 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
+                      : calcResult && calcResult.nombreJours > 0
+                        ? 'border-brand-200 bg-brand-50 dark:border-brand-500/30 dark:bg-brand-500/10'
+                        : 'border-error-200 bg-error-50 dark:border-error-500/30 dark:bg-error-500/10'
+                  }`}>
+                    {calcLoading ? (
+                      <p className="text-gray-500 dark:text-gray-400">Calcul en cours...</p>
+                    ) : calcResult ? (
+                      <div className="space-y-1">
+                        <p className="font-semibold text-gray-800 dark:text-white">
+                          {calcResult.nombreJours} jour(s) effectif(s) seront décomptés
+                        </p>
+                        <p className="text-theme-xs text-gray-600 dark:text-gray-400">
+                          {calcResult.details}
+                        </p>
+                        {calcResult.dateDebutEffective !== dateDebut || calcResult.dateFinEffective !== dateFin ? (
+                          <p className="text-theme-xs text-warning-600 dark:text-warning-400">
+                            Période effective étendue : {new Date(calcResult.dateDebutEffective + 'T00:00:00').toLocaleDateString('fr-FR')} → {new Date(calcResult.dateFinEffective + 'T00:00:00').toLocaleDateString('fr-FR')}
+                            {' '}(inclut weekends/jours fériés adjacents)
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Congé règles: 1 jour max */}
+                {typeConge === 'CONGE_REGLES' && calcResult && calcResult.joursOuvrables > 1 && (
+                  <div className="rounded-lg border border-error-200 bg-error-50 p-3 dark:border-error-500/30 dark:bg-error-500/10">
+                    <p className="text-theme-xs text-error-600 dark:text-error-400 flex items-center gap-1.5">
+                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      Le congé règles est limité à 1 jour ouvrable uniquement.
+                    </p>
+                  </div>
+                )}
+
+                {/* Congé maladie max 2 jours */}
+                {typeConge === 'CONGE_MALADIE' && calcResult && calcResult.joursOuvrables > 2 && (
+                  <div className="rounded-lg border border-error-200 bg-error-50 p-3 dark:border-error-500/30 dark:bg-error-500/10">
+                    <p className="text-theme-xs text-error-600 dark:text-error-400 flex items-center gap-1.5">
+                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      Le congé maladie est limité à 2 jours ouvrables maximum ({calcResult.joursOuvrables} sélectionné{calcResult.joursOuvrables > 1 ? 's' : ''}).
+                    </p>
+                  </div>
+                )}
+                {typeConge === 'CONGE_MALADIE' && (!calcResult || calcResult.joursOuvrables <= 2) && (
+                  <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+                    Le congé maladie est limité à 2 jours ouvrables. Au-delà, l'accord du responsable est requis.
+                  </p>
+                )}
+
+                {/* 4× rule warning */}
+                {rule4xWarning && (
+                  <div className="rounded-lg border border-warning-200 bg-warning-50 p-3 dark:border-warning-500/30 dark:bg-warning-500/10">
+                    <p className="text-theme-xs text-warning-600 dark:text-warning-400 flex items-center gap-1.5">
+                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      {rule4xWarning}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Date fields for TELETRAVAIL */}
+            {type === TypeDemande.TELETRAVAIL && (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
@@ -456,6 +715,34 @@ const NewDemandePage: React.FC = () => {
               </div>
             )}
 
+            {/* Autorisation: horaire info + warnings */}
+            {type === TypeDemande.AUTORISATION && employeHoraire && (
+              <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-theme-sm dark:border-brand-500/30 dark:bg-brand-500/10">
+                <p className="font-medium text-brand-700 dark:text-brand-300">
+                  🕐 Horaire de l'entreprise
+                </p>
+                <p className="mt-1 text-gray-600 dark:text-gray-400">
+                  {employeHoraire.heureDebut} — {employeHoraire.heureFin}
+                  {employeHoraire.joursTravail && (
+                    <span className="ml-2">
+                      ({employeHoraire.joursTravail.split(',').map(j => j.trim().charAt(0) + j.trim().slice(1).toLowerCase()).join(', ')})
+                    </span>
+                  )}
+                  <span className="ml-2">• Max autorisation : {Math.floor(parseInt(employeHoraire.maxAutorisationMinutes) / 60)}h{String(parseInt(employeHoraire.maxAutorisationMinutes) % 60).padStart(2, '0')}/mois</span>
+                </p>
+              </div>
+            )}
+
+            {type === TypeDemande.AUTORISATION && autorisationWarnings.length > 0 && (
+              <div className="rounded-lg border border-error-300 bg-error-50 px-4 py-3 dark:border-error-500/30 dark:bg-error-500/10">
+                {autorisationWarnings.map((w, i) => (
+                  <p key={i} className="text-theme-sm text-error-600 dark:text-error-400">
+                    ⚠ {w}
+                  </p>
+                ))}
+              </div>
+            )}
+
             {/* Pièce jointe / Justificatif */}
             {type === TypeDemande.CONGE && (
               <div>
@@ -516,7 +803,13 @@ const NewDemandePage: React.FC = () => {
               <Button variant="outline" type="button" onClick={() => navigate('/demandes')}>
                 Annuler
               </Button>
-              <Button type="submit" disabled={loading}>
+              {/* Solde insuffisant warning */}
+              {type === TypeDemande.CONGE && typeConge === 'CONGE_PAYE' && soldeInfo && calcResult && calcResult.joursOuvrables > soldeInfo.soldeDisponible && (
+                <div className="flex-1 rounded-lg border border-error-300 bg-error-50 px-4 py-2 text-theme-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
+                  Solde congé insuffisant. Disponible : {soldeInfo.soldeDisponible}j, Demandé : {calcResult.joursOuvrables}j ouvrable(s)
+                </div>
+              )}
+              <Button type="submit" disabled={loading || !!rule4xWarning || (typeConge === 'CONGE_MALADIE' && !!calcResult && calcResult.joursOuvrables > 2) || (typeConge === 'CONGE_REGLES' && !!calcResult && calcResult.joursOuvrables > 1) || (typeConge === 'CONGE_PAYE' && !!soldeInfo && !!calcResult && calcResult.joursOuvrables > soldeInfo.soldeDisponible) || (type === TypeDemande.AUTORISATION && autorisationWarnings.length > 0)}>
                 {loading ? 'Création...' : 'Soumettre la demande'}
               </Button>
             </div>

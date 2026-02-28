@@ -15,8 +15,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import org.springframework.format.annotation.DateTimeFormat;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -114,5 +115,14 @@ public class DemandeController {
     @GetMapping("/{id}/historique")
     public ResponseEntity<ApiResponse<List<HistoriqueStatutDTO>>> getHistorique(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(demandeService.getHistorique(id)));
+    }
+
+    @GetMapping("/calculate-days")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> calculateDays(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(required = false, defaultValue = "CONGE_PAYE") String typeConge) {
+        Map<String, Object> result = demandeService.computeEffectiveDays(dateDebut, dateFin, typeConge);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 }

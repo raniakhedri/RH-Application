@@ -1,17 +1,49 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { HiOutlineSearch, HiOutlineBell, HiOutlineLogout, HiOutlineMenu } from 'react-icons/hi';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { HiOutlineSearch, HiOutlineBell, HiOutlineLogout, HiOutlineMenu, HiOutlineCheckCircle, HiOutlineXCircle } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../hooks/useTheme';
 import { useSidebar } from '../../hooks/useSidebar';
+import { notificationService } from '../../api/notificationService';
+import { NotificationResponse } from '../../types';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { toggleSidebar, toggleMobileSidebar } = useSidebar();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifMenuRef = useRef<HTMLDivElement>(null);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.employeId) return;
+    try {
+      const [notifRes, countRes] = await Promise.all([
+        notificationService.getByEmploye(user.employeId),
+        notificationService.getUnreadCount(user.employeId),
+      ]);
+      setNotifications(notifRes.data.data || []);
+      setUnreadCount(countRes.data.data?.count || 0);
+    } catch {
+      // Silently fail
+    }
+  }, [user?.employeId]);
+
+  // Fetch notifications on mount and poll every 30s
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  // Refresh when dropdown opens
+  useEffect(() => {
+    if (showNotifications) fetchNotifications();
+  }, [showNotifications, fetchNotifications]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -26,6 +58,49 @@ const Header: React.FC = () => {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  const handleMarkAsRead = async (id: number) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, lu: true } : n)));
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    if (!user?.employeId) return;
+    try {
+      await notificationService.markAllAsRead(user.employeId);
+      setNotifications((prev) => prev.map((n) => ({ ...n, lu: true })));
+      setUnreadCount(0);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleNotifClick = (notif: NotificationResponse) => {
+    if (!notif.lu) handleMarkAsRead(notif.id);
+    if (notif.demandeId) {
+      navigate('/mes-demandes');
+      setShowNotifications(false);
+    }
+  };
+
+  const formatTimeAgo = (dateStr: string) => {
+    const now = new Date();
+    const d = new Date(dateStr);
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return "À l'instant";
+    if (diffMin < 60) return `Il y a ${diffMin}min`;
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return `Il y a ${diffH}h`;
+    const diffD = Math.floor(diffH / 24);
+    if (diffD === 1) return 'Hier';
+    return `Il y a ${diffD}j`;
+  };
 
   return (
     <header className="sticky top-0 z-99 flex h-[68px] w-full border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -85,18 +160,82 @@ const Header: React.FC = () => {
               className="relative rounded-full p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
             >
               <HiOutlineBell size={20} />
-              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-error-500" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-error-500 text-[10px] font-bold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-[350px] rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-700 dark:bg-gray-800">
+              <div className="absolute right-0 mt-2 w-[380px] rounded-2xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-700 dark:bg-gray-800">
                 <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
                   <h4 className="text-theme-sm font-semibold text-gray-800 dark:text-white">
-                    Notifications
+                    Notifications {unreadCount > 0 && <span className="text-brand-500">({unreadCount})</span>}
                   </h4>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-theme-xs text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                    >
+                      Tout marquer lu
+                    </button>
+                  )}
                 </div>
-                <div className="p-4 text-center text-theme-sm text-gray-500 dark:text-gray-400">
-                  Aucune nouvelle notification
+                <div className="max-h-[320px] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-theme-sm text-gray-500 dark:text-gray-400">
+                      Aucune notification
+                    </div>
+                  ) : (
+                    notifications.slice(0, 10).map((notif) => (
+                      <button
+                        key={notif.id}
+                        onClick={() => handleNotifClick(notif)}
+                        className={`flex w-full items-start gap-3 px-5 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                          !notif.lu ? 'bg-brand-50/50 dark:bg-brand-500/5' : ''
+                        }`}
+                      >
+                        <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                          notif.titre.includes('refusée')
+                            ? 'bg-error-50 dark:bg-error-500/10'
+                            : 'bg-success-50 dark:bg-success-500/10'
+                        }`}>
+                          {notif.titre.includes('refusée') ? (
+                            <HiOutlineXCircle className="text-error-500" size={16} />
+                          ) : (
+                            <HiOutlineCheckCircle className="text-success-500" size={16} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className={`text-theme-sm ${!notif.lu ? 'font-semibold text-gray-800 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                              {notif.titre}
+                            </p>
+                            {!notif.lu && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-brand-500 shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-theme-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2 whitespace-pre-line">
+                            {notif.message}
+                          </p>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                            {formatTimeAgo(notif.dateCreation)}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
+                {notifications.length > 10 && (
+                  <div className="border-t border-gray-200 px-5 py-2.5 dark:border-gray-700">
+                    <button
+                      onClick={() => { navigate('/mes-demandes'); setShowNotifications(false); }}
+                      className="w-full text-center text-theme-xs text-brand-500 hover:text-brand-600"
+                    >
+                      Voir toutes les notifications
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

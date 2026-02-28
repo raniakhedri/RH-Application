@@ -28,5 +28,8 @@ public class Conge extends Demande {
     @Column(nullable = false)
     private Integer nombreJours;
 
+    @Column(columnDefinition = "integer default 0")
+    private Integer joursOuvrables;
+
     private String justificatifPath;
 }

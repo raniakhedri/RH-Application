@@ -11,6 +11,7 @@ import {
   HiOutlineChevronDown,
   HiOutlineCollection,
   HiOutlineCalendar,
+  HiOutlineClipboardList,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
 import { useAuth } from '../../context/AuthContext';
@@ -31,22 +32,22 @@ const menuGroups = [
     items: [
       { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} /> },
       { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} /> },
+      { key: 'mes-demandes', label: 'Mes demandes', path: '/mes-demandes', icon: <HiOutlineClipboardList size={20} /> },
+      { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} /> },
     ] as NavItemDef[],
   },
   {
     title: 'GESTION',
     items: [
       {
-        key: 'demandes',
-        label: 'Demandes',
-        path: '/demandes',
-        icon: <HiOutlineDocumentText size={20} />,
+        key: 'validations',
+        label: 'Validation demandes',
+        path: '/validations',
+        icon: <HiOutlineClipboardCheck size={20} />,
         children: [
-          { label: 'Toutes les demandes', path: '/demandes' },
-          { label: 'Nouvelle demande', path: '/demandes/new' },
+          { label: 'Demandes congés', path: '/demandes' },
         ],
       },
-      { key: 'validations', label: 'Validations', path: '/validations', icon: <HiOutlineClipboardCheck size={20} /> },
       { key: 'pointage', label: 'Pointage', path: '/pointage', icon: <HiOutlineClock size={20} /> },
     ] as NavItemDef[],
   },

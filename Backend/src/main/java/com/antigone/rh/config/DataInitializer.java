@@ -27,8 +27,38 @@ public class DataInitializer implements CommandLineRunner {
                 "Nombre maximum de minutes d'autorisation par mois par employé",
                 TypeReferentiel.PARAMETRE_SYSTEME);
 
-        createParamIfNotExists("SOLDE_CONGE_ANNUEL", "30",
-                "Solde congé annuel par défaut pour chaque employé",
+        // Solde congé basé sur l'ancienneté
+        createParamIfNotExists("SOLDE_CONGE_AN1", "18",
+                "Solde congé annuel pour la 1ère année (1.5 jours/mois × 12)",
+                TypeReferentiel.PARAMETRE_SYSTEME);
+
+        createParamIfNotExists("SOLDE_CONGE_AN2_PLUS", "24",
+                "Solde congé annuel à partir de la 2ème année (2 jours/mois × 12)",
+                TypeReferentiel.PARAMETRE_SYSTEME);
+
+        createParamIfNotExists("TAUX_MENSUEL_AN1", "1.5",
+                "Taux d'acquisition congé mensuel pour la 1ère année",
+                TypeReferentiel.PARAMETRE_SYSTEME);
+
+        createParamIfNotExists("TAUX_MENSUEL_AN2_PLUS", "2",
+                "Taux d'acquisition congé mensuel à partir de la 2ème année",
+                TypeReferentiel.PARAMETRE_SYSTEME);
+
+        createParamIfNotExists("MAX_REPORT_CONGE", "5",
+                "Nombre maximum de jours de congé reportables d'une année sur l'autre",
+                TypeReferentiel.PARAMETRE_SYSTEME);
+
+        // Horaires de l'entreprise (communs à tous les employés)
+        createParamIfNotExists("HEURE_DEBUT_TRAVAIL", "08:00",
+                "Heure de début de travail de l'entreprise",
+                TypeReferentiel.PARAMETRE_SYSTEME);
+
+        createParamIfNotExists("HEURE_FIN_TRAVAIL", "18:00",
+                "Heure de fin de travail de l'entreprise",
+                TypeReferentiel.PARAMETRE_SYSTEME);
+
+        createParamIfNotExists("JOURS_TRAVAIL", "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI",
+                "Jours de travail de l'entreprise (séparés par des virgules)",
                 TypeReferentiel.PARAMETRE_SYSTEME);
     }
 

@@ -23,8 +23,10 @@ com\antigone\rh\entity\Referentiel$ReferentielBuilder.class
 com\antigone\rh\dto\ApiResponse$ApiResponseBuilder.class
 com\antigone\rh\dto\DemandeRequest.class
 com\antigone\rh\entity\Equipe.class
+com\antigone\rh\dto\SoldeCongeInfo$SoldeCongeInfoBuilder.class
 com\antigone\rh\config\DataInitializer.class
 com\antigone\rh\dto\HistoriqueStatutDTO$HistoriqueStatutDTOBuilder.class
+com\antigone\rh\dto\SoldeCongeInfo.class
 com\antigone\rh\entity\Autorisation.class
 com\antigone\rh\repository\CompteRepository.class
 com\antigone\rh\config\SecurityConfig.class
@@ -39,6 +41,7 @@ com\antigone\rh\repository\HistoriqueStatutRepository.class
 com\antigone\rh\service\EquipeService.class
 com\antigone\rh\entity\Projet$ProjetBuilder.class
 com\antigone\rh\exception\GlobalExceptionHandler.class
+com\antigone\rh\controller\NotificationController.class
 com\antigone\rh\controller\PointageController.class
 com\antigone\rh\service\CalendrierService.class
 com\antigone\rh\RhApplication.class
@@ -70,18 +73,22 @@ com\antigone\rh\controller\ValidationController.class
 com\antigone\rh\dto\ApiResponse.class
 com\antigone\rh\enums\DecisionValidation.class
 com\antigone\rh\dto\LoginRequest.class
+com\antigone\rh\dto\NotificationResponse$NotificationResponseBuilder.class
 com\antigone\rh\repository\PeriodeBloqueeRepository.class
 com\antigone\rh\dto\HoraireTravailDTO$HoraireTravailDTOBuilder.class
 com\antigone\rh\entity\Validation$ValidationBuilder.class
 com\antigone\rh\dto\CalendrierDTO.class
 com\antigone\rh\entity\Employe$EmployeBuilder.class
+com\antigone\rh\dto\NotificationResponse.class
 com\antigone\rh\enums\SourcePointage.class
 com\antigone\rh\dto\CalendrierRequest.class
+com\antigone\rh\entity\Notification.class
 com\antigone\rh\dto\DemandeResponse.class
 com\antigone\rh\dto\HistoriqueStatutDTO.class
 com\antigone\rh\controller\ProjetController.class
 com\antigone\rh\enums\TypeDemande.class
 com\antigone\rh\repository\CalendrierRepository.class
+com\antigone\rh\repository\NotificationRepository.class
 com\antigone\rh\enums\TypeJour.class
 com\antigone\rh\dto\EmployeDTO$EmployeDTOBuilder.class
 com\antigone\rh\entity\Equipe$EquipeBuilder.class
@@ -92,6 +99,7 @@ com\antigone\rh\repository\ReferentielRepository.class
 com\antigone\rh\repository\RoleRepository.class
 com\antigone\rh\entity\Conge.class
 com\antigone\rh\enums\StatutDemande.class
+com\antigone\rh\service\NotificationService.class
 com\antigone\rh\dto\ReferentielDTO$ReferentielDTOBuilder.class
 com\antigone\rh\entity\Compte$CompteBuilder.class
 com\antigone\rh\entity\HistoriqueStatut$HistoriqueStatutBuilder.class
@@ -115,5 +123,6 @@ com\antigone\rh\service\TacheService.class
 com\antigone\rh\repository\ProjetRepository.class
 com\antigone\rh\controller\AuthController.class
 com\antigone\rh\repository\HoraireTravailRepository.class
+com\antigone\rh\entity\Notification$NotificationBuilder.class
 com\antigone\rh\repository\PointageRepository.class
 com\antigone\rh\entity\Tache.class

@@ -14,8 +14,9 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Set;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,8 +31,20 @@ public class DemandeService {
     private final CongeRepository congeRepository;
     private final AutorisationRepository autorisationRepository;
     private final ReferentielRepository referentielRepository;
+    private final NotificationService notificationService;
 
     private static final int DEFAULT_MAX_AUTORISATION_MINUTES = 120; // 2h par mois
+
+    // Mapping DayOfWeek → French day names used in HoraireTravail.joursTravail
+    private static final Map<DayOfWeek, String> DOW_TO_FRENCH = Map.of(
+            DayOfWeek.MONDAY, "LUNDI",
+            DayOfWeek.TUESDAY, "MARDI",
+            DayOfWeek.WEDNESDAY, "MERCREDI",
+            DayOfWeek.THURSDAY, "JEUDI",
+            DayOfWeek.FRIDAY, "VENDREDI",
+            DayOfWeek.SATURDAY, "SAMEDI",
+            DayOfWeek.SUNDAY, "DIMANCHE"
+    );
 
     // =========================================
     // QUERIES
@@ -130,8 +143,22 @@ public class DemandeService {
             throw new RuntimeException("Un " + docName + " est obligatoire pour ce type de congé");
         }
 
-        // Calculate working days (exclude weekends + holidays)
-        int nombreJours = calculateWorkingDays(request.getDateDebut(), request.getDateFin());
+        // Calculate effective days (includes trailing weekends/holidays + pont rule)
+        Map<String, Object> calcResult = computeEffectiveDays(request.getDateDebut(), request.getDateFin(), typeConge.name());
+        int nombreJours = (int) calcResult.get("nombreJours");
+        int joursOuvrables = (int) calcResult.get("joursOuvrables");
+
+        // Congé maladie: max 2 jours ouvrables
+        if (typeConge == TypeConge.CONGE_MALADIE && joursOuvrables > 2) {
+            throw new RuntimeException("Le congé maladie est limité à 2 jours ouvrables maximum. "
+                    + "Vous avez sélectionné " + joursOuvrables + " jour(s) ouvrable(s). "
+                    + "Au-delà de 2 jours, un certificat médical prolongé et l'accord du responsable sont requis.");
+        }
+
+        // Congé règles: 1 seul jour
+        if (typeConge == TypeConge.CONGE_REGLES && joursOuvrables > 1) {
+            throw new RuntimeException("Le congé règles est limité à 1 jour ouvrable uniquement.");
+        }
 
         // Congé décès: override nombre de jours selon le règlement
         if (typeConge == TypeConge.CONGE_DECES_PROCHE) {
@@ -144,14 +171,25 @@ public class DemandeService {
             throw new RuntimeException("La période sélectionnée ne contient aucun jour ouvrable");
         }
 
+        // Règle des 4× : la demande doit être faite 4 × nombre_de_jours à l'avance
+        // Exemptés : maladie, décès, exceptionnel (cas urgents)
+        boolean exemptDelai = typeConge == TypeConge.CONGE_MALADIE
+                || typeConge == TypeConge.CONGE_DECES_PROCHE
+                || typeConge == TypeConge.CONGE_DECES_FAMILLE
+                || typeConge == TypeConge.CONGE_EXCEPTIONNEL;
+        if (!exemptDelai) {
+            int delaiMinJours = nombreJours * 4;
+            LocalDate dateLimite = LocalDate.now().plusDays(delaiMinJours);
+            if (request.getDateDebut().isBefore(dateLimite)) {
+                throw new RuntimeException("Selon le règlement, la demande de " + nombreJours
+                        + " jour(s) doit être faite au moins " + delaiMinJours
+                        + " jours à l'avance. Date de début au plus tôt : " + dateLimite);
+            }
+        }
+
         // Friday-only rule: congé uniquement vendredi → doit être CONGE_SANS_SOLDE
         if (typeConge == TypeConge.CONGE_PAYE && isOnlyFridays(request.getDateDebut(), request.getDateFin())) {
             throw new RuntimeException("Un congé uniquement le vendredi doit être de type 'Congé sans solde'");
-        }
-
-        // Bridge rule: jeudi férié + vendredi congé = 4 jours décomptés (sauf décès)
-        if (typeConge != TypeConge.CONGE_DECES_PROCHE && typeConge != TypeConge.CONGE_DECES_FAMILLE) {
-            nombreJours = applyBridgeRule(request.getDateDebut(), request.getDateFin(), nombreJours);
         }
 
         // Check overlap with existing congés
@@ -161,12 +199,12 @@ public class DemandeService {
             throw new RuntimeException("Un congé existe déjà pour cette période");
         }
 
-        // Check solde for paid leave
+        // Check solde for paid leave (use joursOuvrables for deduction, not full calendar span)
         if (typeConge == TypeConge.CONGE_PAYE) {
             double solde = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
-            if (solde < nombreJours) {
+            if (solde < joursOuvrables) {
                 throw new RuntimeException("Solde congé insuffisant. Solde actuel: "
-                        + solde + " jours, Demandé: " + nombreJours + " jours");
+                        + solde + " jours, Demandé: " + joursOuvrables + " jour(s) ouvrable(s)");
             }
         }
 
@@ -175,6 +213,7 @@ public class DemandeService {
         conge.setDateFin(request.getDateFin());
         conge.setTypeConge(typeConge);
         conge.setNombreJours(nombreJours);
+        conge.setJoursOuvrables(joursOuvrables);
         conge.setJustificatifPath(request.getJustificatifPath());
         return conge;
     }
@@ -194,6 +233,38 @@ public class DemandeService {
 
         // Get max allowed minutes from system parameters
         int maxMinutes = getMaxAutorisationMinutes();
+
+        // ── Validate single autorisation duration ≤ max allowed ──
+        if (dureeMinutes > maxMinutes) {
+            throw new RuntimeException("La durée d'une autorisation ne peut pas dépasser "
+                    + (maxMinutes / 60) + "h" + String.format("%02d", maxMinutes % 60)
+                    + ". Durée demandée : " + dureeMinutes + " minutes.");
+        }
+
+        // ── Validate against company working hours (from referentiels) ──
+        String jourDemande = DOW_TO_FRENCH.get(request.getDate().getDayOfWeek());
+
+        // Check the day is a working day
+        String joursParam = getRefStringValue("JOURS_TRAVAIL", "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI");
+        List<String> joursTravailTrimmed = Arrays.stream(joursParam.split(","))
+                .map(String::trim).map(String::toUpperCase).collect(Collectors.toList());
+        if (!joursTravailTrimmed.contains(jourDemande)) {
+            throw new RuntimeException("Vous ne travaillez pas le " + jourDemande.toLowerCase()
+                    + ". Les jours de travail sont : " + String.join(", ", joursTravailTrimmed));
+        }
+
+        // Check heureDebut and heureFin fall within company working hours
+        LocalTime travailDebut = LocalTime.parse(getRefStringValue("HEURE_DEBUT_TRAVAIL", "08:00"));
+        LocalTime travailFin = LocalTime.parse(getRefStringValue("HEURE_FIN_TRAVAIL", "18:00"));
+
+        if (request.getHeureDebut().isBefore(travailDebut)) {
+            throw new RuntimeException("L'heure de début (" + request.getHeureDebut()
+                    + ") est avant le début du travail (" + travailDebut + ")");
+        }
+        if (request.getHeureFin().isAfter(travailFin)) {
+            throw new RuntimeException("L'heure de fin (" + request.getHeureFin()
+                    + ") est après la fin du travail (" + travailFin + ")");
+        }
 
         // Calculate total used this month (EN_ATTENTE + APPROUVEE)
         LocalDate premierJourMois = request.getDate().withDayOfMonth(1);
@@ -252,15 +323,29 @@ public class DemandeService {
         demande.setStatut(StatutDemande.APPROUVEE);
         demandeRepository.save(demande);
 
-        // Deduct solde for paid leave
+        // Deduct solde for paid leave (use joursOuvrables, not full calendar span)
         if (demande instanceof Conge conge && conge.getTypeConge() == TypeConge.CONGE_PAYE) {
             Employe employe = demande.getEmploye();
             double solde = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
-            employe.setSoldeConge(solde - conge.getNombreJours());
+            int toDeduct = conge.getJoursOuvrables() != null ? conge.getJoursOuvrables() : conge.getNombreJours();
+            employe.setSoldeConge(solde - toDeduct);
             employeRepository.save(employe);
         }
 
         saveHistorique(demande, ancien, StatutDemande.APPROUVEE, admin);
+
+        // Send notification to the employee
+        String typeLabel = demande.getType().name();
+        if (demande instanceof Conge conge) {
+            typeLabel = conge.getTypeConge().getLabel();
+        }
+        notificationService.create(
+                demande.getEmploye(),
+                "Demande approuvée",
+                "Votre demande de " + typeLabel + " a été approuvée par " + admin.getNom() + " " + admin.getPrenom() + ".",
+                demande
+        );
+
         return toResponse(demande);
     }
 
@@ -276,9 +361,27 @@ public class DemandeService {
 
         StatutDemande ancien = demande.getStatut();
         demande.setStatut(StatutDemande.REFUSEE);
+        demande.setMotifRefus(commentaire);
         demandeRepository.save(demande);
 
         saveHistorique(demande, ancien, StatutDemande.REFUSEE, admin, commentaire);
+
+        // Send notification to the employee with motif
+        String typeLabel = demande.getType().name();
+        if (demande instanceof Conge conge) {
+            typeLabel = conge.getTypeConge().getLabel();
+        }
+        String message = "Votre demande de " + typeLabel + " a été refusée par " + admin.getNom() + " " + admin.getPrenom() + ".";
+        if (commentaire != null && !commentaire.isBlank()) {
+            message += "\nMotif : " + commentaire;
+        }
+        notificationService.create(
+                demande.getEmploye(),
+                "Demande refusée",
+                message,
+                demande
+        );
+
         return toResponse(demande);
     }
 
@@ -353,6 +456,98 @@ public class DemandeService {
     // =========================================
 
     /**
+     * Check if a date is a non-working day (weekend or holiday).
+     */
+    private boolean isNonWorkingDay(LocalDate date, Set<LocalDate> holidays) {
+        DayOfWeek dow = date.getDayOfWeek();
+        return dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY || holidays.contains(date);
+    }
+
+    /**
+     * Compute effective leave days including trailing weekends/holidays and pont rule.
+     *
+     * Rules:
+     * - Forward extension: after dateFin, include consecutive non-working days (weekends+holidays)
+     *   e.g. Friday leave → Fri+Sat+Sun = 3 days
+     * - Backward extension (pont): before dateDebut, include consecutive holidays (not weekends)
+     *   e.g. Thursday is holiday + Friday leave → Thu+Fri+Sat+Sun = 4 days
+     * - The total is the calendar days from extendedStart to extendedEnd
+     */
+    public Map<String, Object> computeEffectiveDays(LocalDate dateDebut, LocalDate dateFin, String typeCongeStr) {
+        // Fetch holidays around the period (extra margin for extensions)
+        Set<LocalDate> holidays = calendrierRepository
+                .findByTypeJourAndDateJourBetween(TypeJour.FERIE,
+                        dateDebut.minusDays(10), dateFin.plusDays(10))
+                .stream()
+                .map(Calendrier::getDateJour)
+                .collect(Collectors.toSet());
+
+        // Check that there's at least one working day in the range
+        boolean hasWorkingDays = false;
+        LocalDate cur = dateDebut;
+        while (!cur.isAfter(dateFin)) {
+            if (!isNonWorkingDay(cur, holidays)) {
+                hasWorkingDays = true;
+                break;
+            }
+            cur = cur.plusDays(1);
+        }
+        if (!hasWorkingDays) {
+            return Map.of("nombreJours", 0, "details", "Aucun jour ouvrable dans la période",
+                    "dateDebutEffective", dateDebut.toString(), "dateFinEffective", dateFin.toString());
+        }
+
+        // Count base working days
+        int joursOuvrables = 0;
+        cur = dateDebut;
+        while (!cur.isAfter(dateFin)) {
+            if (!isNonWorkingDay(cur, holidays)) {
+                joursOuvrables++;
+            }
+            cur = cur.plusDays(1);
+        }
+
+        // Backward extension: include consecutive HOLIDAYS immediately before dateDebut (pont rule)
+        LocalDate extendedStart = dateDebut;
+        LocalDate prev = extendedStart.minusDays(1);
+        while (holidays.contains(prev)) {
+            extendedStart = prev;
+            prev = extendedStart.minusDays(1);
+        }
+
+        // Forward extension: include consecutive non-working days after dateFin
+        LocalDate extendedEnd = dateFin;
+        LocalDate next = extendedEnd.plusDays(1);
+        while (isNonWorkingDay(next, holidays)) {
+            extendedEnd = next;
+            next = extendedEnd.plusDays(1);
+        }
+
+        int nombreJours = (int) ChronoUnit.DAYS.between(extendedStart, extendedEnd) + 1;
+
+        // Build details
+        List<String> detailParts = new ArrayList<>();
+        detailParts.add(joursOuvrables + " jour(s) ouvrable(s)");
+        if (extendedStart.isBefore(dateDebut)) {
+            long pontDays = ChronoUnit.DAYS.between(extendedStart, dateDebut);
+            detailParts.add("+" + pontDays + "j pont (jours fériés avant)");
+        }
+        if (extendedEnd.isAfter(dateFin)) {
+            long trailingDays = ChronoUnit.DAYS.between(dateFin, extendedEnd);
+            detailParts.add("+" + trailingDays + "j (weekends/fériés après)");
+        }
+        String details = String.join(" ", detailParts) + " = " + nombreJours + " jour(s) effectif(s)";
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("nombreJours", nombreJours);
+        result.put("joursOuvrables", joursOuvrables);
+        result.put("details", details);
+        result.put("dateDebutEffective", extendedStart.toString());
+        result.put("dateFinEffective", extendedEnd.toString());
+        return result;
+    }
+
+    /**
      * Calculate working days between two dates, excluding weekends (Sat/Sun) and holidays.
      */
     private int calculateWorkingDays(LocalDate start, LocalDate end) {
@@ -399,34 +594,6 @@ public class DemandeService {
     }
 
     /**
-     * Bridge rule: si jeudi est férié et l'employé prend vendredi en congé = 4 jours décomptés.
-     * (jeudi + vendredi + samedi + dimanche)
-     */
-    private int applyBridgeRule(LocalDate start, LocalDate end, int baseWorkingDays) {
-        Set<LocalDate> holidays = calendrierRepository
-                .findByTypeJourAndDateJourBetween(TypeJour.FERIE,
-                        start.minusDays(1), end.plusDays(1))
-                .stream()
-                .map(Calendrier::getDateJour)
-                .collect(Collectors.toSet());
-
-        int bridgePenalty = 0;
-        LocalDate current = start;
-        while (!current.isAfter(end)) {
-            if (current.getDayOfWeek() == DayOfWeek.FRIDAY) {
-                LocalDate thursday = current.minusDays(1);
-                if (holidays.contains(thursday)) {
-                    // Bridge detected: Thu(holiday)+Fri+Sat+Sun = 4 days total
-                    // Only Fri is counted as working day, add 3 extra (Thu+Sat+Sun)
-                    bridgePenalty += 3;
-                }
-            }
-            current = current.plusDays(1);
-        }
-        return baseWorkingDays + bridgePenalty;
-    }
-
-    /**
      * Get max autorisation minutes per month from system parameters.
      */
     private int getMaxAutorisationMinutes() {
@@ -440,6 +607,16 @@ public class DemandeService {
                     }
                 })
                 .orElse(DEFAULT_MAX_AUTORISATION_MINUTES);
+    }
+
+    /**
+     * Get a string referentiel value, or return the default.
+     */
+    private String getRefStringValue(String libelle, String defaultValue) {
+        return referentielRepository
+                .findByLibelleAndTypeReferentiel(libelle, TypeReferentiel.PARAMETRE_SYSTEME)
+                .map(ref -> ref.getValeur() != null ? ref.getValeur() : defaultValue)
+                .orElse(defaultValue);
     }
 
     // =========================================
@@ -473,6 +650,7 @@ public class DemandeService {
                 .dateCreation(demande.getDateCreation())
                 .statut(demande.getStatut())
                 .raison(demande.getRaison())
+                .motifRefus(demande.getMotifRefus())
                 .employeId(demande.getEmploye().getId())
                 .employeNom(demande.getEmploye().getNom() + " " + demande.getEmploye().getPrenom());
 
@@ -482,6 +660,7 @@ public class DemandeService {
             builder.typeConge(conge.getTypeConge().name());
             builder.typeCongeLabel(conge.getTypeConge().getLabel());
             builder.nombreJours(conge.getNombreJours());
+            builder.joursOuvrables(conge.getJoursOuvrables());
             builder.justificatifPath(conge.getJustificatifPath());
         } else if (demande instanceof Autorisation autorisation) {
             builder.date(autorisation.getDate());

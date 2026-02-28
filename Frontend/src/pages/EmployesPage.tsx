@@ -13,7 +13,7 @@ const EmployesPage: React.FC = () => {
   const [editingEmploye, setEditingEmploye] = useState<Employe | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
-    matricule: '', cin: '', nom: '', prenom: '', email: '', telephone: '', dateEmbauche: '', soldeConge: 0, sexe: '' as string, managerId: null as number | null,
+    matricule: '', cin: '', nom: '', prenom: '', email: '', telephone: '', dateEmbauche: '', sexe: '' as string, managerId: null as number | null,
   });
 
   useEffect(() => {
@@ -52,7 +52,7 @@ const EmployesPage: React.FC = () => {
     setFormData({
       matricule: employe.matricule, cin: employe.cin, nom: employe.nom, prenom: employe.prenom,
       email: employe.email, telephone: employe.telephone, dateEmbauche: employe.dateEmbauche,
-      soldeConge: employe.soldeConge, sexe: employe.sexe || '', managerId: employe.managerId,
+      sexe: employe.sexe || '', managerId: employe.managerId,
     });
     setShowModal(true);
   };
@@ -69,7 +69,7 @@ const EmployesPage: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({ matricule: '', cin: '', nom: '', prenom: '', email: '', telephone: '', dateEmbauche: '', soldeConge: 0, sexe: '', managerId: null });
+    setFormData({ matricule: '', cin: '', nom: '', prenom: '', email: '', telephone: '', dateEmbauche: '', sexe: '', managerId: null });
   };
 
   const filteredEmployes = employes.filter(
@@ -96,7 +96,7 @@ const EmployesPage: React.FC = () => {
     },
     { key: 'email', label: 'Email' },
     { key: 'telephone', label: 'Téléphone' },
-    { key: 'soldeConge', label: 'Solde congé', render: (item: Employe) => <span>{item.soldeConge} jours</span> },
+    { key: 'soldeConge', label: 'Solde congé', render: (item: Employe) => <span className="text-brand-500 font-medium">{item.soldeConge} j</span> },
     {
       key: 'sexe',
       label: 'Sexe',
@@ -181,10 +181,7 @@ const EmployesPage: React.FC = () => {
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date d'embauche</label>
             <input type="date" value={formData.dateEmbauche} onChange={(e) => setFormData({ ...formData, dateEmbauche: e.target.value })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300" />
           </div>
-          <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Solde congé</label>
-            <input type="number" value={formData.soldeConge} onChange={(e) => setFormData({ ...formData, soldeConge: Number(e.target.value) })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300" />
-          </div>
+
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sexe</label>
             <select value={formData.sexe} onChange={(e) => setFormData({ ...formData, sexe: e.target.value })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300">

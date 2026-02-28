@@ -88,6 +88,7 @@ export enum TypeJour {
   FERIE = 'FERIE',
   CONGE_PAYE = 'CONGE_PAYE',
   CONGE_NON_PAYE = 'CONGE_NON_PAYE',
+  TELETRAVAIL = 'TELETRAVAIL',
 }
 
 export enum OrigineJour {
@@ -155,11 +156,13 @@ export interface DemandeResponse {
   dateCreation: string;
   statut: StatutDemande;
   raison: string;
+  motifRefus?: string;
   employeId: number;
   employeNom: string;
   typeConge?: string;
   typeCongeLabel?: string;
   nombreJours?: number;
+  joursOuvrables?: number;
   dateDebut?: string;
   dateFin?: string;
   justificatifPath?: string;
@@ -301,8 +304,16 @@ export interface HoraireTravail {
   pauseDebutMidi: string | null;
   pauseFinMidi: string | null;
   joursTravail: string;
+  joursTeletravail: string | null;
   dateDebut: string | null;
   dateFin: string | null;
+}
+
+export interface EmployeHoraire {
+  heureDebut: string;
+  heureFin: string;
+  joursTravail: string;
+  maxAutorisationMinutes: string;
 }
 
 export interface HoraireTravailRequest {
@@ -312,6 +323,7 @@ export interface HoraireTravailRequest {
   pauseDebutMidi: string | null;
   pauseFinMidi: string | null;
   joursTravail: string;
+  joursTeletravail: string | null;
   dateDebut: string | null;
   dateFin: string | null;
 }
@@ -330,4 +342,40 @@ export interface HistoriqueStatut {
   dateChangement: string;
   modifieParNom: string | null;
   commentaire: string | null;
+}
+
+export interface NotificationResponse {
+  id: number;
+  titre: string;
+  message: string;
+  lu: boolean;
+  dateCreation: string;
+  demandeId: number | null;
+}
+
+export interface CalculateDaysResult {
+  nombreJours: number;
+  joursOuvrables: number;
+  details: string;
+  dateDebutEffective: string;
+  dateFinEffective: string;
+}
+
+export interface SoldeCongeInfo {
+  employeId: number;
+  employeNom: string;
+  dateEmbauche: string | null;
+  ancienneteAnnees: number;
+  ancienneteMois: number;
+  droitAnnuel: number;
+  tauxMensuel: number;
+  joursAcquis: number;
+  moisTravaillesAnneeEnCours: number;
+  joursReportes: number;
+  joursConsommes: number;
+  joursEnAttente: number;
+  soldeDisponible: number;
+  soldePrevisionnel: number;
+  debutAnneeConge: string;
+  finAnneeConge: string;
 }

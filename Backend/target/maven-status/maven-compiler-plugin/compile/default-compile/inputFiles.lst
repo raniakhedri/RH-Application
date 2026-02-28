@@ -6,6 +6,7 @@ C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\cont
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\controller\DemandeController.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\controller\EmployeController.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\controller\EquipeController.java
+C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\controller\NotificationController.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\controller\PointageController.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\controller\ProjetController.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\controller\ReferentielController.java
@@ -22,8 +23,10 @@ C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\dto\
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\dto\HoraireTravailRequest.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\dto\LoginRequest.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\dto\LoginResponse.java
+C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\dto\NotificationResponse.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ReferentielDTO.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ReferentielRequest.java
+C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\dto\SoldeCongeInfo.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ValidationRequest.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\entity\AffectationHoraire.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Autorisation.java
@@ -35,6 +38,7 @@ C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\enti
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Equipe.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\entity\HistoriqueStatut.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\entity\HoraireTravail.java
+C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Notification.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\entity\PeriodeBloquee.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Permission.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Pointage.java
@@ -68,6 +72,7 @@ C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\repo
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\repository\EquipeRepository.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\repository\HistoriqueStatutRepository.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\repository\HoraireTravailRepository.java
+C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\repository\NotificationRepository.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\repository\PeriodeBloqueeRepository.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\repository\PermissionRepository.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\repository\PointageRepository.java
@@ -84,6 +89,7 @@ C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\serv
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\service\EmployeService.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\service\EquipeService.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\service\FileStorageService.java
+C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\service\NotificationService.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\service\PointageService.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\service\ProjetService.java
 C:\Users\alloa\Desktop\RH-Application\Backend\src\main\java\com\antigone\rh\service\ReferentielService.java

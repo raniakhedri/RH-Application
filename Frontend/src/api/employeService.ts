@@ -1,5 +1,5 @@
 import api from './axios';
-import { ApiResponse, Employe } from '../types';
+import { ApiResponse, Employe, EmployeHoraire, SoldeCongeInfo } from '../types';
 
 export const employeService = {
   getAll: () => api.get<ApiResponse<Employe[]>>('/employes'),
@@ -10,4 +10,6 @@ export const employeService = {
   update: (id: number, data: Partial<Employe>) => api.put<ApiResponse<Employe>>(`/employes/${id}`, data),
   delete: (id: number) => api.delete<ApiResponse<void>>(`/employes/${id}`),
   updateSoldeConge: (id: number, solde: number) => api.patch<ApiResponse<void>>(`/employes/${id}/solde-conge?solde=${solde}`),
+  getSoldeInfo: (id: number) => api.get<ApiResponse<SoldeCongeInfo>>(`/employes/${id}/solde-info`),
+  getHoraireEntreprise: () => api.get<ApiResponse<EmployeHoraire>>('/employes/horaire-entreprise'),
 };

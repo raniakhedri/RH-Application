@@ -1,5 +1,5 @@
 import api from './axios';
-import { ApiResponse, DemandeRequest, DemandeResponse, HistoriqueStatut, StatutDemande } from '../types';
+import { ApiResponse, CalculateDaysResult, DemandeRequest, DemandeResponse, HistoriqueStatut, StatutDemande } from '../types';
 
 export const demandeService = {
   getAll: () => api.get<ApiResponse<DemandeResponse[]>>('/demandes'),
@@ -33,4 +33,8 @@ export const demandeService = {
       ids
     ),
   getHistorique: (id: number) => api.get<ApiResponse<HistoriqueStatut[]>>(`/demandes/${id}/historique`),
+  calculateDays: (dateDebut: string, dateFin: string, typeConge?: string) =>
+    api.get<ApiResponse<CalculateDaysResult>>(`/demandes/calculate-days`, {
+      params: { dateDebut, dateFin, typeConge: typeConge || 'CONGE_PAYE' },
+    }),
 };

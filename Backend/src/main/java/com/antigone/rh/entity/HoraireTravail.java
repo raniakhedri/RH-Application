@@ -34,6 +34,8 @@ public class HoraireTravail {
     @Column(nullable = false)
     private String joursTravail; // Comma-separated: "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI"
 
+    private String joursTeletravail; // Comma-separated: "LUNDI,VENDREDI" (nullable)
+
     private LocalDate dateDebut; // Applicable from (inclusive)
 
     private LocalDate dateFin;   // Applicable until (inclusive)
