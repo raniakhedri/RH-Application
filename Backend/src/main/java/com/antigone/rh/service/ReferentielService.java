@@ -74,6 +74,7 @@ public class ReferentielService {
                 .description(request.getDescription())
                 .actif(true)
                 .typeReferentiel(typeRef)
+                .valeur(request.getValeur())
                 .build();
 
         return toDTO(referentielRepository.save(ref));
@@ -95,6 +96,7 @@ public class ReferentielService {
         ref.setLibelle(request.getLibelle());
         ref.setDescription(request.getDescription());
         ref.setTypeReferentiel(typeRef);
+        ref.setValeur(request.getValeur());
 
         return toDTO(referentielRepository.save(ref));
     }
@@ -126,6 +128,7 @@ public class ReferentielService {
                 .actif(ref.getActif())
                 .typeReferentiel(ref.getTypeReferentiel().name())
                 .typeReferentielLabel(ref.getTypeReferentiel().getLabel())
+                .valeur(ref.getValeur())
                 .build();
     }
 }

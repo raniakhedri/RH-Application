@@ -17,4 +17,6 @@ public interface ReferentielRepository extends JpaRepository<Referentiel, Long> 
     List<Referentiel> findByActifTrue();
 
     boolean existsByLibelleAndTypeReferentiel(String libelle, TypeReferentiel typeReferentiel);
+
+    java.util.Optional<Referentiel> findByLibelleAndTypeReferentiel(String libelle, TypeReferentiel typeReferentiel);
 }

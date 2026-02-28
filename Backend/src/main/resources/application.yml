@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/antigone_rh
     username: postgres
-    password: admin
+    password: raniakhedri
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -17,6 +17,16 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   jackson:
     serialization:
       write-dates-as-timestamps: false
+
+app:
+  upload:
+    dir: uploads/justificatifs

@@ -16,4 +16,5 @@ public class ReferentielDTO {
     private Boolean actif;
     private String typeReferentiel;
     private String typeReferentielLabel;
+    private String valeur;
 }

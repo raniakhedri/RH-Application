@@ -13,4 +13,5 @@ public class ReferentielRequest {
     private String libelle;
     private String description;
     private String typeReferentiel;
+    private String valeur;
 }

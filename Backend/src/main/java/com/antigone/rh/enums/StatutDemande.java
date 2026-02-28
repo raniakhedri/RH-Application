@@ -1,10 +1,8 @@
 package com.antigone.rh.enums;
 
 public enum StatutDemande {
-    BROUILLON,
-    SOUMISE,
-    EN_VALIDATION,
-    VALIDEE,
+    EN_ATTENTE,
+    APPROUVEE,
     REFUSEE,
     ANNULEE
 }

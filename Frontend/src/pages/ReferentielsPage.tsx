@@ -23,7 +23,7 @@ const ReferentielsPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState<TypeReferentiel>(ALL_TYPES[0]);
   const [showModal, setShowModal] = useState(false);
   const [editingRef, setEditingRef] = useState<Referentiel | null>(null);
-  const [refForm, setRefForm] = useState({ libelle: '', description: '', typeReferentiel: ALL_TYPES[0] as string });
+  const [refForm, setRefForm] = useState({ libelle: '', description: '', typeReferentiel: ALL_TYPES[0] as string, valeur: '' });
 
   useEffect(() => {
     loadReferentiels();
@@ -62,6 +62,7 @@ const ReferentielsPage: React.FC = () => {
       libelle: ref.libelle,
       description: ref.description || '',
       typeReferentiel: ref.typeReferentiel,
+      valeur: ref.valeur || '',
     });
     setShowModal(true);
   };
@@ -87,7 +88,7 @@ const ReferentielsPage: React.FC = () => {
   };
 
   const resetForm = () => {
-    setRefForm({ libelle: '', description: '', typeReferentiel: selectedType });
+    setRefForm({ libelle: '', description: '', typeReferentiel: selectedType, valeur: '' });
   };
 
   const filteredRefs = referentiels.filter((r) => {
@@ -115,6 +116,27 @@ const ReferentielsPage: React.FC = () => {
       ),
     },
     { key: 'description', label: 'Description' },
+    ...(selectedType === TypeReferentiel.PARAMETRE_SYSTEME
+      ? [
+          {
+            key: 'valeur',
+            label: 'Valeur',
+            render: (item: Referentiel) => {
+              if (!item.valeur) return <span className="text-gray-400">—</span>;
+              const lib = item.libelle.toUpperCase();
+              let unit = '';
+              if (lib.includes('MINUTE')) unit = 'minutes';
+              else if (lib.includes('HEURE')) unit = 'heures';
+              else if (lib.includes('CONGE') || lib.includes('JOUR') || lib.includes('SOLDE')) unit = 'jours';
+              return (
+                <span className="font-mono text-theme-sm text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10 px-2 py-0.5 rounded">
+                  {item.valeur}{unit ? ` ${unit}` : ''}
+                </span>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: 'actif',
       label: 'Statut',
@@ -198,7 +220,7 @@ const ReferentielsPage: React.FC = () => {
                 className="h-11 w-full rounded-lg border border-gray-300 bg-transparent pl-10 pr-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
               />
             </div>
-            <Button onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType }); setShowModal(true); }}>
+            <Button onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType, valeur: '' }); setShowModal(true); }}>
               <HiOutlinePlus size={18} /> Ajouter
             </Button>
           </div>
@@ -214,7 +236,7 @@ const ReferentielsPage: React.FC = () => {
               <Button
                 variant="ghost"
                 className="mt-4"
-                onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType }); setShowModal(true); }}
+                onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType, valeur: '' }); setShowModal(true); }}
               >
                 <HiOutlinePlus size={16} /> Créer le premier
               </Button>
@@ -264,6 +286,18 @@ const ReferentielsPage: React.FC = () => {
               className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
             />
           </div>
+          {refForm.typeReferentiel === TypeReferentiel.PARAMETRE_SYSTEME && (
+            <div>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valeur *</label>
+              <input
+                type="text"
+                value={refForm.valeur}
+                onChange={(e) => setRefForm({ ...refForm, valeur: e.target.value })}
+                placeholder="Ex: 120, 30..."
+                className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+              />
+            </div>
+          )}
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="ghost" onClick={() => setShowModal(false)}>Annuler</Button>

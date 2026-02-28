@@ -41,6 +41,8 @@ public class HistoriqueStatut {
     @EqualsAndHashCode.Exclude
     private Employe modifiePar;
 
+    private String commentaire;
+
     @PrePersist
     public void prePersist() {
         if (dateChangement == null) {

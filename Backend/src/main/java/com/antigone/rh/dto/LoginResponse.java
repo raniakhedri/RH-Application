@@ -18,5 +18,6 @@ public class LoginResponse {
     private String prenom;
     private String email;
     private Set<String> roles;
+    private String sexe;
     private String message;
 }

@@ -12,9 +12,14 @@ public class DemandeRequest {
     private String raison;
     private Long employeId;
 
-    // For Conge and Teletravail
+    // For Conge
+    private String typeConge;
     private LocalDate dateDebut;
     private LocalDate dateFin;
+    private String justificatifPath;
+
+    // For Teletravail
+    // uses dateDebut and dateFin above
 
     // For Autorisation
     private LocalDate date;

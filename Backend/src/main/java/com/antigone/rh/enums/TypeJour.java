@@ -4,5 +4,6 @@ public enum TypeJour {
     OUVRABLE,
     FERIE,
     CONGE_PAYE,
-    CONGE_NON_PAYE
+    CONGE_NON_PAYE,
+    TELETRAVAIL
 }
