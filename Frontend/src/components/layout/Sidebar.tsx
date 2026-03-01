@@ -11,6 +11,8 @@ import {
   HiOutlineChevronDown,
   HiOutlineCollection,
   HiOutlineCalendar,
+  HiOutlineKey,
+  HiOutlineShieldCheck,
   HiOutlineClipboardList,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
@@ -22,6 +24,7 @@ interface NavItemDef {
   path: string;
   icon: React.ReactNode;
   key: string;
+  permission?: string;
   badge?: number;
   children?: { label: string; path: string }[];
 }
@@ -30,8 +33,8 @@ const menuGroups = [
   {
     title: 'MENU',
     items: [
-      { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} /> },
-      { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} /> },
+      { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} />, permission: 'VIEW_DASHBOARD' },
+      { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} />, permission: 'VIEW_EMPLOYES' },
       { key: 'mes-demandes', label: 'Mes demandes', path: '/mes-demandes', icon: <HiOutlineClipboardList size={20} /> },
       { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} /> },
     ] as NavItemDef[],
@@ -40,15 +43,17 @@ const menuGroups = [
     title: 'GESTION',
     items: [
       {
-        key: 'validations',
-        label: 'Validation demandes',
-        path: '/validations',
-        icon: <HiOutlineClipboardCheck size={20} />,
+        key: 'demandes',
+        label: 'Demandes',
+        path: '/demandes',
+        icon: <HiOutlineDocumentText size={20} />,
+        permission: 'VIEW_DEMANDES',
         children: [
           { label: 'Demandes congés', path: '/demandes' },
         ],
       },
-      { key: 'pointage', label: 'Pointage', path: '/pointage', icon: <HiOutlineClock size={20} /> },
+      { key: 'validations', label: 'Validations', path: '/validations', icon: <HiOutlineClipboardCheck size={20} />, permission: 'VIEW_VALIDATIONS' },
+      { key: 'pointage', label: 'Pointage', path: '/pointage', icon: <HiOutlineClock size={20} />, permission: 'VIEW_POINTAGE' },
     ] as NavItemDef[],
   },
   {
@@ -59,19 +64,22 @@ const menuGroups = [
         label: 'Projets',
         path: '/projets',
         icon: <HiOutlineBriefcase size={20} />,
+        permission: 'VIEW_PROJETS',
         children: [
           { label: 'Tous les projets', path: '/projets' },
           { label: 'Tâches', path: '/taches' },
         ],
       },
-      { key: 'equipes', label: 'Équipes', path: '/equipes', icon: <HiOutlineUserGroup size={20} /> },
+      { key: 'equipes', label: 'Équipes', path: '/equipes', icon: <HiOutlineUserGroup size={20} />, permission: 'VIEW_EQUIPES' },
     ] as NavItemDef[],
   },
   {
     title: 'ADMINISTRATION',
     items: [
-      { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} /> },
-      { key: 'calendrier', label: 'Calendrier', path: '/calendrier', icon: <HiOutlineCalendar size={20} /> },
+      { key: 'comptes', label: 'Comptes', path: '/comptes', icon: <HiOutlineKey size={20} />, permission: 'VIEW_COMPTES' },
+      { key: 'roles', label: 'Rôles', path: '/roles', icon: <HiOutlineShieldCheck size={20} />, permission: 'VIEW_ROLES' },
+      { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} />, permission: 'VIEW_REFERENTIELS' },
+      { key: 'calendrier', label: 'Calendrier', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
     ] as NavItemDef[],
   },
 ];
@@ -97,6 +105,18 @@ const Sidebar: React.FC = () => {
     const interval = setInterval(fetchPending, 30000); // refresh every 30s
     return () => clearInterval(interval);
   }, [isAdmin]);
+
+  const userPermissions = user?.permissions || [];
+
+  // Filter menu groups: only show items the user has permission for
+  const filteredMenuGroups = menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) =>
+        !item.permission || userPermissions.includes(item.permission)
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + '/');
@@ -137,7 +157,7 @@ const Sidebar: React.FC = () => {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto custom-scrollbar px-4 py-4">
-          {menuGroups.map((group) => (
+          {filteredMenuGroups.map((group) => (
             <div key={group.title} className="mb-4">
               {showText && (
                 <h3 className="mb-2 px-3 text-theme-xs font-semibold uppercase text-gray-400 dark:text-gray-500">

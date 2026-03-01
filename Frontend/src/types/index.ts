@@ -103,15 +103,73 @@ export interface Employe {
   id: number;
   matricule: string;
   cin: string;
+  cnss: string;
   nom: string;
   prenom: string;
   email: string;
   telephone: string;
   dateEmbauche: string;
   soldeConge: number;
-  sexe: string | null;
+  poste: string;
+  typeContrat: string;
+  genre: string;
+  departement: string;
+  ribBancaire: string;
   managerId: number | null;
   managerNom: string | null;
+  imageUrl: string | null;
+}
+
+export interface PermissionDTO {
+  id: number;
+  permission: string;
+  label: string;
+}
+
+export interface RoleDTO {
+  id: number;
+  nom: string;
+  permissions: PermissionDTO[];
+}
+
+export interface RoleRequest {
+  nom: string;
+  permissionIds: number[];
+}
+
+export interface CompteDTO {
+  id: number;
+  username: string;
+  enabled: boolean;
+  mustChangePassword: boolean;
+  lastLogin: string | null;
+  createdAt: string | null;
+  employeId: number;
+  employeNom: string;
+  employePrenom: string;
+  employeEmail: string;
+  employePoste: string;
+  roles: RoleDTO[];
+  generatedPassword?: string;
+}
+
+export interface CompteRequest {
+  employeId: number;
+  roleId: number;
+}
+
+export interface AccessLogDTO {
+  id: number;
+  compteId: number;
+  username: string;
+  dateAcces: string;
+  adresseIp: string;
+  action: string;
+}
+
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
 }
 
 export interface Compte {
@@ -128,14 +186,18 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  compteId: number;
   employeId: number;
   username: string;
   nom: string;
   prenom: string;
   email: string;
   roles: string[];
-  sexe: string | null;
+  permissions: string[];
+  mustChangePassword: boolean;
+  genre: string | null;
   message: string;
+  imageUrl: string | null;
 }
 
 export interface DemandeRequest {

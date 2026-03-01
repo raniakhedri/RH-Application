@@ -1,6 +1,6 @@
 package com.antigone.rh.entity;
 
-import com.antigone.rh.enums.Sexe;
+import com.antigone.rh.enums.Genre;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,6 +26,8 @@ public class Employe {
     @Column(unique = true)
     private String cin;
 
+    private String cnss;
+
     @Column(nullable = false)
     private String nom;
 
@@ -39,11 +41,22 @@ public class Employe {
 
     private LocalDate dateEmbauche;
 
-    @Column(columnDefinition = "double precision default 0")
-    private Double soldeConge;
+    @Column(columnDefinition = "double precision default 30")
+    @Builder.Default
+    private Double soldeConge = 30.0;
+
+    private String poste;
+
+    private String typeContrat;
 
     @Enumerated(EnumType.STRING)
-    private Sexe sexe;
+    private Genre genre;
+
+    private String departement;
+
+    private String ribBancaire;
+
+    private String imageUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")

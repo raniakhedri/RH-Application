@@ -391,11 +391,11 @@ const NewDemandePage: React.FC = () => {
 
         // Gender-based filtering (Super Admin sees all)
         const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN');
-        if (!isSuperAdmin && user?.sexe) {
-          if (user.sexe === 'HOMME') {
+        if (!isSuperAdmin && user?.genre) {
+          if (user.genre === 'HOMME') {
             // Men: no maternité, no règles
             types = types.filter((t) => t.libelle !== 'CONGE_MATERNITE' && t.libelle !== 'CONGE_REGLES');
-          } else if (user.sexe === 'FEMME') {
+          } else if (user.genre === 'FEMME') {
             // Women: no paternité
             types = types.filter((t) => t.libelle !== 'CONGE_PATERNITE');
           }

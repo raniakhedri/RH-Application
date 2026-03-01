@@ -12,12 +12,16 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginResponse {
+    private Long compteId;
     private Long employeId;
     private String username;
     private String nom;
     private String prenom;
     private String email;
     private Set<String> roles;
-    private String sexe;
+    private Set<String> permissions;
+    private Boolean mustChangePassword;
+    private String genre;
     private String message;
+    private String imageUrl;
 }
