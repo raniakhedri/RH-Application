@@ -326,7 +326,6 @@ public class EmployeService {
                 })
                 .orElse(defaultValue);
     }
-    }
 
     public EmployeDTO toDTO(Employe employe) {
         return EmployeDTO.builder()

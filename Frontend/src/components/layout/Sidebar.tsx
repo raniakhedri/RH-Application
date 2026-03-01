@@ -107,13 +107,14 @@ const Sidebar: React.FC = () => {
   }, [isAdmin]);
 
   const userPermissions = user?.permissions || [];
+  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN');
 
-  // Filter menu groups: only show items the user has permission for
+  // Filter menu groups: SUPER_ADMIN sees everything, others need permissions
   const filteredMenuGroups = menuGroups
     .map((group) => ({
       ...group,
       items: group.items.filter((item) =>
-        !item.permission || userPermissions.includes(item.permission)
+        isSuperAdmin || !item.permission || userPermissions.includes(item.permission)
       ),
     }))
     .filter((group) => group.items.length > 0);
