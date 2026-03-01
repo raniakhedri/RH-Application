@@ -17,6 +17,29 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: yosr.khriji27@gmail.com
+    password: fbgodopejvihkutw
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+    test-connection: false
+
   jackson:
     serialization:
       write-dates-as-timestamps: false
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+app:
+  mail:
+    from: yosr.khriji27@gmail.com
+    enabled: true

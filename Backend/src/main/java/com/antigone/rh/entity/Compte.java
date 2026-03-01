@@ -3,6 +3,7 @@ package com.antigone.rh.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -27,6 +28,13 @@ public class Compte {
     @Builder.Default
     private Boolean enabled = true;
 
+    @Builder.Default
+    private Boolean mustChangePassword = true;
+
+    private LocalDateTime lastLogin;
+
+    private LocalDateTime createdAt;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employe_id", unique = true, nullable = false)
     @ToString.Exclude
@@ -43,4 +51,9 @@ public class Compte {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Set<Role> roles = new HashSet<>();
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

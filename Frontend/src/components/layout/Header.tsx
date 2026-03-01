@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { HiOutlineSearch, HiOutlineBell, HiOutlineLogout, HiOutlineMenu } from 'react-icons/hi';
+import { HiOutlineSearch, HiOutlineBell, HiOutlineLogout, HiOutlineMenu, HiOutlineLockClosed, HiOutlineUser } from 'react-icons/hi';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../hooks/useTheme';
 import { useSidebar } from '../../hooks/useSidebar';
@@ -8,6 +9,7 @@ const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { toggleSidebar, toggleMobileSidebar } = useSidebar();
+  const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -107,9 +109,13 @@ const Header: React.FC = () => {
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-2 rounded-full pl-2 pr-1 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary-500 text-white text-sm font-semibold">
-                {user?.prenom?.[0]}{user?.nom?.[0]}
-              </div>
+              {user?.imageUrl ? (
+                <img src={`http://localhost:8080${user.imageUrl}`} alt="" className="h-9 w-9 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary-500 text-white text-sm font-semibold">
+                  {user?.prenom?.[0]}{user?.nom?.[0]}
+                </div>
+              )}
               <div className="hidden text-left md:block">
                 <p className="text-theme-sm font-medium text-gray-700 dark:text-gray-200">
                   {user?.prenom} {user?.nom}
@@ -130,8 +136,22 @@ const Header: React.FC = () => {
                   </p>
                 </div>
                 <button
-                  onClick={logout}
+                  onClick={() => { setShowUserMenu(false); navigate('/mon-profil'); }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-theme-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+                >
+                  <HiOutlineUser size={18} />
+                  Mon profil
+                </button>
+                <button
+                  onClick={() => { setShowUserMenu(false); navigate('/change-password'); }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-theme-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+                >
+                  <HiOutlineLockClosed size={18} />
+                  Changer le mot de passe
+                </button>
+                <button
+                  onClick={logout}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-theme-sm text-error-500 hover:bg-gray-100 dark:hover:bg-white/5"
                 >
                   <HiOutlineLogout size={18} />
                   Déconnexion
