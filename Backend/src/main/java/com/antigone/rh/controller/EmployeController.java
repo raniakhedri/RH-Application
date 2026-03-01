@@ -2,6 +2,9 @@ package com.antigone.rh.controller;
 
 import com.antigone.rh.dto.ApiResponse;
 import com.antigone.rh.dto.EmployeDTO;
+import com.antigone.rh.dto.SoldeCongeInfo;
+import com.antigone.rh.enums.TypeReferentiel;
+import com.antigone.rh.repository.ReferentielRepository;
 import com.antigone.rh.service.EmployeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +15,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -21,6 +26,7 @@ import java.util.UUID;
 public class EmployeController {
 
     private final EmployeService employeService;
+    private final ReferentielRepository referentielRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<EmployeDTO>>> getAll() {
@@ -106,5 +112,27 @@ public class EmployeController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error("Erreur lors de l'upload: " + e.getMessage()));
         }
+    }
+
+    @GetMapping("/{id}/solde-info")
+    public ResponseEntity<ApiResponse<SoldeCongeInfo>> getSoldeInfo(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(employeService.getSoldeCongeInfo(id)));
+    }
+
+    @GetMapping("/horaire-entreprise")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getHoraireEntreprise() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("heureDebut", getRef("HEURE_DEBUT_TRAVAIL", "08:00"));
+        result.put("heureFin", getRef("HEURE_FIN_TRAVAIL", "18:00"));
+        result.put("joursTravail", getRef("JOURS_TRAVAIL", "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI"));
+        result.put("maxAutorisationMinutes", getRef("MAX_AUTORISATION_MINUTES", "120"));
+        return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    private String getRef(String libelle, String defaultValue) {
+        return referentielRepository
+                .findByLibelleAndTypeReferentiel(libelle, TypeReferentiel.PARAMETRE_SYSTEME)
+                .map(ref -> ref.getValeur() != null ? ref.getValeur() : defaultValue)
+                .orElse(defaultValue);
     }
 }

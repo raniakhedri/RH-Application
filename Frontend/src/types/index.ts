@@ -2,10 +2,8 @@
 // ENUMS
 // =====================
 export enum StatutDemande {
-  BROUILLON = 'BROUILLON',
-  SOUMISE = 'SOUMISE',
-  EN_VALIDATION = 'EN_VALIDATION',
-  VALIDEE = 'VALIDEE',
+  EN_ATTENTE = 'EN_ATTENTE',
+  APPROUVEE = 'APPROUVEE',
   REFUSEE = 'REFUSEE',
   ANNULEE = 'ANNULEE',
 }
@@ -16,6 +14,43 @@ export enum TypeDemande {
   TELETRAVAIL = 'TELETRAVAIL',
   ADMINISTRATION = 'ADMINISTRATION',
 }
+
+export enum TypeConge {
+  CONGE_PAYE = 'CONGE_PAYE',
+  CONGE_MALADIE = 'CONGE_MALADIE',
+  CONGE_MATERNITE = 'CONGE_MATERNITE',
+  CONGE_PATERNITE = 'CONGE_PATERNITE',
+  CONGE_SANS_SOLDE = 'CONGE_SANS_SOLDE',
+  CONGE_EXCEPTIONNEL = 'CONGE_EXCEPTIONNEL',
+  CONGE_FORMATION = 'CONGE_FORMATION',
+  CONGE_RECUPERATION = 'CONGE_RECUPERATION',
+  CONGE_ADMINISTRATIF = 'CONGE_ADMINISTRATIF',
+  CONGE_REGLES = 'CONGE_REGLES',
+  CONGE_DECES_PROCHE = 'CONGE_DECES_PROCHE',
+  CONGE_DECES_FAMILLE = 'CONGE_DECES_FAMILLE',
+}
+
+export const TypeCongeLabels: Record<TypeConge, string> = {
+  [TypeConge.CONGE_PAYE]: 'Congé payé',
+  [TypeConge.CONGE_MALADIE]: 'Congé maladie',
+  [TypeConge.CONGE_MATERNITE]: 'Congé maternité',
+  [TypeConge.CONGE_PATERNITE]: 'Congé paternité',
+  [TypeConge.CONGE_SANS_SOLDE]: 'Congé sans solde',
+  [TypeConge.CONGE_EXCEPTIONNEL]: 'Congé exceptionnel',
+  [TypeConge.CONGE_FORMATION]: 'Congé formation',
+  [TypeConge.CONGE_RECUPERATION]: 'Congé récupération',
+  [TypeConge.CONGE_ADMINISTRATIF]: 'Congé administratif',
+  [TypeConge.CONGE_REGLES]: 'Congé règles',
+  [TypeConge.CONGE_DECES_PROCHE]: 'Congé décès (proche)',
+  [TypeConge.CONGE_DECES_FAMILLE]: 'Congé décès (famille)',
+};
+
+export const StatutDemandeLabels: Record<StatutDemande, string> = {
+  [StatutDemande.EN_ATTENTE]: 'En attente',
+  [StatutDemande.APPROUVEE]: 'Approuvée',
+  [StatutDemande.REFUSEE]: 'Refusée',
+  [StatutDemande.ANNULEE]: 'Annulée',
+};
 
 export enum DecisionValidation {
   EN_ATTENTE = 'EN_ATTENTE',
@@ -53,6 +88,7 @@ export enum TypeJour {
   FERIE = 'FERIE',
   CONGE_PAYE = 'CONGE_PAYE',
   CONGE_NON_PAYE = 'CONGE_NON_PAYE',
+  TELETRAVAIL = 'TELETRAVAIL',
 }
 
 export enum OrigineJour {
@@ -159,6 +195,7 @@ export interface LoginResponse {
   roles: string[];
   permissions: string[];
   mustChangePassword: boolean;
+  genre: string | null;
   message: string;
   imageUrl: string | null;
 }
@@ -167,6 +204,7 @@ export interface DemandeRequest {
   type: TypeDemande;
   raison: string;
   employeId: number;
+  typeConge?: string;
   dateDebut?: string;
   dateFin?: string;
   date?: string;
@@ -180,13 +218,20 @@ export interface DemandeResponse {
   dateCreation: string;
   statut: StatutDemande;
   raison: string;
+  motifRefus?: string;
   employeId: number;
   employeNom: string;
+  typeConge?: string;
+  typeCongeLabel?: string;
+  nombreJours?: number;
+  joursOuvrables?: number;
   dateDebut?: string;
   dateFin?: string;
+  justificatifPath?: string;
   date?: string;
   heureDebut?: string;
   heureFin?: string;
+  dureeMinutes?: number;
 }
 
 export interface Validation {
@@ -259,6 +304,7 @@ export enum TypeReferentiel {
   TYPE_CONGE = 'TYPE_CONGE',
   TYPE_DEMANDE = 'TYPE_DEMANDE',
   GENRE = 'GENRE',
+  PARAMETRE_SYSTEME = 'PARAMETRE_SYSTEME',
 }
 
 export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
@@ -270,6 +316,7 @@ export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
   [TypeReferentiel.TYPE_CONGE]: 'Type congé',
   [TypeReferentiel.TYPE_DEMANDE]: 'Type demande',
   [TypeReferentiel.GENRE]: 'Genre',
+  [TypeReferentiel.PARAMETRE_SYSTEME]: 'Paramètre système',
 };
 
 export interface Referentiel {
@@ -279,12 +326,14 @@ export interface Referentiel {
   actif: boolean;
   typeReferentiel: string;
   typeReferentielLabel: string;
+  valeur?: string;
 }
 
 export interface ReferentielRequest {
   libelle: string;
   description: string;
   typeReferentiel: string;
+  valeur?: string;
 }
 
 // =====================
@@ -317,6 +366,16 @@ export interface HoraireTravail {
   pauseDebutMidi: string | null;
   pauseFinMidi: string | null;
   joursTravail: string;
+  joursTeletravail: string | null;
+  dateDebut: string | null;
+  dateFin: string | null;
+}
+
+export interface EmployeHoraire {
+  heureDebut: string;
+  heureFin: string;
+  joursTravail: string;
+  maxAutorisationMinutes: string;
 }
 
 export interface HoraireTravailRequest {
@@ -326,6 +385,9 @@ export interface HoraireTravailRequest {
   pauseDebutMidi: string | null;
   pauseFinMidi: string | null;
   joursTravail: string;
+  joursTeletravail: string | null;
+  dateDebut: string | null;
+  dateFin: string | null;
 }
 
 export interface SidebarItem {
@@ -333,4 +395,49 @@ export interface SidebarItem {
   icon: React.ReactNode;
   path: string;
   children?: SidebarItem[];
+}
+
+export interface HistoriqueStatut {
+  id: number;
+  ancienStatut: string;
+  nouveauStatut: string;
+  dateChangement: string;
+  modifieParNom: string | null;
+  commentaire: string | null;
+}
+
+export interface NotificationResponse {
+  id: number;
+  titre: string;
+  message: string;
+  lu: boolean;
+  dateCreation: string;
+  demandeId: number | null;
+}
+
+export interface CalculateDaysResult {
+  nombreJours: number;
+  joursOuvrables: number;
+  details: string;
+  dateDebutEffective: string;
+  dateFinEffective: string;
+}
+
+export interface SoldeCongeInfo {
+  employeId: number;
+  employeNom: string;
+  dateEmbauche: string | null;
+  ancienneteAnnees: number;
+  ancienneteMois: number;
+  droitAnnuel: number;
+  tauxMensuel: number;
+  joursAcquis: number;
+  moisTravaillesAnneeEnCours: number;
+  joursReportes: number;
+  joursConsommes: number;
+  joursEnAttente: number;
+  soldeDisponible: number;
+  soldePrevisionnel: number;
+  debutAnneeConge: string;
+  finAnneeConge: string;
 }

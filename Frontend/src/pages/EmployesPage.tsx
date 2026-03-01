@@ -405,6 +405,7 @@ const EmployesPage: React.FC = () => {
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date d'embauche</label>
             <input type="date" value={formData.dateEmbauche} onChange={(e) => setFormData({ ...formData, dateEmbauche: e.target.value })} className={inputClass} />
           </div>
+
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Solde congé</label>
             <input type="number" value={formData.soldeConge} onChange={(e) => setFormData({ ...formData, soldeConge: Number(e.target.value) })} className={inputClass} />

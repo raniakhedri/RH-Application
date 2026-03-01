@@ -21,6 +21,7 @@ public class LoginResponse {
     private Set<String> roles;
     private Set<String> permissions;
     private Boolean mustChangePassword;
+    private String genre;
     private String message;
     private String imageUrl;
 }

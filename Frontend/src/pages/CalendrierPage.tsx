@@ -23,14 +23,27 @@ const typeJourLabels: Record<TypeJour, string> = {
   [TypeJour.FERIE]: 'Férié',
   [TypeJour.CONGE_PAYE]: 'Congé payé',
   [TypeJour.CONGE_NON_PAYE]: 'Congé non payé',
+  [TypeJour.TELETRAVAIL]: 'Télétravail',
 };
 
-const typeJourVariant: Record<TypeJour, 'success' | 'danger' | 'warning' | 'neutral'> = {
+const typeJourVariant: Record<TypeJour, 'success' | 'danger' | 'warning' | 'neutral' | 'info'> = {
   [TypeJour.OUVRABLE]: 'success',
   [TypeJour.FERIE]: 'danger',
   [TypeJour.CONGE_PAYE]: 'warning',
   [TypeJour.CONGE_NON_PAYE]: 'neutral',
+  [TypeJour.TELETRAVAIL]: 'info',
 };
+
+function eachDayBetween(start: string, end: string): string[] {
+  const dates: string[] = [];
+  const cur = new Date(start + 'T00:00:00');
+  const last = new Date(end + 'T00:00:00');
+  while (cur <= last) {
+    dates.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
 
 const CalendrierPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('jours');
@@ -44,6 +57,7 @@ const CalendrierPage: React.FC = () => {
   const [editingJour, setEditingJour] = useState<CalendrierJour | null>(null);
   const [jourForm, setJourForm] = useState({
     dateJour: '',
+    dateFinJour: '',
     nomJour: '',
     typeJour: TypeJour.FERIE as TypeJour,
     origine: null as OrigineJour | null,
@@ -64,6 +78,9 @@ const CalendrierPage: React.FC = () => {
     pauseDebutMidi: '12:00',
     pauseFinMidi: '13:00',
     joursTravail: ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI'] as string[],
+    joursTeletravail: [] as string[],
+    dateDebut: '',
+    dateFin: '',
   });
 
   useEffect(() => {
@@ -72,7 +89,6 @@ const CalendrierPage: React.FC = () => {
   }, []);
 
   // ============ Jours logic ============
-
   const loadJours = async () => {
     try {
       const response = await calendrierService.getAllJours();
@@ -86,14 +102,21 @@ const CalendrierPage: React.FC = () => {
 
   const handleSaveJour = async () => {
     try {
-      const payload = {
-        ...jourForm,
-        origine: jourForm.origine || null,
-      };
-      if (editingJour) {
-        await calendrierService.updateJour(editingJour.id, payload);
+      if (!editingJour && jourForm.dateFinJour && jourForm.dateFinJour > jourForm.dateJour) {
+        const days = eachDayBetween(jourForm.dateJour, jourForm.dateFinJour);
+        for (const day of days) {
+          await calendrierService.createJour({
+            dateJour: day, nomJour: jourForm.nomJour, typeJour: jourForm.typeJour,
+            origine: jourForm.origine || null, description: jourForm.description, estPaye: jourForm.estPaye,
+          });
+        }
       } else {
-        await calendrierService.createJour(payload);
+        const payload = {
+          dateJour: jourForm.dateJour, nomJour: jourForm.nomJour, typeJour: jourForm.typeJour,
+          origine: jourForm.origine || null, description: jourForm.description, estPaye: jourForm.estPaye,
+        };
+        if (editingJour) await calendrierService.updateJour(editingJour.id, payload);
+        else await calendrierService.createJour(payload);
       }
       setShowJourModal(false);
       setEditingJour(null);
@@ -108,6 +131,7 @@ const CalendrierPage: React.FC = () => {
     setEditingJour(jour);
     setJourForm({
       dateJour: jour.dateJour,
+      dateFinJour: '',
       nomJour: jour.nomJour,
       typeJour: jour.typeJour,
       origine: jour.origine,
@@ -131,6 +155,7 @@ const CalendrierPage: React.FC = () => {
   const resetJourForm = () => {
     setJourForm({
       dateJour: '',
+      dateFinJour: '',
       nomJour: '',
       typeJour: TypeJour.FERIE,
       origine: null,
@@ -149,7 +174,6 @@ const CalendrierPage: React.FC = () => {
   });
 
   // ============ Horaires logic ============
-
   const loadHoraires = async () => {
     try {
       const response = await calendrierService.getAllHoraires();
@@ -166,8 +190,11 @@ const CalendrierPage: React.FC = () => {
       const payload = {
         ...horaireForm,
         joursTravail: horaireForm.joursTravail.join(','),
+        joursTeletravail: horaireForm.joursTeletravail.length > 0 ? horaireForm.joursTeletravail.join(',') : null,
         pauseDebutMidi: horaireForm.pauseDebutMidi || null,
         pauseFinMidi: horaireForm.pauseFinMidi || null,
+        dateDebut: horaireForm.dateDebut || null,
+        dateFin: horaireForm.dateFin || null,
       };
       if (editingHoraire) {
         await calendrierService.updateHoraire(editingHoraire.id, payload);
@@ -192,6 +219,9 @@ const CalendrierPage: React.FC = () => {
       pauseDebutMidi: horaire.pauseDebutMidi || '',
       pauseFinMidi: horaire.pauseFinMidi || '',
       joursTravail: horaire.joursTravail.split(',').filter(Boolean),
+      joursTeletravail: horaire.joursTeletravail ? horaire.joursTeletravail.split(',').filter(Boolean) : [],
+      dateDebut: horaire.dateDebut || '',
+      dateFin: horaire.dateFin || '',
     });
     setShowHoraireModal(true);
   };
@@ -215,6 +245,9 @@ const CalendrierPage: React.FC = () => {
       pauseDebutMidi: '12:00',
       pauseFinMidi: '13:00',
       joursTravail: ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI'],
+      joursTeletravail: [],
+      dateDebut: '',
+      dateFin: '',
     });
   };
 
@@ -227,6 +260,15 @@ const CalendrierPage: React.FC = () => {
     }));
   };
 
+  const toggleJourTeletravail = (jour: string) => {
+    setHoraireForm((prev) => ({
+      ...prev,
+      joursTeletravail: prev.joursTeletravail.includes(jour)
+        ? prev.joursTeletravail.filter((j) => j !== jour)
+        : [...prev.joursTeletravail, jour],
+    }));
+  };
+
   const filteredHoraires = horaires.filter(
     (h) =>
       h.nom.toLowerCase().includes(horaireSearch.toLowerCase()) ||
@@ -234,14 +276,13 @@ const CalendrierPage: React.FC = () => {
   );
 
   // ============ Table columns ============
-
   const jourColumns = [
     {
       key: 'dateJour',
       label: 'Date',
       render: (item: CalendrierJour) => (
         <span className="font-medium text-gray-800 dark:text-white">
-          {new Date(item.dateJour).toLocaleDateString('fr-FR', {
+          {new Date(item.dateJour + 'T00:00:00').toLocaleDateString('fr-FR', {
             weekday: 'short',
             day: '2-digit',
             month: 'short',
@@ -357,6 +398,37 @@ const CalendrierPage: React.FC = () => {
       ),
     },
     {
+      key: 'joursTeletravail',
+      label: 'Télétravail',
+      render: (item: HoraireTravail) => (
+        <div className="flex gap-1 flex-wrap">
+          {item.joursTeletravail ? JOURS_SEMAINE.filter((j) => item.joursTeletravail!.includes(j)).map((jour) => (
+            <span
+              key={jour}
+              className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-500/[0.12] dark:text-blue-400"
+            >
+              {jour.substring(0, 3)}
+            </span>
+          )) : <span className="text-gray-400 text-[10px] italic">Aucun</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'periode',
+      label: 'Période',
+      render: (item: HoraireTravail) => {
+        if (!item.dateDebut && !item.dateFin) {
+          return <span className="text-theme-xs text-gray-400 italic">Toute l'année</span>;
+        }
+        const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+        return (
+          <span className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">
+            {item.dateDebut ? fmt(item.dateDebut) : '...'} → {item.dateFin ? fmt(item.dateFin) : '...'}
+          </span>
+        );
+      },
+    },
+    {
       key: 'actions',
       label: 'Actions',
       render: (item: HoraireTravail) => (
@@ -414,8 +486,8 @@ const CalendrierPage: React.FC = () => {
       {activeTab === 'jours' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="relative max-w-md flex-1">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="relative flex-1 max-w-md">
                 <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
@@ -494,9 +566,9 @@ const CalendrierPage: React.FC = () => {
 
       {/* Jour Modal */}
       <Modal isOpen={showJourModal} onClose={() => setShowJourModal(false)} title={editingJour ? 'Modifier le jour' : 'Nouveau jour'} size="lg">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date *</label>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{editingJour ? 'Date *' : 'Date début *'}</label>
             <input
               type="date"
               value={jourForm.dateJour}
@@ -504,6 +576,21 @@ const CalendrierPage: React.FC = () => {
               className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
             />
           </div>
+          {!editingJour && (
+            <div>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date fin <span className="text-gray-400 font-normal">(optionnel)</span></label>
+              <input
+                type="date"
+                value={jourForm.dateFinJour}
+                min={jourForm.dateJour || undefined}
+                onChange={(e) => setJourForm({ ...jourForm, dateFinJour: e.target.value })}
+                className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+              />
+              {jourForm.dateFinJour && jourForm.dateJour && jourForm.dateFinJour > jourForm.dateJour && (
+                <p className="mt-1 text-theme-xs text-brand-500">{eachDayBetween(jourForm.dateJour, jourForm.dateFinJour).length} jours seront créés</p>
+              )}
+            </div>
+          )}
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom du jour *</label>
             <input
@@ -538,18 +625,8 @@ const CalendrierPage: React.FC = () => {
               <option value="INTERNATIONAL">International</option>
             </select>
           </div>
-          <div className="col-span-2">
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-            <textarea
-              value={jourForm.description}
-              onChange={(e) => setJourForm({ ...jourForm, description: e.target.value })}
-              rows={2}
-              placeholder="Description optionnelle..."
-              className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
-            />
-          </div>
-          <div className="col-span-2">
-            <label className="flex items-center gap-2 cursor-pointer">
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer mt-7">
               <input
                 type="checkbox"
                 checked={jourForm.estPaye}
@@ -558,6 +635,16 @@ const CalendrierPage: React.FC = () => {
               />
               <span className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">Jour payé</span>
             </label>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <textarea
+              value={jourForm.description}
+              onChange={(e) => setJourForm({ ...jourForm, description: e.target.value })}
+              rows={2}
+              placeholder="Description optionnelle..."
+              className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+            />
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-6">
@@ -638,6 +725,50 @@ const CalendrierPage: React.FC = () => {
                   {jour.substring(0, 3)}
                 </button>
               ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jours de télétravail</label>
+            <p className="text-theme-xs text-gray-400 dark:text-gray-500 mb-2">Sélectionnez les jours où le télétravail est autorisé</p>
+            <div className="flex gap-2 flex-wrap">
+              {JOURS_SEMAINE.map((jour) => (
+                <button
+                  key={jour}
+                  type="button"
+                  onClick={() => toggleJourTeletravail(jour)}
+                  className={`rounded-lg px-3 py-2 text-theme-xs font-medium transition-colors ${
+                    horaireForm.joursTeletravail.includes(jour)
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {jour.substring(0, 3)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Période d'application</label>
+            <p className="text-theme-xs text-gray-400 dark:text-gray-500 mb-2">Laisser vide pour appliquer toute l'année</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Du</label>
+                <input
+                  type="date"
+                  value={horaireForm.dateDebut}
+                  onChange={(e) => setHoraireForm({ ...horaireForm, dateDebut: e.target.value })}
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+                />
+              </div>
+              <div>
+                <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Au</label>
+                <input
+                  type="date"
+                  value={horaireForm.dateFin}
+                  onChange={(e) => setHoraireForm({ ...horaireForm, dateFin: e.target.value })}
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+                />
+              </div>
             </div>
           </div>
         </div>

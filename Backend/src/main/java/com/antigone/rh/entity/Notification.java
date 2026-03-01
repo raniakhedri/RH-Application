@@ -1,52 +1,54 @@
 package com.antigone.rh.entity;
 
-import com.antigone.rh.enums.StatutDemande;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "historique_statuts")
+@Table(name = "notifications")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class HistoriqueStatut {
+public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private StatutDemande ancienStatut;
+    private String titre;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private StatutDemande nouveauStatut;
+    @Column(columnDefinition = "TEXT")
+    private String message;
 
     @Column(nullable = false)
-    private LocalDateTime dateChangement;
+    @Builder.Default
+    private Boolean lu = false;
+
+    @Column(nullable = false)
+    private LocalDateTime dateCreation;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "demande_id", nullable = false)
+    @JoinColumn(name = "employe_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Employe employe;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "demande_id")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Demande demande;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "modifie_par_id")
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private Employe modifiePar;
-
-    private String commentaire;
-
     @PrePersist
     public void prePersist() {
-        if (dateChangement == null) {
-            dateChangement = LocalDateTime.now();
+        if (dateCreation == null) {
+            dateCreation = LocalDateTime.now();
+        }
+        if (lu == null) {
+            lu = false;
         }
     }
 }

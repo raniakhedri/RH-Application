@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   HiOutlineHome,
@@ -13,9 +13,11 @@ import {
   HiOutlineCalendar,
   HiOutlineKey,
   HiOutlineShieldCheck,
+  HiOutlineClipboardList,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
 import { useAuth } from '../../context/AuthContext';
+import { demandeService } from '../../api/demandeService';
 
 interface NavItemDef {
   label: string;
@@ -23,6 +25,7 @@ interface NavItemDef {
   icon: React.ReactNode;
   key: string;
   permission?: string;
+  badge?: number;
   children?: { label: string; path: string }[];
 }
 
@@ -32,6 +35,8 @@ const menuGroups = [
     items: [
       { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} />, permission: 'VIEW_DASHBOARD' },
       { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} />, permission: 'VIEW_EMPLOYES' },
+      { key: 'mes-demandes', label: 'Mes demandes', path: '/mes-demandes', icon: <HiOutlineClipboardList size={20} /> },
+      { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} /> },
     ] as NavItemDef[],
   },
   {
@@ -44,8 +49,7 @@ const menuGroups = [
         icon: <HiOutlineDocumentText size={20} />,
         permission: 'VIEW_DEMANDES',
         children: [
-          { label: 'Toutes les demandes', path: '/demandes' },
-          { label: 'Nouvelle demande', path: '/demandes/new' },
+          { label: 'Demandes congés', path: '/demandes' },
         ],
       },
       { key: 'validations', label: 'Validations', path: '/validations', icon: <HiOutlineClipboardCheck size={20} />, permission: 'VIEW_VALIDATIONS' },
@@ -84,6 +88,23 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const { isExpanded, isMobileOpen, isHovered, openSubmenu, setIsHovered, setOpenSubmenu, toggleMobileSidebar } = useSidebar();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const isAdmin = user?.roles?.includes('SUPER_ADMIN');
+
+  // Fetch pending demandes count for admin
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchPending = async () => {
+      try {
+        const res = await demandeService.getByStatut('EN_ATTENTE' as any);
+        setPendingCount((res.data.data || []).length);
+      } catch { /* ignore */ }
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   const userPermissions = user?.permissions || [];
 
@@ -147,7 +168,7 @@ const Sidebar: React.FC = () => {
                 {group.items.map((item) => (
                   <SidebarItem
                     key={item.key}
-                    item={item}
+                    item={item.key === 'demandes' && isAdmin && pendingCount > 0 ? { ...item, badge: pendingCount } : item}
                     isActive={isActive}
                     showText={showText}
                     openSubmenu={openSubmenu}
@@ -186,6 +207,11 @@ const SidebarItem: React.FC<{
           {showText && (
             <>
               <span className="flex-1 text-left">{item.label}</span>
+              {item.badge && item.badge > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-warning-500 text-white text-[10px] font-bold">
+                  {item.badge}
+                </span>
+              )}
               <HiOutlineChevronDown
                 size={16}
                 className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}

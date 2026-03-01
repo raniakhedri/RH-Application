@@ -70,6 +70,7 @@ public class CompteService {
                 .roles(roles)
                 .permissions(permissions)
                 .mustChangePassword(compte.getMustChangePassword())
+                .genre(employe.getGenre() != null ? employe.getGenre().name() : null)
                 .message("Connexion réussie")
                 .imageUrl(employe.getImageUrl())
                 .build();

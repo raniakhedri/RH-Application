@@ -1,5 +1,5 @@
 import api from './axios';
-import { ApiResponse, Employe } from '../types';
+import { ApiResponse, Employe, EmployeHoraire, SoldeCongeInfo } from '../types';
 
 export const employeService = {
   getAll: () => api.get<ApiResponse<Employe[]>>('/employes'),
@@ -17,4 +17,6 @@ export const employeService = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  getSoldeInfo: (id: number) => api.get<ApiResponse<SoldeCongeInfo>>(`/employes/${id}/solde-info`),
+  getHoraireEntreprise: () => api.get<ApiResponse<EmployeHoraire>>('/employes/horaire-entreprise'),
 };

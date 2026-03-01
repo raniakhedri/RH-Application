@@ -35,6 +35,8 @@ public class Demande {
 
     private String raison;
 
+    private String motifRefus;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employe_id", nullable = false)
     @ToString.Exclude
@@ -59,7 +61,7 @@ public class Demande {
             dateCreation = LocalDateTime.now();
         }
         if (statut == null) {
-            statut = StatutDemande.BROUILLON;
+            statut = StatutDemande.EN_ATTENTE;
         }
     }
 }

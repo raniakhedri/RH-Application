@@ -2,16 +2,21 @@ package com.antigone.rh.service;
 
 import com.antigone.rh.dto.DemandeRequest;
 import com.antigone.rh.dto.DemandeResponse;
+import com.antigone.rh.dto.HistoriqueStatutDTO;
 import com.antigone.rh.entity.*;
-import com.antigone.rh.enums.StatutDemande;
-import com.antigone.rh.enums.TypeDemande;
+import com.antigone.rh.enums.*;
 import com.antigone.rh.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +27,28 @@ public class DemandeService {
     private final DemandeRepository demandeRepository;
     private final EmployeRepository employeRepository;
     private final HistoriqueStatutRepository historiqueStatutRepository;
+    private final CalendrierRepository calendrierRepository;
+    private final CongeRepository congeRepository;
+    private final AutorisationRepository autorisationRepository;
+    private final ReferentielRepository referentielRepository;
+    private final NotificationService notificationService;
+
+    private static final int DEFAULT_MAX_AUTORISATION_MINUTES = 120; // 2h par mois
+
+    // Mapping DayOfWeek → French day names used in HoraireTravail.joursTravail
+    private static final Map<DayOfWeek, String> DOW_TO_FRENCH = Map.of(
+            DayOfWeek.MONDAY, "LUNDI",
+            DayOfWeek.TUESDAY, "MARDI",
+            DayOfWeek.WEDNESDAY, "MERCREDI",
+            DayOfWeek.THURSDAY, "JEUDI",
+            DayOfWeek.FRIDAY, "VENDREDI",
+            DayOfWeek.SATURDAY, "SAMEDI",
+            DayOfWeek.SUNDAY, "DIMANCHE"
+    );
+
+    // =========================================
+    // QUERIES
+    // =========================================
 
     public List<DemandeResponse> findAll() {
         return demandeRepository.findAll().stream()
@@ -47,6 +74,10 @@ public class DemandeService {
                 .collect(Collectors.toList());
     }
 
+    // =========================================
+    // CREATE
+    // =========================================
+
     public DemandeResponse create(DemandeRequest request) {
         Employe employe = employeRepository.findById(request.getEmployeId())
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé"));
@@ -55,30 +86,20 @@ public class DemandeService {
 
         switch (request.getType()) {
             case CONGE:
-                Conge conge = new Conge();
-                conge.setDateDebut(request.getDateDebut());
-                conge.setDateFin(request.getDateFin());
-                demande = conge;
+                demande = createConge(request, employe);
                 break;
             case AUTORISATION:
-                Autorisation autorisation = new Autorisation();
-                autorisation.setDate(request.getDate());
-                autorisation.setHeureDebut(request.getHeureDebut());
-                autorisation.setHeureFin(request.getHeureFin());
-                demande = autorisation;
+                demande = createAutorisation(request, employe);
                 break;
             case TELETRAVAIL:
-                Teletravail teletravail = new Teletravail();
-                teletravail.setDateDebut(request.getDateDebut());
-                teletravail.setDateFin(request.getDateFin());
-                demande = teletravail;
+                demande = createTeletravail(request, employe);
                 break;
             default:
                 throw new RuntimeException("Type de demande non supporté: " + request.getType());
         }
 
         demande.setType(request.getType());
-        demande.setStatut(StatutDemande.BROUILLON);
+        demande.setStatut(StatutDemande.EN_ATTENTE);
         demande.setDateCreation(LocalDateTime.now());
         demande.setRaison(request.getRaison());
         demande.setEmploye(employe);
@@ -87,19 +108,280 @@ public class DemandeService {
         return toResponse(saved);
     }
 
-    public DemandeResponse submit(Long demandeId) {
+    private Conge createConge(DemandeRequest request, Employe employe) {
+        if (request.getDateDebut() == null || request.getDateFin() == null) {
+            throw new RuntimeException("Les dates de début et fin sont obligatoires pour un congé");
+        }
+        if (request.getDateFin().isBefore(request.getDateDebut())) {
+            throw new RuntimeException("La date de fin doit être après la date de début");
+        }
+        if (request.getDateDebut().isBefore(LocalDate.now())) {
+            throw new RuntimeException("La date de début doit être dans le futur");
+        }
+
+        TypeConge typeConge = TypeConge.CONGE_PAYE;
+        if (request.getTypeConge() != null && !request.getTypeConge().isBlank()) {
+            try {
+                typeConge = TypeConge.valueOf(request.getTypeConge());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Type de congé invalide: " + request.getTypeConge());
+            }
+        }
+
+        // Justificatif obligatoire pour maladie, décès et maternité
+        if ((typeConge == TypeConge.CONGE_MALADIE
+                || typeConge == TypeConge.CONGE_DECES_PROCHE
+                || typeConge == TypeConge.CONGE_DECES_FAMILLE
+                || typeConge == TypeConge.CONGE_MATERNITE)
+                && (request.getJustificatifPath() == null || request.getJustificatifPath().isBlank())) {
+            String docName = switch (typeConge) {
+                case CONGE_MALADIE -> "certificat médical";
+                case CONGE_DECES_PROCHE, CONGE_DECES_FAMILLE -> "attestation de décès";
+                case CONGE_MATERNITE -> "certificat médical / attestation d'accouchement";
+                default -> "justificatif";
+            };
+            throw new RuntimeException("Un " + docName + " est obligatoire pour ce type de congé");
+        }
+
+        // Calculate effective days (includes trailing weekends/holidays + pont rule)
+        Map<String, Object> calcResult = computeEffectiveDays(request.getDateDebut(), request.getDateFin(), typeConge.name());
+        int nombreJours = (int) calcResult.get("nombreJours");
+        int joursOuvrables = (int) calcResult.get("joursOuvrables");
+
+        // Congé maladie: max 2 jours ouvrables
+        if (typeConge == TypeConge.CONGE_MALADIE && joursOuvrables > 2) {
+            throw new RuntimeException("Le congé maladie est limité à 2 jours ouvrables maximum. "
+                    + "Vous avez sélectionné " + joursOuvrables + " jour(s) ouvrable(s). "
+                    + "Au-delà de 2 jours, un certificat médical prolongé et l'accord du responsable sont requis.");
+        }
+
+        // Congé règles: 1 seul jour
+        if (typeConge == TypeConge.CONGE_REGLES && joursOuvrables > 1) {
+            throw new RuntimeException("Le congé règles est limité à 1 jour ouvrable uniquement.");
+        }
+
+        // Congé décès: override nombre de jours selon le règlement
+        if (typeConge == TypeConge.CONGE_DECES_PROCHE) {
+            nombreJours = 5; // 5 jours pour parent, grand-parent ou enfant
+        } else if (typeConge == TypeConge.CONGE_DECES_FAMILLE) {
+            nombreJours = 1; // 1 jour pour autre membre de la famille
+        }
+
+        if (nombreJours == 0) {
+            throw new RuntimeException("La période sélectionnée ne contient aucun jour ouvrable");
+        }
+
+        // Règle des 4× : la demande doit être faite 4 × nombre_de_jours à l'avance
+        // Exemptés : maladie, décès, exceptionnel (cas urgents)
+        boolean exemptDelai = typeConge == TypeConge.CONGE_MALADIE
+                || typeConge == TypeConge.CONGE_DECES_PROCHE
+                || typeConge == TypeConge.CONGE_DECES_FAMILLE
+                || typeConge == TypeConge.CONGE_EXCEPTIONNEL;
+        if (!exemptDelai) {
+            int delaiMinJours = nombreJours * 4;
+            LocalDate dateLimite = LocalDate.now().plusDays(delaiMinJours);
+            if (request.getDateDebut().isBefore(dateLimite)) {
+                throw new RuntimeException("Selon le règlement, la demande de " + nombreJours
+                        + " jour(s) doit être faite au moins " + delaiMinJours
+                        + " jours à l'avance. Date de début au plus tôt : " + dateLimite);
+            }
+        }
+
+        // Friday-only rule: congé uniquement vendredi → doit être CONGE_SANS_SOLDE
+        if (typeConge == TypeConge.CONGE_PAYE && isOnlyFridays(request.getDateDebut(), request.getDateFin())) {
+            throw new RuntimeException("Un congé uniquement le vendredi doit être de type 'Congé sans solde'");
+        }
+
+        // Check overlap with existing congés
+        List<Conge> overlapping = congeRepository.findOverlapping(
+                employe.getId(), request.getDateDebut(), request.getDateFin());
+        if (!overlapping.isEmpty()) {
+            throw new RuntimeException("Un congé existe déjà pour cette période");
+        }
+
+        // Check solde for paid leave (use joursOuvrables for deduction, not full calendar span)
+        if (typeConge == TypeConge.CONGE_PAYE) {
+            double solde = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
+            if (solde < joursOuvrables) {
+                throw new RuntimeException("Solde congé insuffisant. Solde actuel: "
+                        + solde + " jours, Demandé: " + joursOuvrables + " jour(s) ouvrable(s)");
+            }
+        }
+
+        Conge conge = new Conge();
+        conge.setDateDebut(request.getDateDebut());
+        conge.setDateFin(request.getDateFin());
+        conge.setTypeConge(typeConge);
+        conge.setNombreJours(nombreJours);
+        conge.setJoursOuvrables(joursOuvrables);
+        conge.setJustificatifPath(request.getJustificatifPath());
+        return conge;
+    }
+
+    private Autorisation createAutorisation(DemandeRequest request, Employe employe) {
+        if (request.getDate() == null) {
+            throw new RuntimeException("La date est obligatoire pour une autorisation");
+        }
+        if (request.getHeureDebut() == null || request.getHeureFin() == null) {
+            throw new RuntimeException("Les heures de début et fin sont obligatoires");
+        }
+        if (!request.getHeureFin().isAfter(request.getHeureDebut())) {
+            throw new RuntimeException("L'heure de fin doit être après l'heure de début");
+        }
+
+        long dureeMinutes = Duration.between(request.getHeureDebut(), request.getHeureFin()).toMinutes();
+
+        // Get max allowed minutes from system parameters
+        int maxMinutes = getMaxAutorisationMinutes();
+
+        // ── Validate single autorisation duration ≤ max allowed ──
+        if (dureeMinutes > maxMinutes) {
+            throw new RuntimeException("La durée d'une autorisation ne peut pas dépasser "
+                    + (maxMinutes / 60) + "h" + String.format("%02d", maxMinutes % 60)
+                    + ". Durée demandée : " + dureeMinutes + " minutes.");
+        }
+
+        // ── Validate against company working hours (from referentiels) ──
+        String jourDemande = DOW_TO_FRENCH.get(request.getDate().getDayOfWeek());
+
+        // Check the day is a working day
+        String joursParam = getRefStringValue("JOURS_TRAVAIL", "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI");
+        List<String> joursTravailTrimmed = Arrays.stream(joursParam.split(","))
+                .map(String::trim).map(String::toUpperCase).collect(Collectors.toList());
+        if (!joursTravailTrimmed.contains(jourDemande)) {
+            throw new RuntimeException("Vous ne travaillez pas le " + jourDemande.toLowerCase()
+                    + ". Les jours de travail sont : " + String.join(", ", joursTravailTrimmed));
+        }
+
+        // Check heureDebut and heureFin fall within company working hours
+        LocalTime travailDebut = LocalTime.parse(getRefStringValue("HEURE_DEBUT_TRAVAIL", "08:00"));
+        LocalTime travailFin = LocalTime.parse(getRefStringValue("HEURE_FIN_TRAVAIL", "18:00"));
+
+        if (request.getHeureDebut().isBefore(travailDebut)) {
+            throw new RuntimeException("L'heure de début (" + request.getHeureDebut()
+                    + ") est avant le début du travail (" + travailDebut + ")");
+        }
+        if (request.getHeureFin().isAfter(travailFin)) {
+            throw new RuntimeException("L'heure de fin (" + request.getHeureFin()
+                    + ") est après la fin du travail (" + travailFin + ")");
+        }
+
+        // Calculate total used this month (EN_ATTENTE + APPROUVEE)
+        LocalDate premierJourMois = request.getDate().withDayOfMonth(1);
+        LocalDate dernierJourMois = request.getDate().withDayOfMonth(request.getDate().lengthOfMonth());
+
+        List<Autorisation> monthlyAuth = autorisationRepository.findByEmployeIdAndDateBetweenAndStatutIn(
+                employe.getId(), premierJourMois, dernierJourMois,
+                List.of(StatutDemande.EN_ATTENTE, StatutDemande.APPROUVEE));
+
+        long totalUsedMinutes = monthlyAuth.stream()
+                .mapToLong(a -> Duration.between(a.getHeureDebut(), a.getHeureFin()).toMinutes())
+                .sum();
+
+        if (totalUsedMinutes + dureeMinutes > maxMinutes) {
+            long remaining = Math.max(0, maxMinutes - totalUsedMinutes);
+            throw new RuntimeException("Quota d'autorisation mensuel dépassé. Restant: "
+                    + remaining + " minutes (" + (remaining / 60) + "h" + String.format("%02d", remaining % 60) + ")");
+        }
+
+        Autorisation autorisation = new Autorisation();
+        autorisation.setDate(request.getDate());
+        autorisation.setHeureDebut(request.getHeureDebut());
+        autorisation.setHeureFin(request.getHeureFin());
+        return autorisation;
+    }
+
+    private Teletravail createTeletravail(DemandeRequest request, Employe employe) {
+        if (request.getDateDebut() == null || request.getDateFin() == null) {
+            throw new RuntimeException("Les dates de début et fin sont obligatoires pour le télétravail");
+        }
+        if (request.getDateFin().isBefore(request.getDateDebut())) {
+            throw new RuntimeException("La date de fin doit être après la date de début");
+        }
+
+        Teletravail teletravail = new Teletravail();
+        teletravail.setDateDebut(request.getDateDebut());
+        teletravail.setDateFin(request.getDateFin());
+        return teletravail;
+    }
+
+    // =========================================
+    // APPROVE / REFUSE / CANCEL
+    // =========================================
+
+    public DemandeResponse approve(Long demandeId, Long adminEmployeId) {
         Demande demande = demandeRepository.findById(demandeId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        Employe admin = employeRepository.findById(adminEmployeId)
+                .orElseThrow(() -> new RuntimeException("Administrateur non trouvé"));
 
-        if (demande.getStatut() != StatutDemande.BROUILLON) {
-            throw new RuntimeException("Seules les demandes en brouillon peuvent être soumises");
+        if (demande.getStatut() != StatutDemande.EN_ATTENTE) {
+            throw new RuntimeException("Seules les demandes en attente peuvent être approuvées");
         }
 
         StatutDemande ancien = demande.getStatut();
-        demande.setStatut(StatutDemande.SOUMISE);
+        demande.setStatut(StatutDemande.APPROUVEE);
         demandeRepository.save(demande);
 
-        saveHistorique(demande, ancien, StatutDemande.SOUMISE, demande.getEmploye());
+        // Deduct solde for paid leave (use joursOuvrables, not full calendar span)
+        if (demande instanceof Conge conge && conge.getTypeConge() == TypeConge.CONGE_PAYE) {
+            Employe employe = demande.getEmploye();
+            double solde = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
+            int toDeduct = conge.getJoursOuvrables() != null ? conge.getJoursOuvrables() : conge.getNombreJours();
+            employe.setSoldeConge(solde - toDeduct);
+            employeRepository.save(employe);
+        }
+
+        saveHistorique(demande, ancien, StatutDemande.APPROUVEE, admin);
+
+        // Send notification to the employee
+        String typeLabel = demande.getType().name();
+        if (demande instanceof Conge conge) {
+            typeLabel = conge.getTypeConge().getLabel();
+        }
+        notificationService.create(
+                demande.getEmploye(),
+                "Demande approuvée",
+                "Votre demande de " + typeLabel + " a été approuvée par " + admin.getNom() + " " + admin.getPrenom() + ".",
+                demande
+        );
+
+        return toResponse(demande);
+    }
+
+    public DemandeResponse refuse(Long demandeId, Long adminEmployeId, String commentaire) {
+        Demande demande = demandeRepository.findById(demandeId)
+                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
+        Employe admin = employeRepository.findById(adminEmployeId)
+                .orElseThrow(() -> new RuntimeException("Administrateur non trouvé"));
+
+        if (demande.getStatut() != StatutDemande.EN_ATTENTE) {
+            throw new RuntimeException("Seules les demandes en attente peuvent être refusées");
+        }
+
+        StatutDemande ancien = demande.getStatut();
+        demande.setStatut(StatutDemande.REFUSEE);
+        demande.setMotifRefus(commentaire);
+        demandeRepository.save(demande);
+
+        saveHistorique(demande, ancien, StatutDemande.REFUSEE, admin, commentaire);
+
+        // Send notification to the employee with motif
+        String typeLabel = demande.getType().name();
+        if (demande instanceof Conge conge) {
+            typeLabel = conge.getTypeConge().getLabel();
+        }
+        String message = "Votre demande de " + typeLabel + " a été refusée par " + admin.getNom() + " " + admin.getPrenom() + ".";
+        if (commentaire != null && !commentaire.isBlank()) {
+            message += "\nMotif : " + commentaire;
+        }
+        notificationService.create(
+                demande.getEmploye(),
+                "Demande refusée",
+                message,
+                demande
+        );
+
         return toResponse(demande);
     }
 
@@ -107,8 +389,8 @@ public class DemandeService {
         Demande demande = demandeRepository.findById(demandeId)
                 .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
 
-        if (demande.getStatut() == StatutDemande.VALIDEE || demande.getStatut() == StatutDemande.ANNULEE) {
-            throw new RuntimeException("Impossible d'annuler cette demande");
+        if (demande.getStatut() != StatutDemande.EN_ATTENTE) {
+            throw new RuntimeException("Seules les demandes en attente peuvent être annulées");
         }
 
         StatutDemande ancien = demande.getStatut();
@@ -119,30 +401,247 @@ public class DemandeService {
         return toResponse(demande);
     }
 
-    public DemandeResponse changeStatut(Long demandeId, StatutDemande nouveauStatut, Long employeId) {
-        Demande demande = demandeRepository.findById(demandeId)
-                .orElseThrow(() -> new RuntimeException("Demande non trouvée"));
-        Employe employe = employeRepository.findById(employeId)
-                .orElseThrow(() -> new RuntimeException("Employé non trouvé"));
+    // =========================================
+    // BATCH ACTIONS
+    // =========================================
 
-        StatutDemande ancien = demande.getStatut();
-        demande.setStatut(nouveauStatut);
-        demandeRepository.save(demande);
-
-        saveHistorique(demande, ancien, nouveauStatut, employe);
-        return toResponse(demande);
+    public List<DemandeResponse> batchApprove(List<Long> demandeIds, Long adminEmployeId) {
+        return demandeIds.stream()
+                .map(id -> {
+                    try {
+                        return approve(id, adminEmployeId);
+                    } catch (RuntimeException e) {
+                        return null;
+                    }
+                })
+                .filter(r -> r != null)
+                .collect(Collectors.toList());
     }
 
+    public List<DemandeResponse> batchRefuse(List<Long> demandeIds, Long adminEmployeId, String commentaire) {
+        return demandeIds.stream()
+                .map(id -> {
+                    try {
+                        return refuse(id, adminEmployeId, commentaire);
+                    } catch (RuntimeException e) {
+                        return null;
+                    }
+                })
+                .filter(r -> r != null)
+                .collect(Collectors.toList());
+    }
+
+    // =========================================
+    // HISTORIQUE
+    // =========================================
+
+    public List<HistoriqueStatutDTO> getHistorique(Long demandeId) {
+        return historiqueStatutRepository.findByDemandeIdOrderByDateChangementDesc(demandeId)
+                .stream()
+                .map(h -> HistoriqueStatutDTO.builder()
+                        .id(h.getId())
+                        .ancienStatut(h.getAncienStatut().name())
+                        .nouveauStatut(h.getNouveauStatut().name())
+                        .dateChangement(h.getDateChangement())
+                        .modifieParNom(h.getModifiePar() != null
+                                ? h.getModifiePar().getNom() + " " + h.getModifiePar().getPrenom()
+                                : null)
+                        .commentaire(h.getCommentaire())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // =========================================
+    // BUSINESS LOGIC HELPERS
+    // =========================================
+
+    /**
+     * Check if a date is a non-working day (weekend or holiday).
+     */
+    private boolean isNonWorkingDay(LocalDate date, Set<LocalDate> holidays) {
+        DayOfWeek dow = date.getDayOfWeek();
+        return dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY || holidays.contains(date);
+    }
+
+    /**
+     * Compute effective leave days including trailing weekends/holidays and pont rule.
+     *
+     * Rules:
+     * - Forward extension: after dateFin, include consecutive non-working days (weekends+holidays)
+     *   e.g. Friday leave → Fri+Sat+Sun = 3 days
+     * - Backward extension (pont): before dateDebut, include consecutive holidays (not weekends)
+     *   e.g. Thursday is holiday + Friday leave → Thu+Fri+Sat+Sun = 4 days
+     * - The total is the calendar days from extendedStart to extendedEnd
+     */
+    public Map<String, Object> computeEffectiveDays(LocalDate dateDebut, LocalDate dateFin, String typeCongeStr) {
+        // Fetch holidays around the period (extra margin for extensions)
+        Set<LocalDate> holidays = calendrierRepository
+                .findByTypeJourAndDateJourBetween(TypeJour.FERIE,
+                        dateDebut.minusDays(10), dateFin.plusDays(10))
+                .stream()
+                .map(Calendrier::getDateJour)
+                .collect(Collectors.toSet());
+
+        // Check that there's at least one working day in the range
+        boolean hasWorkingDays = false;
+        LocalDate cur = dateDebut;
+        while (!cur.isAfter(dateFin)) {
+            if (!isNonWorkingDay(cur, holidays)) {
+                hasWorkingDays = true;
+                break;
+            }
+            cur = cur.plusDays(1);
+        }
+        if (!hasWorkingDays) {
+            return Map.of("nombreJours", 0, "details", "Aucun jour ouvrable dans la période",
+                    "dateDebutEffective", dateDebut.toString(), "dateFinEffective", dateFin.toString());
+        }
+
+        // Count base working days
+        int joursOuvrables = 0;
+        cur = dateDebut;
+        while (!cur.isAfter(dateFin)) {
+            if (!isNonWorkingDay(cur, holidays)) {
+                joursOuvrables++;
+            }
+            cur = cur.plusDays(1);
+        }
+
+        // Backward extension: include consecutive HOLIDAYS immediately before dateDebut (pont rule)
+        LocalDate extendedStart = dateDebut;
+        LocalDate prev = extendedStart.minusDays(1);
+        while (holidays.contains(prev)) {
+            extendedStart = prev;
+            prev = extendedStart.minusDays(1);
+        }
+
+        // Forward extension: include consecutive non-working days after dateFin
+        LocalDate extendedEnd = dateFin;
+        LocalDate next = extendedEnd.plusDays(1);
+        while (isNonWorkingDay(next, holidays)) {
+            extendedEnd = next;
+            next = extendedEnd.plusDays(1);
+        }
+
+        int nombreJours = (int) ChronoUnit.DAYS.between(extendedStart, extendedEnd) + 1;
+
+        // Build details
+        List<String> detailParts = new ArrayList<>();
+        detailParts.add(joursOuvrables + " jour(s) ouvrable(s)");
+        if (extendedStart.isBefore(dateDebut)) {
+            long pontDays = ChronoUnit.DAYS.between(extendedStart, dateDebut);
+            detailParts.add("+" + pontDays + "j pont (jours fériés avant)");
+        }
+        if (extendedEnd.isAfter(dateFin)) {
+            long trailingDays = ChronoUnit.DAYS.between(dateFin, extendedEnd);
+            detailParts.add("+" + trailingDays + "j (weekends/fériés après)");
+        }
+        String details = String.join(" ", detailParts) + " = " + nombreJours + " jour(s) effectif(s)";
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("nombreJours", nombreJours);
+        result.put("joursOuvrables", joursOuvrables);
+        result.put("details", details);
+        result.put("dateDebutEffective", extendedStart.toString());
+        result.put("dateFinEffective", extendedEnd.toString());
+        return result;
+    }
+
+    /**
+     * Calculate working days between two dates, excluding weekends (Sat/Sun) and holidays.
+     */
+    private int calculateWorkingDays(LocalDate start, LocalDate end) {
+        Set<LocalDate> holidays = calendrierRepository
+                .findByTypeJourAndDateJourBetween(TypeJour.FERIE, start, end)
+                .stream()
+                .map(Calendrier::getDateJour)
+                .collect(Collectors.toSet());
+
+        int workingDays = 0;
+        LocalDate current = start;
+        while (!current.isAfter(end)) {
+            DayOfWeek dow = current.getDayOfWeek();
+            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY && !holidays.contains(current)) {
+                workingDays++;
+            }
+            current = current.plusDays(1);
+        }
+        return workingDays;
+    }
+
+    /**
+     * Check if all working days in the period are only Fridays.
+     * Friday-only congé = must be congé sans solde.
+     */
+    private boolean isOnlyFridays(LocalDate start, LocalDate end) {
+        Set<LocalDate> holidays = calendrierRepository
+                .findByTypeJourAndDateJourBetween(TypeJour.FERIE, start, end)
+                .stream()
+                .map(Calendrier::getDateJour)
+                .collect(Collectors.toSet());
+
+        LocalDate current = start;
+        while (!current.isAfter(end)) {
+            DayOfWeek dow = current.getDayOfWeek();
+            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY && !holidays.contains(current)) {
+                if (dow != DayOfWeek.FRIDAY) {
+                    return false;
+                }
+            }
+            current = current.plusDays(1);
+        }
+        return true;
+    }
+
+    /**
+     * Get max autorisation minutes per month from system parameters.
+     */
+    private int getMaxAutorisationMinutes() {
+        return referentielRepository
+                .findByLibelleAndTypeReferentiel("MAX_AUTORISATION_MINUTES", TypeReferentiel.PARAMETRE_SYSTEME)
+                .map(ref -> {
+                    try {
+                        return Integer.parseInt(ref.getValeur());
+                    } catch (NumberFormatException e) {
+                        return DEFAULT_MAX_AUTORISATION_MINUTES;
+                    }
+                })
+                .orElse(DEFAULT_MAX_AUTORISATION_MINUTES);
+    }
+
+    /**
+     * Get a string referentiel value, or return the default.
+     */
+    private String getRefStringValue(String libelle, String defaultValue) {
+        return referentielRepository
+                .findByLibelleAndTypeReferentiel(libelle, TypeReferentiel.PARAMETRE_SYSTEME)
+                .map(ref -> ref.getValeur() != null ? ref.getValeur() : defaultValue)
+                .orElse(defaultValue);
+    }
+
+    // =========================================
+    // HISTORIQUE
+    // =========================================
+
     private void saveHistorique(Demande demande, StatutDemande ancien, StatutDemande nouveau, Employe employe) {
+        saveHistorique(demande, ancien, nouveau, employe, null);
+    }
+
+    private void saveHistorique(Demande demande, StatutDemande ancien, StatutDemande nouveau, Employe employe, String commentaire) {
         HistoriqueStatut historique = HistoriqueStatut.builder()
                 .demande(demande)
                 .ancienStatut(ancien)
                 .nouveauStatut(nouveau)
                 .dateChangement(LocalDateTime.now())
                 .modifiePar(employe)
+                .commentaire(commentaire)
                 .build();
         historiqueStatutRepository.save(historique);
     }
+
+    // =========================================
+    // MAPPER
+    // =========================================
 
     public DemandeResponse toResponse(Demande demande) {
         DemandeResponse.DemandeResponseBuilder builder = DemandeResponse.builder()
@@ -151,16 +650,23 @@ public class DemandeService {
                 .dateCreation(demande.getDateCreation())
                 .statut(demande.getStatut())
                 .raison(demande.getRaison())
+                .motifRefus(demande.getMotifRefus())
                 .employeId(demande.getEmploye().getId())
                 .employeNom(demande.getEmploye().getNom() + " " + demande.getEmploye().getPrenom());
 
         if (demande instanceof Conge conge) {
             builder.dateDebut(conge.getDateDebut());
             builder.dateFin(conge.getDateFin());
+            builder.typeConge(conge.getTypeConge().name());
+            builder.typeCongeLabel(conge.getTypeConge().getLabel());
+            builder.nombreJours(conge.getNombreJours());
+            builder.joursOuvrables(conge.getJoursOuvrables());
+            builder.justificatifPath(conge.getJustificatifPath());
         } else if (demande instanceof Autorisation autorisation) {
             builder.date(autorisation.getDate());
             builder.heureDebut(autorisation.getHeureDebut());
             builder.heureFin(autorisation.getHeureFin());
+            builder.dureeMinutes(Duration.between(autorisation.getHeureDebut(), autorisation.getHeureFin()).toMinutes());
         } else if (demande instanceof Teletravail teletravail) {
             builder.dateDebut(teletravail.getDateDebut());
             builder.dateFin(teletravail.getDateFin());
