@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
 import { demandeService } from '../api/demandeService';
 import { referentielService } from '../api/referentielService';
 import { Referentiel, TypeDemande } from '../types';
@@ -8,14 +7,15 @@ import { useAuth } from '../context/AuthContext';
 
 const NewDemandePapierPage: React.FC = () => {
     const { user } = useAuth();
-    const navigate = useNavigate();
 
     const [referentiels, setReferentiels] = useState<Referentiel[]>([]);
     const [selectedLibelle, setSelectedLibelle] = useState('');
     const [raison, setRaison] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
     const [loadingRef, setLoadingRef] = useState(true);
+    const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const fetchReferentiels = async () => {
@@ -31,12 +31,16 @@ const NewDemandePapierPage: React.FC = () => {
             }
         };
         fetchReferentiels();
+        return () => {
+            if (successTimerRef.current) clearTimeout(successTimerRef.current);
+        };
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
         setError('');
+        setSuccess(false);
         setLoading(true);
 
         try {
@@ -45,7 +49,12 @@ const NewDemandePapierPage: React.FC = () => {
                 raison: `[${selectedLibelle}] ${raison}`,
                 employeId: user.employeId,
             });
-            navigate('/demandes-papier');
+            // Reset fields and show success banner
+            setRaison('');
+            if (referentiels.length > 0) setSelectedLibelle(referentiels[0].libelle);
+            setSuccess(true);
+            if (successTimerRef.current) clearTimeout(successTimerRef.current);
+            successTimerRef.current = setTimeout(() => setSuccess(false), 5000);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Erreur lors de la création');
         } finally {
@@ -64,6 +73,16 @@ const NewDemandePapierPage: React.FC = () => {
                     Créer une demande administrative (papier)
                 </p>
             </div>
+
+            {/* Success banner */}
+            {success && (
+                <div className="flex items-center gap-3 rounded-xl border border-success-200 bg-success-50 px-4 py-3 text-theme-sm text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400 animate-fade-in">
+                    <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Demande créée avec succès !
+                </div>
+            )}
 
             <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-dark">
                 {error && (
@@ -117,9 +136,6 @@ const NewDemandePapierPage: React.FC = () => {
 
                     {/* Actions */}
                     <div className="flex items-center justify-end gap-3 pt-2">
-                        <Button variant="outline" type="button" onClick={() => navigate('/demandes')}>
-                            Annuler
-                        </Button>
                         <Button type="submit" disabled={loading || loadingRef || referentiels.length === 0}>
                             {loading ? 'Création...' : 'Créer la demande'}
                         </Button>

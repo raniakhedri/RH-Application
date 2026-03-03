@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { NotificationProvider } from './context/NotificationContext'
 import { ThemeProvider } from './hooks/useTheme'
 import { SidebarProvider } from './hooks/useSidebar'
 import App from './App'
@@ -12,9 +13,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <SidebarProvider>
-            <App />
-          </SidebarProvider>
+          <NotificationProvider>
+            <SidebarProvider>
+              <App />
+            </SidebarProvider>
+          </NotificationProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

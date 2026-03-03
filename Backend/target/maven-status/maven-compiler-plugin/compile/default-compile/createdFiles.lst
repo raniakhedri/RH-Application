@@ -24,6 +24,7 @@ com\antigone\rh\entity\Referentiel$ReferentielBuilder.class
 com\antigone\rh\dto\ApiResponse$ApiResponseBuilder.class
 com\antigone\rh\dto\DemandeRequest.class
 com\antigone\rh\entity\Equipe.class
+com\antigone\rh\dto\DemandePapierRequest.class
 com\antigone\rh\entity\Autorisation.class
 com\antigone\rh\repository\CompteRepository.class
 com\antigone\rh\config\SecurityConfig.class
@@ -51,6 +52,7 @@ com\antigone\rh\dto\ProjetDTO.class
 com\antigone\rh\entity\Projet.class
 com\antigone\rh\config\WebConfig.class
 com\antigone\rh\dto\ProjetDTO$ProjetDTOBuilder.class
+com\antigone\rh\controller\DemandePapierController.class
 com\antigone\rh\entity\Tache$TacheBuilder.class
 com\antigone\rh\repository\EmployeRepository.class
 com\antigone\rh\dto\CalendrierDTO$CalendrierDTOBuilder.class
@@ -107,6 +109,7 @@ com\antigone\rh\entity\HoraireTravail.class
 com\antigone\rh\entity\Calendrier.class
 com\antigone\rh\repository\PermissionRepository.class
 com\antigone\rh\entity\PeriodeBloquee.class
+com\antigone\rh\service\DemandePapierService.class
 com\antigone\rh\service\EmployeService.class
 com\antigone\rh\entity\Teletravail.class
 com\antigone\rh\repository\TeletravailRepository.class

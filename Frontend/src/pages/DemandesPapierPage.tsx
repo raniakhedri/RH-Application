@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { HiOutlineSearch, HiOutlineEye, HiOutlineXCircle } from 'react-icons/hi';
+import { HiOutlineSearch, HiOutlineEye, HiOutlineXCircle, HiOutlineCheck } from 'react-icons/hi';
 import { demandeService } from '../api/demandeService';
-import { DemandeResponse, StatutDemande, TypeDemande } from '../types';
+import { DemandeResponse, StatutDemande } from '../types';
 import Badge from '../components/ui/Badge';
 import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
-import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 const statutBadgeMap: Record<string, 'primary' | 'success' | 'danger' | 'warning' | 'secondary' | 'neutral'> = {
     BROUILLON: 'neutral',
@@ -28,13 +28,46 @@ const extractRaison = (raison: string): string => {
     return raison?.replace(/^\[[^\]]+\]\s*/, '') || '-';
 };
 
+/** Generate a stable pastel color from a string label */
+const labelToColor = (label: string): { bg: string; text: string; border: string } => {
+    // Simple hash → hue
+    let hash = 0;
+    for (let i = 0; i < label.length; i++) {
+        hash = label.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return {
+        bg: `hsla(${hue}, 70%, 50%, 0.15)`,
+        text: `hsl(${hue}, 65%, 55%)`,
+        border: `hsla(${hue}, 70%, 50%, 0.3)`,
+    };
+};
+
+const TypeBadge: React.FC<{ libelle: string }> = ({ libelle }) => {
+    const colors = labelToColor(libelle);
+    return (
+        <span
+            style={{
+                backgroundColor: colors.bg,
+                color: colors.text,
+                border: `1px solid ${colors.border}`,
+            }}
+            className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold uppercase tracking-wide"
+        >
+            {libelle}
+        </span>
+    );
+};
+
 const DemandesPapierPage: React.FC = () => {
-    const { user } = useAuth();
+    const { addNotification } = useNotifications();
     const [demandes, setDemandes] = useState<DemandeResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterStatut, setFilterStatut] = useState<string>('');
     const [selectedDemande, setSelectedDemande] = useState<DemandeResponse | null>(null);
+    const [accepting, setAccepting] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
 
     useEffect(() => {
         loadDemandes();
@@ -44,8 +77,7 @@ const DemandesPapierPage: React.FC = () => {
         try {
             const response = await demandeService.getAll();
             const all = response.data.data || [];
-            // Only keep ADMINISTRATION type demandes
-            setDemandes(all.filter((d) => d.type === TypeDemande.ADMINISTRATION));
+            setDemandes(all.filter((d) => d.type === 'ADMINISTRATION'));
         } catch (err) {
             console.error('Erreur chargement demandes papier:', err);
         } finally {
@@ -53,12 +85,37 @@ const DemandesPapierPage: React.FC = () => {
         }
     };
 
-    const handleCancel = async (id: number) => {
+    const handleAccept = async (demande: DemandeResponse) => {
+        setAccepting(true);
         try {
-            await demandeService.cancel(id);
+            await demandeService.accept(demande.id);
+            addNotification(
+                demande.employeId,
+                `Votre demande papier "${extractLibelle(demande.raison || '')}" a été acceptée ✓`
+            );
+            setSelectedDemande(null);
+            loadDemandes();
+        } catch (err) {
+            console.error('Erreur acceptation:', err);
+        } finally {
+            setAccepting(false);
+        }
+    };
+
+    const handleCancel = async (demande: DemandeResponse) => {
+        setCancelling(true);
+        try {
+            await demandeService.cancel(demande.id);
+            addNotification(
+                demande.employeId,
+                `Votre demande papier "${extractLibelle(demande.raison || '')}" a été refusée ✗`
+            );
+            setSelectedDemande(null);
             loadDemandes();
         } catch (err) {
             console.error('Erreur annulation:', err);
+        } finally {
+            setCancelling(false);
         }
     };
 
@@ -72,15 +129,16 @@ const DemandesPapierPage: React.FC = () => {
         return matchSearch && matchStatut;
     });
 
+    const canActOn = (statut: string) =>
+        statut === 'SOUMISE' || statut === 'EN_VALIDATION' || statut === 'BROUILLON';
+
     const columns = [
         { key: 'id', label: '#' },
         {
             key: 'type',
             label: 'Type de demande',
             render: (item: DemandeResponse) => (
-                <span className="font-medium text-gray-800 dark:text-white">
-                    {extractLibelle(item.raison || '')}
-                </span>
+                <TypeBadge libelle={extractLibelle(item.raison || '')} />
             ),
         },
         { key: 'employeNom', label: 'Employé' },
@@ -95,9 +153,7 @@ const DemandesPapierPage: React.FC = () => {
             key: 'dateCreation',
             label: 'Date de création',
             render: (d: DemandeResponse) => (
-                <span className="text-theme-xs text-gray-500">
-                    {d.dateCreation || '-'}
-                </span>
+                <span className="text-theme-xs text-gray-500">{d.dateCreation || '-'}</span>
             ),
         },
         {
@@ -119,14 +175,23 @@ const DemandesPapierPage: React.FC = () => {
                     >
                         <HiOutlineEye size={16} />
                     </button>
-                    {(item.statut === 'BROUILLON' || item.statut === 'SOUMISE') && (
-                        <button
-                            onClick={() => handleCancel(item.id)}
-                            className="rounded-lg p-1.5 text-error-500 hover:bg-error-50"
-                            title="Annuler"
-                        >
-                            <HiOutlineXCircle size={16} />
-                        </button>
+                    {canActOn(item.statut) && (
+                        <>
+                            <button
+                                onClick={() => handleAccept(item)}
+                                className="rounded-lg p-1.5 text-success-500 hover:bg-success-50"
+                                title="Accepter"
+                            >
+                                <HiOutlineCheck size={16} />
+                            </button>
+                            <button
+                                onClick={() => handleCancel(item)}
+                                className="rounded-lg p-1.5 text-error-500 hover:bg-error-50"
+                                title="Refuser"
+                            >
+                                <HiOutlineXCircle size={16} />
+                            </button>
+                        </>
                     )}
                 </div>
             ),
@@ -167,11 +232,15 @@ const DemandesPapierPage: React.FC = () => {
                 </select>
             </div>
 
-            {/* Table */}
+            {/* Table — double-click a row to open detail */}
             {loading ? (
                 <div className="py-12 text-center text-gray-500 dark:text-gray-400">Chargement...</div>
             ) : (
-                <DataTable columns={columns} data={filtered} />
+                <DataTable
+                    columns={columns}
+                    data={filtered}
+                    onRowDoubleClick={(item) => setSelectedDemande(item)}
+                />
             )}
 
             {/* Detail Modal */}
@@ -181,9 +250,7 @@ const DemandesPapierPage: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-theme-xs text-gray-500 dark:text-gray-400">Type de demande</p>
-                                <p className="text-theme-sm font-medium text-gray-800 dark:text-white">
-                                    {extractLibelle(selectedDemande.raison || '')}
-                                </p>
+                                <TypeBadge libelle={extractLibelle(selectedDemande.raison || '')} />
                             </div>
                             <div>
                                 <p className="text-theme-xs text-gray-500 dark:text-gray-400">Statut</p>
@@ -204,6 +271,25 @@ const DemandesPapierPage: React.FC = () => {
                                 {extractRaison(selectedDemande.raison || '')}
                             </p>
                         </div>
+
+                        {/* Action buttons visible only for actionable statuses */}
+                        {canActOn(selectedDemande.statut) && (
+                            <div className="flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => handleCancel(selectedDemande)}
+                                    disabled={cancelling || accepting}
+                                >
+                                    {cancelling ? 'Refus...' : 'Refuser'}
+                                </Button>
+                                <Button
+                                    onClick={() => handleAccept(selectedDemande)}
+                                    disabled={accepting || cancelling}
+                                >
+                                    {accepting ? 'Acceptation...' : 'Accepter'}
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
             </Modal>

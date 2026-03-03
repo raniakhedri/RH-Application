@@ -3,6 +3,7 @@ C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\ja
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\controller\AuthController.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\controller\CalendrierController.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\controller\DemandeController.java
+C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\controller\DemandePapierController.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\controller\EmployeController.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\controller\EquipeController.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\controller\PointageController.java
@@ -13,6 +14,7 @@ C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\ja
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ApiResponse.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\dto\CalendrierDTO.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\dto\CalendrierRequest.java
+C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\dto\DemandePapierRequest.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\dto\DemandeRequest.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\dto\DemandeResponse.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\dto\EmployeDTO.java
@@ -80,6 +82,7 @@ C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\ja
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\RhApplication.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\service\CalendrierService.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\service\CompteService.java
+C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\service\DemandePapierService.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\service\DemandeService.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\service\EmployeService.java
 C:\Users\alaou\OneDrive\Documents\RH-Antigone\RH-Application\Backend\src\main\java\com\antigone\rh\service\EquipeService.java
