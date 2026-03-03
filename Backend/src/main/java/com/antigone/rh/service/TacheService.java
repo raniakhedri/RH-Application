@@ -48,6 +48,7 @@ public class TacheService {
                 .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
 
         tache.setProjet(projet);
+        validateTacheDate(tache, projet);
         tache.setStatut(StatutTache.TODO);
         return tacheRepository.save(tache);
     }
@@ -74,7 +75,22 @@ public class TacheService {
         if (tacheDetails.getStatut() != null) {
             tache.setStatut(tacheDetails.getStatut());
         }
+        validateTacheDate(tache, tache.getProjet());
         return tacheRepository.save(tache);
+    }
+
+    private void validateTacheDate(Tache tache, Projet projet) {
+        if (tache.getDateEcheance() == null)
+            return;
+        if (projet.getDateDebut() != null && tache.getDateEcheance().isBefore(projet.getDateDebut())) {
+            throw new IllegalArgumentException(
+                    "La date de l'échéance ne peut pas être avant la date de début du projet (" + projet.getDateDebut()
+                            + ")");
+        }
+        if (projet.getDateFin() != null && tache.getDateEcheance().isAfter(projet.getDateFin())) {
+            throw new IllegalArgumentException("La date de l'échéance ne peut pas être après la date de fin du projet ("
+                    + projet.getDateFin() + ")");
+        }
     }
 
     public void delete(Long id) {

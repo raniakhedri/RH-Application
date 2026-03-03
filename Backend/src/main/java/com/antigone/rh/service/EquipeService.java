@@ -1,5 +1,8 @@
 package com.antigone.rh.service;
 
+import com.antigone.rh.dto.EquipeCreateRequest;
+import com.antigone.rh.dto.EquipeDTO;
+import com.antigone.rh.dto.EmployeDTO;
 import com.antigone.rh.entity.Employe;
 import com.antigone.rh.entity.Equipe;
 import com.antigone.rh.entity.Projet;
@@ -10,7 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,48 +24,119 @@ public class EquipeService {
     private final EquipeRepository equipeRepository;
     private final ProjetRepository projetRepository;
     private final EmployeRepository employeRepository;
+    private final EmployeService employeService;
 
-    public List<Equipe> findAll() {
-        return equipeRepository.findAll();
+    public List<EquipeDTO> findAll() {
+        return equipeRepository.findAll().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
-    public Equipe findById(Long id) {
-        return equipeRepository.findById(id)
+    public EquipeDTO findById(Long id) {
+        Equipe equipe = equipeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Equipe non trouvée avec l'id: " + id));
+        return toDTO(equipe);
     }
 
-    public List<Equipe> findByProjet(Long projetId) {
-        return equipeRepository.findByProjetId(projetId);
+    public List<EquipeDTO> findByProjet(Long projetId) {
+        return equipeRepository.findByProjetId(projetId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
-    public Equipe create(Long projetId, String nom) {
-        Projet projet = projetRepository.findById(projetId)
-                .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
+    public EquipeDTO create(EquipeCreateRequest request) {
+        Equipe equipe = new Equipe();
+        equipe.setNom(request.getNom());
 
-        Equipe equipe = Equipe.builder()
-                .nom(nom)
-                .projet(projet)
-                .build();
+        if (request.getProjetId() != null) {
+            Projet projet = projetRepository.findById(request.getProjetId())
+                    .orElseThrow(() -> new RuntimeException("Projet non trouvé: " + request.getProjetId()));
+            equipe.setProjet(projet);
+        }
 
-        return equipeRepository.save(equipe);
+        if (request.getMemberIds() != null && !request.getMemberIds().isEmpty()) {
+            Set<Employe> membres = request.getMemberIds().stream()
+                    .map(id -> employeRepository.findById(id)
+                            .orElseThrow(() -> new RuntimeException("Employé non trouvé: " + id)))
+                    .collect(Collectors.toSet());
+            equipe.setMembres(membres);
+        }
+
+        Equipe saved = equipeRepository.save(equipe);
+        return toDTO(saved);
     }
 
-    public Equipe addMembre(Long equipeId, Long employeId) {
-        Equipe equipe = findById(equipeId);
+    public EquipeDTO update(Long id, EquipeCreateRequest request) {
+        Equipe equipe = equipeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Equipe non trouvée: " + id));
+        equipe.setNom(request.getNom());
+
+        if (request.getProjetId() != null) {
+            Projet projet = projetRepository.findById(request.getProjetId())
+                    .orElseThrow(() -> new RuntimeException("Projet non trouvé: " + request.getProjetId()));
+            equipe.setProjet(projet);
+        } else {
+            equipe.setProjet(null);
+        }
+
+        if (request.getMemberIds() != null) {
+            Set<Employe> membres = request.getMemberIds().stream()
+                    .map(employeId -> employeRepository.findById(employeId)
+                            .orElseThrow(() -> new RuntimeException("Employé non trouvé: " + employeId)))
+                    .collect(Collectors.toSet());
+            equipe.setMembres(membres);
+        }
+
+        return toDTO(equipeRepository.save(equipe));
+    }
+
+    public EquipeDTO addMembre(Long equipeId, Long employeId) {
+        Equipe equipe = equipeRepository.findById(equipeId)
+                .orElseThrow(() -> new RuntimeException("Equipe non trouvée"));
         Employe employe = employeRepository.findById(employeId)
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé"));
 
         equipe.getMembres().add(employe);
-        return equipeRepository.save(equipe);
+        return toDTO(equipeRepository.save(equipe));
     }
 
-    public Equipe removeMembre(Long equipeId, Long employeId) {
-        Equipe equipe = findById(equipeId);
+    public EquipeDTO removeMembre(Long equipeId, Long employeId) {
+        Equipe equipe = equipeRepository.findById(equipeId)
+                .orElseThrow(() -> new RuntimeException("Equipe non trouvée"));
         equipe.getMembres().removeIf(e -> e.getId().equals(employeId));
-        return equipeRepository.save(equipe);
+        return toDTO(equipeRepository.save(equipe));
+    }
+
+    public EquipeDTO assignToProjet(Long equipeId, Long projetId) {
+        Equipe equipe = equipeRepository.findById(equipeId)
+                .orElseThrow(() -> new RuntimeException("Equipe non trouvée"));
+        Projet projet = projetRepository.findById(projetId)
+                .orElseThrow(() -> new RuntimeException("Projet non trouvé"));
+        equipe.setProjet(projet);
+        return toDTO(equipeRepository.save(equipe));
+    }
+
+    public List<EmployeDTO> findMembresByProjet(Long projetId) {
+        List<Equipe> equipes = equipeRepository.findByProjetId(projetId);
+        Set<Employe> allMembers = new LinkedHashSet<>();
+        for (Equipe equipe : equipes) {
+            allMembers.addAll(equipe.getMembres());
+        }
+        return allMembers.stream().map(employeService::toDTO).collect(Collectors.toList());
     }
 
     public void delete(Long id) {
         equipeRepository.deleteById(id);
+    }
+
+    public EquipeDTO toDTO(Equipe equipe) {
+        return EquipeDTO.builder()
+                .id(equipe.getId())
+                .nom(equipe.getNom())
+                .projetId(equipe.getProjet() != null ? equipe.getProjet().getId() : null)
+                .membres(equipe.getMembres() != null ? equipe.getMembres().stream()
+                        .map(employeService::toDTO)
+                        .collect(Collectors.toList()) : new ArrayList<>())
+                .build();
     }
 }

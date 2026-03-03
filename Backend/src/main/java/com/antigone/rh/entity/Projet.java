@@ -1,6 +1,7 @@
 package com.antigone.rh.entity;
 
 import com.antigone.rh.enums.StatutProjet;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,15 +32,23 @@ public class Projet {
 
     private LocalDate dateFin;
 
-    @OneToMany(mappedBy = "projet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chef_projet_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Employe chefDeProjet;
+
+    @OneToMany(mappedBy = "projet", cascade = { CascadeType.PERSIST, CascadeType.MERGE }, fetch = FetchType.LAZY)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @Builder.Default
+    @JsonIgnore
     private List<Equipe> equipes = new ArrayList<>();
 
     @OneToMany(mappedBy = "projet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @Builder.Default
+    @JsonIgnore
     private List<Tache> taches = new ArrayList<>();
 }

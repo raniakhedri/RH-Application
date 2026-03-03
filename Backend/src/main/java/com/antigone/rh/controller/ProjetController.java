@@ -1,7 +1,8 @@
 package com.antigone.rh.controller;
 
 import com.antigone.rh.dto.ApiResponse;
-import com.antigone.rh.entity.Projet;
+import com.antigone.rh.dto.ProjetDTO;
+import com.antigone.rh.dto.ProjetRequest;
 import com.antigone.rh.enums.StatutProjet;
 import com.antigone.rh.service.ProjetService;
 import lombok.RequiredArgsConstructor;
@@ -18,33 +19,39 @@ public class ProjetController {
     private final ProjetService projetService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Projet>>> getAll() {
+    public ResponseEntity<ApiResponse<List<ProjetDTO>>> getAll() {
         return ResponseEntity.ok(ApiResponse.ok(projetService.findAll()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Projet>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ProjetDTO>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(projetService.findById(id)));
     }
 
     @GetMapping("/statut/{statut}")
-    public ResponseEntity<ApiResponse<List<Projet>>> getByStatut(@PathVariable StatutProjet statut) {
-        return ResponseEntity.ok(ApiResponse.ok(projetService.findByStatut(statut)));
+    public ResponseEntity<ApiResponse<List<ProjetDTO>>> getByStatut(@PathVariable String statut) {
+        return ResponseEntity.ok(ApiResponse.ok(projetService.findByStatut(StatutProjet.valueOf(statut))));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Projet>> create(@RequestBody Projet projet) {
-        return ResponseEntity.ok(ApiResponse.ok("Projet créé", projetService.create(projet)));
+    public ResponseEntity<ApiResponse<ProjetDTO>> create(@RequestBody ProjetRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Projet créé", projetService.create(request)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Projet>> update(@PathVariable Long id, @RequestBody Projet projet) {
-        return ResponseEntity.ok(ApiResponse.ok("Projet mis à jour", projetService.update(id, projet)));
+    public ResponseEntity<ApiResponse<ProjetDTO>> update(@PathVariable Long id, @RequestBody ProjetRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Projet mis à jour", projetService.update(id, request)));
     }
 
     @PatchMapping("/{id}/statut")
-    public ResponseEntity<ApiResponse<Projet>> changeStatut(@PathVariable Long id, @RequestParam StatutProjet statut) {
-        return ResponseEntity.ok(ApiResponse.ok("Statut mis à jour", projetService.changeStatut(id, statut)));
+    public ResponseEntity<ApiResponse<ProjetDTO>> changeStatut(@PathVariable Long id,
+            @RequestParam String statut) {
+        try {
+            StatutProjet statutEnum = StatutProjet.valueOf(statut.toUpperCase());
+            return ResponseEntity.ok(ApiResponse.ok("Statut mis à jour", projetService.changeStatut(id, statutEnum)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Statut invalide: " + statut));
+        }
     }
 
     @DeleteMapping("/{id}")

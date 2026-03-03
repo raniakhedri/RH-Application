@@ -50,6 +50,8 @@ const menuGroups = [
         permission: 'VIEW_DEMANDES',
         children: [
           { label: 'Demandes congés', path: '/demandes' },
+          { label: 'Demandes papier', path: 'demandes/papier' },
+          { label: 'Les Demandes papier', path: 'demandes/liste-papier' },
         ],
       },
       { key: 'validations', label: 'Validations', path: '/validations', icon: <HiOutlineClipboardCheck size={20} />, permission: 'VIEW_VALIDATIONS' },
