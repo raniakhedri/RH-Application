@@ -4,5 +4,9 @@ public enum StatutDemande {
     EN_ATTENTE,
     APPROUVEE,
     REFUSEE,
-    ANNULEE
+    ANNULEE,
+    BROUILLON,
+    SOUMISE,
+    EN_VALIDATION,
+    VALIDEE,
 }

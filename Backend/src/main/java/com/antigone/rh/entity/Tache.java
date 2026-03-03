@@ -1,6 +1,8 @@
 package com.antigone.rh.entity;
 
 import com.antigone.rh.enums.StatutTache;
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,11 +33,23 @@ public class Tache {
     @JoinColumn(name = "projet_id", nullable = false)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
+    @JsonIgnore
     private Projet projet;
+
+    @JsonGetter("projetId")
+    public Long fetchProjetIdJson() {
+        return projet != null ? projet.getId() : null;
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_id")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
+    @JsonIgnore
     private Employe assignee;
+
+    @JsonGetter("assigneeId")
+    public Long fetchAssigneeIdJson() {
+        return assignee != null ? assignee.getId() : null;
+    }
 }

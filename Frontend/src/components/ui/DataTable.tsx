@@ -11,6 +11,7 @@ interface DataTableProps<T> {
   data: T[];
   onRowClick?: (item: T) => void;
   emptyMessage?: string;
+  onRowDoubleClick?: (item: T) => void;
 }
 
 function DataTable<T extends { id: number }>({
@@ -18,6 +19,7 @@ function DataTable<T extends { id: number }>({
   data,
   onRowClick,
   emptyMessage = 'Aucune donnée disponible',
+  onRowDoubleClick,
 }: DataTableProps<T>) {
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark">
@@ -47,9 +49,9 @@ function DataTable<T extends { id: number }>({
                 <tr
                   key={item.id}
                   onClick={() => onRowClick?.(item)}
-                  className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${
-                    onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''
-                  } transition-colors`}
+                  onDoubleClick={() => onRowDoubleClick?.(item)}
+                  className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${onRowClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''
+                    } transition-colors`}
                 >
                   {columns.map((col) => (
                     <td key={col.key} className="px-5 py-4 text-theme-sm text-gray-700 dark:text-gray-300">

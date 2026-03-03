@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineUserGroup } from 'react-icons/hi';
 import { projetService } from '../api/projetService';
-import { Projet, StatutProjet } from '../types';
+import { equipeService } from '../api/equipeService';
+import { employeService } from '../api/employeService';
+import { Projet, Equipe, StatutProjet, Employe } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import DataTable from '../components/ui/DataTable';
@@ -16,19 +18,40 @@ const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success' | 'danger
 
 const ProjetsPage: React.FC = () => {
   const [projets, setProjets] = useState<Projet[]>([]);
+  const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEquipeModal, setShowEquipeModal] = useState(false);
   const [editingProjet, setEditingProjet] = useState<Projet | null>(null);
-  const [formData, setFormData] = useState({ nom: '', dateDebut: '', dateFin: '', statut: StatutProjet.PLANIFIE });
+  const [selectedProjetId, setSelectedProjetId] = useState<number | null>(null);
+  const [selectedEquipeId, setSelectedEquipeId] = useState<number>(0);
+  const [formData, setFormData] = useState({
+    nom: '',
+    dateDebut: '',
+    dateFin: '',
+    statut: StatutProjet.PLANIFIE,
+    chefDeProjetId: null as number | null,
+    equipeId: null as number | null
+  });
+  const [employes, setEmployes] = useState<Employe[]>([]);
+  const [dateError, setDateError] = useState<string | null>(null);
+
+  const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    loadProjets();
+    loadData();
   }, []);
 
-  const loadProjets = async () => {
+  const loadData = async () => {
     try {
-      const response = await projetService.getAll();
-      setProjets(response.data.data || []);
+      const [pRes, eqRes, empRes] = await Promise.all([
+        projetService.getAll(),
+        equipeService.getAll(),
+        employeService.getAll(),
+      ]);
+      setProjets(pRes.data.data || []);
+      setEquipes(eqRes.data.data || []);
+      setEmployes(empRes.data.data || []);
     } catch (err) {
       console.error('Erreur chargement projets:', err);
     } finally {
@@ -36,25 +59,57 @@ const ProjetsPage: React.FC = () => {
     }
   };
 
+  const validateDates = (): boolean => {
+    if (!editingProjet) {
+      // Only validate dateDebut >= today for new projects
+      if (formData.dateDebut && formData.dateDebut < today) {
+        setDateError('La date de début doit être aujourd\'hui ou plus tard');
+        return false;
+      }
+    }
+    if (formData.dateDebut && formData.dateFin && formData.dateFin <= formData.dateDebut) {
+      setDateError('La date de fin doit être après la date de début');
+      return false;
+    }
+    setDateError(null);
+    return true;
+  };
+
   const handleSave = async () => {
+    if (!validateDates()) return;
     try {
+      const payload = {
+        ...formData,
+        chefDeProjetId: formData.chefDeProjetId || null,
+        equipeId: formData.equipeId || null
+      };
       if (editingProjet) {
-        await projetService.update(editingProjet.id, formData);
+        await projetService.update(editingProjet.id, payload);
       } else {
-        await projetService.create(formData);
+        await projetService.create(payload);
       }
       setShowModal(false);
       setEditingProjet(null);
       resetForm();
-      loadProjets();
-    } catch (err) {
+      loadData();
+    } catch (err: any) {
       console.error('Erreur sauvegarde projet:', err);
+      const msg = err?.response?.data?.message || 'Erreur lors de la sauvegarde du projet';
+      setDateError(msg);
     }
   };
 
   const handleEdit = (projet: Projet) => {
     setEditingProjet(projet);
-    setFormData({ nom: projet.nom, dateDebut: projet.dateDebut, dateFin: projet.dateFin, statut: projet.statut });
+    setFormData({
+      nom: projet.nom,
+      dateDebut: projet.dateDebut,
+      dateFin: projet.dateFin,
+      statut: projet.statut,
+      chefDeProjetId: projet.chefDeProjet?.id || null,
+      equipeId: projet.equipeId || null
+    });
+    setDateError(null);
     setShowModal(true);
   };
 
@@ -62,7 +117,7 @@ const ProjetsPage: React.FC = () => {
     if (window.confirm('Supprimer ce projet ?')) {
       try {
         await projetService.delete(id);
-        loadProjets();
+        loadData();
       } catch (err) {
         console.error('Erreur suppression:', err);
       }
@@ -72,14 +127,41 @@ const ProjetsPage: React.FC = () => {
   const handleChangeStatut = async (id: number, statut: StatutProjet) => {
     try {
       await projetService.changeStatut(id, statut);
-      loadProjets();
+      loadData();
     } catch (err) {
       console.error('Erreur changement statut:', err);
     }
   };
 
+  const handleAssignEquipe = async () => {
+    if (!selectedProjetId || !selectedEquipeId) return;
+    try {
+      await equipeService.assignToProjet(selectedEquipeId, selectedProjetId);
+      setShowEquipeModal(false);
+      loadData();
+    } catch (err) {
+      console.error('Erreur assignation équipe:', err);
+    }
+  };
+
+  const openEquipeModal = (projetId: number) => {
+    setSelectedProjetId(projetId);
+    // Pre-select first available equipe
+    const available = equipes.filter(e => !e.projetId || e.projetId === projetId);
+    setSelectedEquipeId(available[0]?.id || 0);
+    setShowEquipeModal(true);
+  };
+
   const resetForm = () => {
-    setFormData({ nom: '', dateDebut: '', dateFin: '', statut: StatutProjet.PLANIFIE });
+    setFormData({
+      nom: '',
+      dateDebut: '',
+      dateFin: '',
+      statut: StatutProjet.PLANIFIE,
+      chefDeProjetId: null,
+      equipeId: null
+    });
+    setDateError(null);
   };
 
   const inputClass =
@@ -99,13 +181,48 @@ const ProjetsPage: React.FC = () => {
       label: 'Statut',
       render: (p: Projet) => <Badge text={p.statut} variant={statutBadgeMap[p.statut] || 'neutral'} />,
     },
-    { key: 'dateDebut', label: 'Début' },
-    { key: 'dateFin', label: 'Fin' },
+    {
+      key: 'chef',
+      label: 'Chef',
+      render: (p: Projet) => p.chefDeProjet ? `${p.chefDeProjet.prenom} ${p.chefDeProjet.nom}` : '-',
+    },
+    {
+      key: 'equipes',
+      label: 'Équipes',
+      render: (p: Projet) => p.equipeNoms?.join(', ') || '-',
+    },
+    {
+      key: 'dateDebut',
+      label: 'Début',
+      render: (p: Projet) => {
+        if (!p.dateDebut) return '-';
+        const [y, m, d] = p.dateDebut.split('-');
+        return `${m}-${d}-${y}`;
+      }
+    },
+    {
+      key: 'dateFin',
+      label: 'Fin',
+      render: (p: Projet) => {
+        if (!p.dateFin) return '-';
+        const [y, m, d] = p.dateFin.split('-');
+        return `${m}-${d}-${y}`;
+      }
+    },
     {
       key: 'actions',
       label: 'Actions',
       render: (item: Projet) => (
         <div className="flex gap-1">
+          {(item.statut === 'PLANIFIE' || item.statut === 'EN_COURS') && (
+            <button
+              onClick={() => openEquipeModal(item.id)}
+              className="rounded-lg p-1.5 text-secondary-500 hover:bg-secondary-50"
+              title="Assigner une équipe"
+            >
+              <HiOutlineUserGroup size={16} />
+            </button>
+          )}
           {item.statut === 'PLANIFIE' && (
             <button
               onClick={() => handleChangeStatut(item.id, StatutProjet.EN_COURS)}
@@ -141,6 +258,9 @@ const ProjetsPage: React.FC = () => {
     },
   ];
 
+  // Available equipes for assignment (no project yet, or already linked to this project)
+  const availableEquipes = equipes.filter(e => !e.projetId || e.projetId === selectedProjetId);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -158,9 +278,10 @@ const ProjetsPage: React.FC = () => {
       {loading ? (
         <div className="py-12 text-center text-gray-500">Chargement...</div>
       ) : (
-        <DataTable columns={columns} data={projets} />
+        <DataTable columns={columns} data={projets} onRowDoubleClick={handleEdit} />
       )}
 
+      {/* Create/Edit Modal */}
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -177,13 +298,43 @@ const ProjetsPage: React.FC = () => {
               required
             />
           </div>
+          <div>
+            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Chef de Projet (optionnel)</label>
+            <select
+              value={formData.chefDeProjetId || ''}
+              onChange={(e) => setFormData({ ...formData, chefDeProjetId: e.target.value ? Number(e.target.value) : null })}
+              className={inputClass}
+            >
+              <option value="">Aucun chef assigné</option>
+              {employes.map((e) => (
+                <option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Équipe (optionnel)</label>
+            <select
+              value={formData.equipeId || ''}
+              onChange={(e) => setFormData({ ...formData, equipeId: e.target.value ? Number(e.target.value) : null })}
+              className={inputClass}
+            >
+              <option value="">Aucune équipe assignée</option>
+              {equipes.map((eq) => (
+                <option key={eq.id} value={eq.id}>{eq.nom}</option>
+              ))}
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Date début</label>
               <input
                 type="date"
                 value={formData.dateDebut}
-                onChange={(e) => setFormData({ ...formData, dateDebut: e.target.value })}
+                min={!editingProjet ? today : undefined}
+                onChange={(e) => {
+                  setFormData({ ...formData, dateDebut: e.target.value });
+                  setDateError(null);
+                }}
                 className={inputClass}
                 required
               />
@@ -193,12 +344,21 @@ const ProjetsPage: React.FC = () => {
               <input
                 type="date"
                 value={formData.dateFin}
-                onChange={(e) => setFormData({ ...formData, dateFin: e.target.value })}
+                min={formData.dateDebut || today}
+                onChange={(e) => {
+                  setFormData({ ...formData, dateFin: e.target.value });
+                  setDateError(null);
+                }}
                 className={inputClass}
                 required
               />
             </div>
           </div>
+          {dateError && (
+            <div className="rounded-lg bg-error-50 px-4 py-2 text-theme-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">
+              {dateError}
+            </div>
+          )}
           {editingProjet && (
             <div>
               <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Statut</label>
@@ -216,6 +376,45 @@ const ProjetsPage: React.FC = () => {
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setShowModal(false)}>Annuler</Button>
             <Button onClick={handleSave}>{editingProjet ? 'Modifier' : 'Créer'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Assign Equipe Modal */}
+      <Modal
+        isOpen={showEquipeModal}
+        onClose={() => setShowEquipeModal(false)}
+        title="Assigner une équipe"
+      >
+        <div className="space-y-4">
+          <p className="text-theme-sm text-gray-600 dark:text-gray-300">
+            Sélectionner une équipe pour ce projet
+          </p>
+          {availableEquipes.length === 0 ? (
+            <div className="rounded-lg bg-warning-50 px-4 py-3 text-theme-sm text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+              Aucune équipe disponible. Créez d'abord une équipe dans la page Équipes.
+            </div>
+          ) : (
+            <div>
+              <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Équipe</label>
+              <select
+                value={selectedEquipeId}
+                onChange={(e) => setSelectedEquipeId(Number(e.target.value))}
+                className={inputClass}
+              >
+                {availableEquipes.map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setShowEquipeModal(false)}>Annuler</Button>
+            <Button onClick={handleAssignEquipe} disabled={availableEquipes.length === 0}>
+              <HiOutlineUserGroup size={16} /> Assigner
+            </Button>
           </div>
         </div>
       </Modal>
