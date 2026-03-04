@@ -14,6 +14,8 @@ import {
   HiOutlineKey,
   HiOutlineShieldCheck,
   HiOutlineClipboardList,
+  HiOutlineViewBoards,
+  HiOutlinePaperClip,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
 import { useAuth } from '../../context/AuthContext';
@@ -36,7 +38,10 @@ const menuGroups = [
       { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} />, permission: 'VIEW_DASHBOARD' },
       { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} />, permission: 'VIEW_EMPLOYES' },
       { key: 'mes-demandes', label: 'Mes demandes', path: '/mes-demandes', icon: <HiOutlineClipboardList size={20} /> },
+      { key: 'mes-taches', label: 'Mes Tâches', path: '/mes-taches', icon: <HiOutlineViewBoards size={20} /> },
       { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} /> },
+      { key: 'Mes-Demandes-Papier', label: 'Mes Demandes Papier', path: '/mes-demandes-papier', icon: <HiOutlineCalendar size={20} /> },
+
     ] as NavItemDef[],
   },
   {
@@ -52,6 +57,7 @@ const menuGroups = [
           { label: 'Demandes congés', path: '/demandes' },
           { label: 'Demandes papier', path: 'demandes/papier' },
           { label: 'Les Demandes papier', path: 'demandes/liste-papier' },
+
         ],
       },
       { key: 'validations', label: 'Validations', path: '/validations', icon: <HiOutlineClipboardCheck size={20} />, permission: 'VIEW_VALIDATIONS' },

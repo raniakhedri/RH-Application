@@ -25,6 +25,7 @@ public class EquipeService {
     private final ProjetRepository projetRepository;
     private final EmployeRepository employeRepository;
     private final EmployeService employeService;
+    private final NotificationService notificationService;
 
     public List<EquipeDTO> findAll() {
         return equipeRepository.findAll().stream()
@@ -63,6 +64,16 @@ public class EquipeService {
         }
 
         Equipe saved = equipeRepository.save(equipe);
+
+        // Notify newly added members
+        if (request.getMemberIds() != null) {
+            request.getMemberIds().forEach(membId -> {
+                employeRepository.findById(membId)
+                        .ifPresent(emp -> notificationService.create(emp, "Ajout à une équipe",
+                                "Vous avez été ajouté à l'équipe \"" + saved.getNom() + "\".", null));
+            });
+        }
+
         return toDTO(saved);
     }
 
@@ -87,7 +98,18 @@ public class EquipeService {
             equipe.setMembres(membres);
         }
 
-        return toDTO(equipeRepository.save(equipe));
+        Equipe savedEquipe = equipeRepository.save(equipe);
+
+        // Notify newly added members on update
+        if (request.getMemberIds() != null) {
+            request.getMemberIds().forEach(membId -> {
+                employeRepository.findById(membId)
+                        .ifPresent(emp -> notificationService.create(emp, "Ajout à une équipe",
+                                "Vous avez été ajouté à l'équipe \"" + savedEquipe.getNom() + "\".", null));
+            });
+        }
+
+        return toDTO(savedEquipe);
     }
 
     public EquipeDTO addMembre(Long equipeId, Long employeId) {
@@ -97,7 +119,13 @@ public class EquipeService {
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé"));
 
         equipe.getMembres().add(employe);
-        return toDTO(equipeRepository.save(equipe));
+        Equipe saved = equipeRepository.save(equipe);
+
+        // Notify the added member
+        notificationService.create(employe, "Ajout à une équipe",
+                "Vous avez été ajouté à l'équipe \"" + equipe.getNom() + "\".", null);
+
+        return toDTO(saved);
     }
 
     public EquipeDTO removeMembre(Long equipeId, Long employeId) {

@@ -6,15 +6,19 @@ import {
   HiOutlineTrash,
   HiOutlineCalendar,
   HiOutlineClock,
+  HiOutlineExclamation,
 } from 'react-icons/hi';
+import { HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi';
 import { calendrierService } from '../api/calendrierService';
-import { CalendrierJour, HoraireTravail, TypeJour, OrigineJour } from '../types';
+import { equipeService } from '../api/equipeService';
+import { tacheObligatoireService, TacheObligatoireDTO } from '../api/tacheObligatoireService';
+import { CalendrierJour, HoraireTravail, TypeJour, OrigineJour, Equipe, Employe } from '../types';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
 import Badge from '../components/ui/Badge';
 
-type Tab = 'jours' | 'horaires';
+type Tab = 'jours' | 'horaires' | 'taches-obligatoires';
 
 const JOURS_SEMAINE = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI', 'DIMANCHE'];
 
@@ -83,10 +87,35 @@ const CalendrierPage: React.FC = () => {
     dateFin: '',
   });
 
+  // ============ Tâches Obligatoires state ============
+  const [tachesObl, setTachesObl] = useState<TacheObligatoireDTO[]>([]);
+  const [tachesOblLoading, setTachesOblLoading] = useState(true);
+  const [showTacheOblModal, setShowTacheOblModal] = useState(false);
+  const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [selectedEquipe, setSelectedEquipe] = useState<Equipe | null>(null);
+  const [tacheOblForm, setTacheOblForm] = useState({
+    nom: '',
+    equipeId: '' as string | number,
+    employeId: '' as string | number,
+    dates: [] as string[],
+  });
+  // Mini date-picker state for tache obl
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
+
   useEffect(() => {
     loadJours();
     loadHoraires();
+    loadTachesObl();
+    loadEquipes();
   }, []);
+
+  const loadEquipes = async () => {
+    try {
+      const res = await equipeService.getAll();
+      setEquipes(res.data.data || []);
+    } catch { /* ignore */ }
+  };
 
   // ============ Jours logic ============
   const loadJours = async () => {
@@ -275,6 +304,101 @@ const CalendrierPage: React.FC = () => {
       h.joursTravail.toLowerCase().includes(horaireSearch.toLowerCase())
   );
 
+  // ============ Tâches Obligatoires logic ============
+  const loadTachesObl = async () => {
+    try {
+      const res = await tacheObligatoireService.getAll();
+      setTachesObl(res.data.data || []);
+    } catch { /* ignore */ } finally {
+      setTachesOblLoading(false);
+    }
+  };
+
+  const handleEquipeChange = (equipeId: string) => {
+    const eq = equipes.find((e) => String(e.id) === equipeId) || null;
+    setSelectedEquipe(eq);
+    setTacheOblForm((f) => ({ ...f, equipeId, employeId: '' }));
+  };
+
+  const togglePickerDate = (dateStr: string) => {
+    setTacheOblForm((f) => ({
+      ...f,
+      dates: f.dates.includes(dateStr)
+        ? f.dates.filter((d) => d !== dateStr)
+        : [...f.dates, dateStr],
+    }));
+  };
+
+  const handleSaveTacheObl = async () => {
+    if (!tacheOblForm.nom || !tacheOblForm.equipeId || tacheOblForm.dates.length === 0) {
+      alert('Veuillez remplir le nom, choisir une équipe et sélectionner au moins une date.');
+      return;
+    }
+    try {
+      await tacheObligatoireService.create({
+        nom: tacheOblForm.nom,
+        equipeId: Number(tacheOblForm.equipeId),
+        employeId: tacheOblForm.employeId ? Number(tacheOblForm.employeId) : null,
+        dates: tacheOblForm.dates,
+      });
+      setShowTacheOblModal(false);
+      setTacheOblForm({ nom: '', equipeId: '', employeId: '', dates: [] });
+      setSelectedEquipe(null);
+      loadTachesObl();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Erreur lors de la sauvegarde');
+    }
+  };
+
+  const handleDeleteTacheObl = async (id: number) => {
+    if (window.confirm('Supprimer cette tâche obligatoire ?')) {
+      try {
+        await tacheObligatoireService.delete(id);
+        loadTachesObl();
+      } catch { /* ignore */ }
+    }
+  };
+
+  // Mini picker helpers
+  const pickerDays = () => {
+    const days: (number | null)[] = [];
+    const firstDay = new Date(pickerYear, pickerMonth, 1);
+    const offset = (firstDay.getDay() + 6) % 7;
+    const total = new Date(pickerYear, pickerMonth + 1, 0).getDate();
+    for (let i = 0; i < offset; i++) days.push(null);
+    for (let d = 1; d <= total; d++) days.push(d);
+    return days;
+  };
+  const pickerDateStr = (day: number) =>
+    `${pickerYear}-${String(pickerMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const MONTHS_FR = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+  const tacheOblColumns = [
+    { key: 'nom', label: 'Tâche', render: (t: TacheObligatoireDTO) => <span className="font-medium">{t.nom}</span> },
+    { key: 'equipeNom', label: 'Équipe', render: (t: TacheObligatoireDTO) => <Badge text={t.equipeNom} variant="primary" /> },
+    {
+      key: 'employeNom', label: 'Assigné à', render: (t: TacheObligatoireDTO) => (
+        <span className="text-theme-sm">{t.employeNom || <span className="text-gray-400 italic">Toute l'équipe</span>}</span>
+      )
+    },
+    {
+      key: 'dates', label: 'Dates', render: (t: TacheObligatoireDTO) => (
+        <div className="flex flex-wrap gap-1">
+          {t.dates.slice(0, 3).map((d) => (
+            <span key={d} className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 text-[10px] font-medium dark:bg-yellow-500/20 dark:text-yellow-400">{d}</span>
+          ))}
+          {t.dates.length > 3 && <span className="text-theme-xs text-gray-400">+{t.dates.length - 3}</span>}
+        </div>
+      )
+    },
+    {
+      key: 'actions', label: '', render: (t: TacheObligatoireDTO) => (
+        <button onClick={() => handleDeleteTacheObl(t.id)} className="p-1.5 rounded-lg hover:bg-error-50 text-error-500 transition-colors">
+          <HiOutlineTrash size={16} />
+        </button>
+      )
+    },
+  ];
+
   // ============ Table columns ============
   const jourColumns = [
     {
@@ -385,11 +509,10 @@ const CalendrierPage: React.FC = () => {
           {JOURS_SEMAINE.map((jour) => (
             <span
               key={jour}
-              className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                item.joursTravail.includes(jour)
+              className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${item.joursTravail.includes(jour)
                   ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400'
                   : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
-              }`}
+                }`}
             >
               {jour.substring(0, 3)}
             </span>
@@ -460,25 +583,33 @@ const CalendrierPage: React.FC = () => {
       <div className="flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800 w-fit">
         <button
           onClick={() => setActiveTab('jours')}
-          className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${
-            activeTab === 'jours'
+          className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${activeTab === 'jours'
               ? 'bg-white text-brand-500 shadow-sm dark:bg-gray-700 dark:text-brand-400'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
+            }`}
         >
           <HiOutlineCalendar size={16} />
           Jours fériés / spéciaux
         </button>
         <button
           onClick={() => setActiveTab('horaires')}
-          className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${
-            activeTab === 'horaires'
+          className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${activeTab === 'horaires'
               ? 'bg-white text-brand-500 shadow-sm dark:bg-gray-700 dark:text-brand-400'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
+            }`}
         >
           <HiOutlineClock size={16} />
           Horaires de travail
+        </button>
+        <button
+          onClick={() => setActiveTab('taches-obligatoires')}
+          className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${activeTab === 'taches-obligatoires'
+              ? 'bg-white text-yellow-600 shadow-sm dark:bg-gray-700 dark:text-yellow-400'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+        >
+          <HiOutlineExclamation size={16} />
+          Tâches Obligatoires
         </button>
       </div>
 
@@ -563,6 +694,121 @@ const CalendrierPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Tâches Obligatoires tab */}
+      {activeTab === 'taches-obligatoires' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-theme-sm text-gray-500 dark:text-gray-400">Jours de travail obligatoires pour une équipe ou un membre</p>
+            <Button onClick={() => { setShowTacheOblModal(true); setTacheOblForm({ nom: '', equipeId: '', employeId: '', dates: [] }); setSelectedEquipe(null); }}>
+              <HiOutlinePlus size={18} /> Ajouter
+            </Button>
+          </div>
+          {tachesOblLoading ? (
+            <div className="text-center py-12 text-gray-500">Chargement...</div>
+          ) : tachesObl.length === 0 ? (
+            <div className="text-center py-12">
+              <HiOutlineExclamation className="mx-auto text-yellow-400" size={40} />
+              <p className="mt-3 text-gray-500">Aucune tâche obligatoire définie</p>
+            </div>
+          ) : (
+            <DataTable columns={tacheOblColumns} data={tachesObl} />
+          )}
+        </div>
+      )}
+
+      {/* Tâche Obligatoire Modal */}
+      <Modal isOpen={showTacheOblModal} onClose={() => setShowTacheOblModal(false)} title="Nouvelle tâche obligatoire" size="lg">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom *</label>
+            <input
+              type="text"
+              value={tacheOblForm.nom}
+              onChange={(e) => setTacheOblForm((f) => ({ ...f, nom: e.target.value }))}
+              placeholder="Ex: Déploiement sprint 3"
+              className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+            />
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Choisir l'équipe *</label>
+            <select
+              value={String(tacheOblForm.equipeId)}
+              onChange={(e) => handleEquipeChange(e.target.value)}
+              className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
+            >
+              <option value="">-- Sélectionner une équipe --</option>
+              {equipes.map((eq) => <option key={eq.id} value={eq.id}>{eq.nom}</option>)}
+            </select>
+          </div>
+          {selectedEquipe && (
+            <div>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assigner à</label>
+              <select
+                value={String(tacheOblForm.employeId)}
+                onChange={(e) => setTacheOblForm((f) => ({ ...f, employeId: e.target.value }))}
+                className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
+              >
+                <option value="">Toute l'équipe</option>
+                {selectedEquipe.membres.map((m) => (
+                  <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sélectionner les jours obligatoires * <span className="text-theme-xs text-gray-400 font-normal">({tacheOblForm.dates.length} sélectionné{tacheOblForm.dates.length > 1 ? 's' : ''})</span></label>
+            <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+              <div className="flex items-center justify-between mb-3">
+                <button type="button" onClick={() => { if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(pickerYear - 1); } else setPickerMonth(pickerMonth - 1); }} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <HiOutlineChevronLeft size={16} />
+                </button>
+                <span className="text-theme-sm font-semibold text-gray-800 dark:text-white">{MONTHS_FR[pickerMonth]} {pickerYear}</span>
+                <button type="button" onClick={() => { if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(pickerYear + 1); } else setPickerMonth(pickerMonth + 1); }} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <HiOutlineChevronRight size={16} />
+                </button>
+              </div>
+              <div className="grid grid-cols-7 gap-0.5 text-center">
+                {['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'].map((d) => (
+                  <div key={d} className="text-theme-xs font-medium text-gray-400 py-1">{d}</div>
+                ))}
+                {pickerDays().map((day, i) => {
+                  if (!day) return <div key={`e-${i}`} />;
+                  const ds = pickerDateStr(day);
+                  const selected = tacheOblForm.dates.includes(ds);
+                  return (
+                    <button
+                      key={ds}
+                      type="button"
+                      onClick={() => togglePickerDate(ds)}
+                      className={`w-8 h-8 mx-auto flex items-center justify-center rounded-md text-theme-xs font-medium transition-colors ${selected
+                          ? 'bg-yellow-400 text-white dark:bg-yellow-500'
+                          : 'hover:bg-yellow-50 text-gray-700 dark:text-gray-300 dark:hover:bg-yellow-500/20'
+                        }`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {tacheOblForm.dates.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {tacheOblForm.dates.sort().map((d) => (
+                  <span key={d} className="inline-flex items-center gap-1 rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 text-[10px] font-medium dark:bg-yellow-500/20 dark:text-yellow-400">
+                    {d}
+                    <button type="button" onClick={() => togglePickerDate(d)} className="hover:text-yellow-900">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="ghost" onClick={() => setShowTacheOblModal(false)}>Annuler</Button>
+          <Button onClick={handleSaveTacheObl}>Créer</Button>
+        </div>
+      </Modal>
 
       {/* Jour Modal */}
       <Modal isOpen={showJourModal} onClose={() => setShowJourModal(false)} title={editingJour ? 'Modifier le jour' : 'Nouveau jour'} size="lg">
@@ -716,11 +962,10 @@ const CalendrierPage: React.FC = () => {
                   key={jour}
                   type="button"
                   onClick={() => toggleJourTravail(jour)}
-                  className={`rounded-lg px-3 py-2 text-theme-xs font-medium transition-colors ${
-                    horaireForm.joursTravail.includes(jour)
+                  className={`rounded-lg px-3 py-2 text-theme-xs font-medium transition-colors ${horaireForm.joursTravail.includes(jour)
                       ? 'bg-brand-500 text-white'
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
-                  }`}
+                    }`}
                 >
                   {jour.substring(0, 3)}
                 </button>
@@ -736,11 +981,10 @@ const CalendrierPage: React.FC = () => {
                   key={jour}
                   type="button"
                   onClick={() => toggleJourTeletravail(jour)}
-                  className={`rounded-lg px-3 py-2 text-theme-xs font-medium transition-colors ${
-                    horaireForm.joursTeletravail.includes(jour)
+                  className={`rounded-lg px-3 py-2 text-theme-xs font-medium transition-colors ${horaireForm.joursTeletravail.includes(jour)
                       ? 'bg-blue-500 text-white'
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
-                  }`}
+                    }`}
                 >
                   {jour.substring(0, 3)}
                 </button>

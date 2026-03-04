@@ -22,6 +22,8 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
 import MonProfilPage from './pages/MonProfilPage';
 import MonCalendrierPage from './pages/MonCalendrierPage';
 import MesDemandesPage from './pages/MesDemandesPage';
+import MesTachesPage from './pages/MesTachesPage';
+import MesDemandesPapierPage from './pages/MesDemandesPapierPage';
 import { NotificationProvider } from './context/NotificationContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -71,6 +73,8 @@ const App: React.FC = () => {
           <Route path="mon-profil" element={<MonProfilPage />} />
           <Route path="demandes/papier" element={<NewDemandePapierPage />} />
           <Route path="demandes/liste-papier" element={<DemandesPapierPage />} />
+          <Route path="mes-taches" element={<MesTachesPage />} />
+          <Route path="mes-demandes-papier" element={<MesDemandesPapierPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

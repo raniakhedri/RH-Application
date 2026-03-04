@@ -15,12 +15,13 @@ import {
   StatutDemande,
 } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useTachesObligatoires } from '../hooks/useTachesObligatoires';
 
 // ============ Calendar helpers ============
 interface CalendarEvent {
   date: string;
   label: string;
-  type: 'ferie' | 'conge' | 'teletravail' | 'autorisation';
+  type: 'ferie' | 'conge' | 'teletravail' | 'autorisation' | 'tache_obligatoire';
   color: string;
   bgColor: string;
 }
@@ -57,6 +58,7 @@ function eachDayBetween(start: string, end: string): string[] {
 
 const MonCalendrierPage: React.FC = () => {
   const { user } = useAuth();
+  const { tachesObligatoires } = useTachesObligatoires(user?.employeId);
 
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
@@ -144,8 +146,21 @@ const MonCalendrierPage: React.FC = () => {
           });
         }
       });
+    // Taches obligatoires → yellow
+    tachesObligatoires.forEach((t) => {
+      t.dates.forEach((dateStr) => {
+        addEvent(dateStr, {
+          date: dateStr,
+          label: `⚠ ${t.nom}`,
+          type: 'tache_obligatoire',
+          color: 'text-yellow-700 dark:text-yellow-300',
+          bgColor: 'bg-yellow-100 dark:bg-yellow-500/20',
+        });
+      });
+    });
+
     return map;
-  }, [feries, demandes]);
+  }, [feries, demandes, tachesObligatoires]);
 
   // ============ Horaires: compute working days & teletravail days sets ============
   const { workingDays, teletravailDays: companyTeletravailDays } = useMemo(() => {
@@ -194,6 +209,7 @@ const MonCalendrierPage: React.FC = () => {
     { label: 'Congé', color: 'bg-warning-500' },
     { label: 'Télétravail', color: 'bg-blue-500' },
     { label: 'Autorisation', color: 'bg-brand-500' },
+    { label: 'Tâche obligatoire', color: 'bg-yellow-400' },
     { label: 'Jour non travaillé', color: 'bg-gray-400' },
     { label: 'Télétravail entreprise', color: 'bg-blue-300' },
     { label: 'En attente', color: 'bg-amber-400', dashed: true },
@@ -273,20 +289,18 @@ const MonCalendrierPage: React.FC = () => {
                 return (
                   <div
                     key={key}
-                    className={`min-h-[90px] sm:min-h-[100px] p-1 sm:p-1.5 border-r border-b border-gray-100 dark:border-gray-800 ${
-                      isNonWorking
+                    className={`min-h-[90px] sm:min-h-[100px] p-1 sm:p-1.5 border-r border-b border-gray-100 dark:border-gray-800 ${isNonWorking
                         ? 'bg-gray-100/70 dark:bg-gray-800/50'
                         : isCompanyTeletravail
                           ? 'bg-blue-50/40 dark:bg-blue-900/10'
                           : isWeekend
                             ? 'bg-gray-50/50 dark:bg-gray-800/30'
                             : ''
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-1">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[11px] sm:text-theme-sm font-medium mb-0.5 ${
-                        isToday ? 'bg-brand-500 text-white' : isNonWorking ? 'text-gray-400 dark:text-gray-500' : isWeekend ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'
-                      }`}>
+                      <span className={`inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[11px] sm:text-theme-sm font-medium mb-0.5 ${isToday ? 'bg-brand-500 text-white' : isNonWorking ? 'text-gray-400 dark:text-gray-500' : isWeekend ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'
+                        }`}>
                         {date.getDate()}
                       </span>
                       {isCompanyTeletravail && events.every(e => e.type !== 'teletravail') && (
