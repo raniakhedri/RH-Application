@@ -35,7 +35,16 @@ const menuGroups = [
     items: [
       { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} />, permission: 'VIEW_DASHBOARD' },
       { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} />, permission: 'VIEW_EMPLOYES' },
-      { key: 'mes-demandes', label: 'Mes demandes', path: '/mes-demandes', icon: <HiOutlineClipboardList size={20} /> },
+      {
+        key: 'mes-demandes',
+        label: 'Mes demandes',
+        path: '/mes-demandes',
+        icon: <HiOutlineClipboardList size={20} />,
+        children: [
+          { label: 'Mes demandes de congés', path: '/mes-demandes' },
+          { label: 'Mes demandes papiers', path: '/mes-demandes/papier' },
+        ],
+      },
       { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} /> },
     ] as NavItemDef[],
   },
@@ -54,7 +63,16 @@ const menuGroups = [
           { label: 'Les Demandes papier', path: 'demandes/liste-papier' },
         ],
       },
-      { key: 'validations', label: 'Validations', path: '/validations', icon: <HiOutlineClipboardCheck size={20} />, permission: 'VIEW_VALIDATIONS' },
+      {
+        key: 'validations',
+        label: 'Validation demandes',
+        path: '/validations',
+        icon: <HiOutlineClipboardCheck size={20} />,
+        permission: 'VIEW_VALIDATIONS',
+        children: [
+          { label: 'Demandes congés', path: '/demandes' },
+        ],
+      },
       { key: 'pointage', label: 'Pointage', path: '/pointage', icon: <HiOutlineClock size={20} />, permission: 'VIEW_POINTAGE' },
     ] as NavItemDef[],
   },
