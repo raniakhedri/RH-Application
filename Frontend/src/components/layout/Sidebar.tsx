@@ -52,18 +52,6 @@ const menuGroups = [
     title: 'GESTION',
     items: [
       {
-        key: 'demandes',
-        label: 'Demandes',
-        path: '/demandes',
-        icon: <HiOutlineDocumentText size={20} />,
-        permission: 'VIEW_DEMANDES',
-        children: [
-          { label: 'Demandes congés', path: '/demandes' },
-          { label: 'Demandes papier', path: 'demandes/papier' },
-          { label: 'Les Demandes papier', path: 'demandes/liste-papier' },
-        ],
-      },
-      {
         key: 'validations',
         label: 'Validation demandes',
         path: '/validations',
@@ -71,6 +59,8 @@ const menuGroups = [
         permission: 'VIEW_VALIDATIONS',
         children: [
           { label: 'Demandes congés', path: '/demandes' },
+          { label: 'Demandes papier', path: '/demandes/papier' },
+          { label: 'Les Demandes papier', path: '/demandes/liste-papier' },
         ],
       },
       { key: 'pointage', label: 'Pointage', path: '/pointage', icon: <HiOutlineClock size={20} />, permission: 'VIEW_POINTAGE' },
