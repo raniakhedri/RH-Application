@@ -19,8 +19,13 @@ const LoginPage: React.FC = () => {
     try {
       const response = await authService.login({ username, password });
       if (response.data.success && response.data.data) {
-        login(response.data.data);
-        navigate('/dashboard');
+        const userData = response.data.data;
+        login(userData);
+        if (userData.mustChangePassword) {
+          navigate('/force-change-password');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         setError(response.data.message || 'Erreur de connexion');
       }

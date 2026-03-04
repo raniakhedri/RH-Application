@@ -1,7 +1,8 @@
 import React from 'react';
 
-interface BadgeProps {
-  text: string;
+export interface BadgeProps {
+  text?: string;
+  children?: React.ReactNode;
   variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 }
 
@@ -15,10 +16,10 @@ const variantClasses: Record<string, string> = {
   neutral: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
 };
 
-const Badge: React.FC<BadgeProps> = ({ text, variant = 'neutral' }) => {
+const Badge: React.FC<BadgeProps> = ({ text, children, variant = 'neutral' }) => {
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-theme-xs font-medium ${variantClasses[variant]}`}>
-      {text}
+      {children ?? text}
     </span>
   );
 };

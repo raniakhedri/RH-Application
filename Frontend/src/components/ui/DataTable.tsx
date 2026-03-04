@@ -4,6 +4,7 @@ interface Column<T> {
   key: string;
   label: string;
   render?: (item: T) => React.ReactNode;
+  className?: string;
 }
 
 interface DataTableProps<T> {
@@ -19,16 +20,17 @@ function DataTable<T extends { id: number }>({
   onRowClick,
   emptyMessage = 'Aucune donnée disponible',
 }: DataTableProps<T>) {
+  const hasColumnWidths = columns.some((col) => col.className);
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className={`w-full ${hasColumnWidths ? 'table-fixed' : ''}`}>
           <thead>
             <tr className="border-b border-gray-100 dark:border-gray-700">
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className="px-5 py-3 text-left text-theme-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                  className={`px-5 py-3 text-left text-theme-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 ${col.className || ''}`}
                 >
                   {col.label}
                 </th>
@@ -52,7 +54,7 @@ function DataTable<T extends { id: number }>({
                   } transition-colors`}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className="px-5 py-4 text-theme-sm text-gray-700 dark:text-gray-300">
+                    <td key={col.key} className={`px-5 py-4 text-theme-sm text-gray-700 dark:text-gray-300 ${col.className || ''}`}>
                       {col.render ? col.render(item) : (item as Record<string, unknown>)[col.key] as React.ReactNode}
                     </td>
                   ))}

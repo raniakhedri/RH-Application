@@ -5,13 +5,16 @@ import com.antigone.rh.entity.Employe;
 import com.antigone.rh.entity.Pointage;
 import com.antigone.rh.enums.SourcePointage;
 import com.antigone.rh.enums.StatutPointage;
+import com.antigone.rh.enums.TypeReferentiel;
 import com.antigone.rh.repository.AffectationHoraireRepository;
 import com.antigone.rh.repository.EmployeRepository;
 import com.antigone.rh.repository.PointageRepository;
+import com.antigone.rh.repository.ReferentielRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -25,6 +28,7 @@ public class PointageService {
     private final PointageRepository pointageRepository;
     private final EmployeRepository employeRepository;
     private final AffectationHoraireRepository affectationHoraireRepository;
+    private final ReferentielRepository referentielRepository;
 
     public List<Pointage> findAll() {
         return pointageRepository.findAll();
@@ -62,10 +66,23 @@ public class PointageService {
                 .findActiveForEmployeOnDate(employeId, today);
 
         StatutPointage statut = StatutPointage.PRESENT;
+        int retardMinutes = 0;
+        int toleranceMinutes = referentielRepository
+                .findByLibelleAndTypeReferentiel("TOLERANCE_RETARD_MINUTES", TypeReferentiel.PARAMETRE_SYSTEME)
+                .map(r -> {
+                    try {
+                        return Integer.parseInt(r.getValeur());
+                    } catch (Exception e) {
+                        return 10;
+                    }
+                })
+                .orElse(10);
+
         if (affectation.isPresent()) {
             LocalTime heureDebutTravail = affectation.get().getHoraireTravail().getHeureDebut();
-            if (LocalTime.now().isAfter(heureDebutTravail.plusMinutes(15))) {
+            if (LocalTime.now().isAfter(heureDebutTravail.plusMinutes(toleranceMinutes))) {
                 statut = StatutPointage.RETARD;
+                retardMinutes = (int) Duration.between(heureDebutTravail, LocalTime.now()).toMinutes();
             }
         }
 
@@ -75,6 +92,7 @@ public class PointageService {
                 .heureEntree(LocalTime.now())
                 .statut(statut)
                 .source(SourcePointage.MANUEL)
+                .retardMinutes(retardMinutes)
                 .affectationHoraire(affectation.orElse(null))
                 .build();
 

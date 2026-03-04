@@ -1,86 +1,116 @@
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\config\SecurityConfig.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\config\WebConfig.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\AuthController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\CalendrierController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\DemandeController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\EmployeController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\EquipeController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\PointageController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\ProjetController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\ReferentielController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\TacheController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\controller\ValidationController.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ApiResponse.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\CalendrierDTO.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\CalendrierRequest.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\DemandeRequest.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\DemandeResponse.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\EmployeDTO.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\HoraireTravailDTO.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\HoraireTravailRequest.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\LoginRequest.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\LoginResponse.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ReferentielDTO.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ReferentielRequest.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ValidationRequest.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\AffectationHoraire.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Autorisation.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Calendrier.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Compte.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Conge.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Demande.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Employe.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Equipe.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\HistoriqueStatut.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\HoraireTravail.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\PeriodeBloquee.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Permission.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Pointage.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Projet.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Referentiel.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Role.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Tache.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Teletravail.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Validation.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\DecisionValidation.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\OrigineJour.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\SourcePointage.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\StatutDemande.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\StatutPointage.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\StatutProjet.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\StatutTache.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\TypeDemande.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\TypeJour.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\enums\TypeReferentiel.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\exception\GlobalExceptionHandler.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\exception\ResourceNotFoundException.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\AffectationHoraireRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\AutorisationRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\CalendrierRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\CompteRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\CongeRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\DemandeRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\EmployeRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\EquipeRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\HistoriqueStatutRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\HoraireTravailRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\PeriodeBloqueeRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\PermissionRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\PointageRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\ProjetRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\ReferentielRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\RoleRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\TacheRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\TeletravailRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\repository\ValidationRepository.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\RhApplication.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\CalendrierService.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\CompteService.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\DemandeService.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\EmployeService.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\EquipeService.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\PointageService.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\ProjetService.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\ReferentielService.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\TacheService.java
-C:\Users\yosrk\OneDrive\Bureau\Antigone Rh\RH-Application\Backend\src\main\java\com\antigone\rh\service\ValidationService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\config\DataInitializer.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\config\SecurityConfig.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\config\WebConfig.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\config\WebSocketConfig.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\AgentController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\AgentDownloadController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\AuthController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\CalendrierController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\DemandeController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\EmployeController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\EquipeController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\FichePaieController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\PointageController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\ProjetController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\RapportInactiviteController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\ReferentielController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\TacheController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\controller\ValidationController.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\AgentConfigResponse.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\AgentEventRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\AgentHeartbeatRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\AgentPresenceConfirmRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ApiResponse.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\CalendrierDTO.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\CalendrierRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\DashboardEmployeStatus.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\DemandeRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\DemandeResponse.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\EmployeDTO.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\FichePaieDTO.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\HoraireTravailDTO.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\HoraireTravailRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\LoginRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\LoginResponse.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\PermissionDTO.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\PointageDTO.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\RapportInactiviteDTO.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ReferentielDTO.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ReferentielRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\RoleDTO.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\RoleRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\SoldeCongeInfo.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\dto\ValidationRequest.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\AffectationHoraire.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Autorisation.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Calendrier.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Compte.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Conge.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Demande.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Employe.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Equipe.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\FichePaie.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\HistoriqueStatut.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\HoraireTravail.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\PeriodeBloquee.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Permission.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Pointage.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Projet.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\RapportInactivite.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Referentiel.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Role.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Tache.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Teletravail.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\entity\Validation.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\DecisionInactivite.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\DecisionValidation.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\Genre.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\OrigineJour.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\SourcePointage.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\StatutDemande.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\StatutFichePaie.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\StatutPointage.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\StatutProjet.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\StatutTache.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\TypeConge.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\TypeDemande.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\TypeJour.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\enums\TypeReferentiel.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\exception\GlobalExceptionHandler.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\exception\ResourceNotFoundException.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\AffectationHoraireRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\AutorisationRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\CalendrierRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\CompteRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\CongeRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\DemandeRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\EmployeRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\EquipeRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\FichePaieRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\HistoriqueStatutRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\HoraireTravailRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\PeriodeBloqueeRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\PermissionRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\PointageRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\ProjetRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\RapportInactiviteRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\ReferentielRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\RoleRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\TacheRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\TeletravailRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\repository\ValidationRepository.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\RhApplication.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\AgentService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\CalendrierService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\CompteService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\DemandeService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\EmployeService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\EquipeService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\FichePaieService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\PointageService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\ProjetService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\RapportInactiviteService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\ReferentielService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\RoleService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\TacheService.java
+C:\Users\user\Desktop\Rh_application\RH-Application\Backend\src\main\java\com\antigone\rh\service\ValidationService.java

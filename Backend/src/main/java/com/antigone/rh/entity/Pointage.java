@@ -35,6 +35,38 @@ public class Pointage {
     @Column(nullable = false)
     private SourcePointage source;
 
+    @Column(columnDefinition = "integer default 0")
+    @Builder.Default
+    private Integer retardMinutes = 0;
+
+    @Column(columnDefinition = "integer default 0")
+    @Builder.Default
+    private Integer tempsActifMinutes = 0;
+
+    @Column(columnDefinition = "integer default 0")
+    @Builder.Default
+    private Integer tempsInactifMinutes = 0;
+
+    @Column(columnDefinition = "double precision default 0")
+    @Builder.Default
+    private Double scoreJournalier = 0.0;
+
+    @Column(columnDefinition = "integer default 0")
+    @Builder.Default
+    private Integer confirmationsReussies = 0;
+
+    @Column(columnDefinition = "integer default 0")
+    @Builder.Default
+    private Integer confirmationsRatees = 0;
+
+    /** SSID WiFi connecté au moment du clock-in */
+    private String ssidConnecte;
+
+    /** true si le SSID correspond au réseau entreprise */
+    @Column(columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean surReseauEntreprise = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employe_id", nullable = false)
     @ToString.Exclude

@@ -76,6 +76,27 @@ public class CompteService {
         return compteRepository.save(compte);
     }
 
+    public Compte updateCompte(Long id, Long roleId) {
+        Compte compte = compteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Compte non trouvé"));
+
+        if (roleId != null) {
+            Role role = roleRepository.findById(roleId)
+                    .orElseThrow(() -> new RuntimeException("Rôle non trouvé"));
+            compte.getRoles().clear();
+            compte.getRoles().add(role);
+        }
+
+        return compteRepository.save(compte);
+    }
+
+    public Compte toggleEnabled(Long id) {
+        Compte compte = compteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Compte non trouvé"));
+        compte.setEnabled(!compte.getEnabled());
+        return compteRepository.save(compte);
+    }
+
     public void disableCompte(Long compteId) {
         Compte compte = compteRepository.findById(compteId)
                 .orElseThrow(() -> new RuntimeException("Compte non trouvé"));

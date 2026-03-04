@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { LoginResponse } from '../types';
+
+const SESSION_DURATION_MS = 4 * 60 * 60 * 1000; // 4 heures
 
 interface AuthContextType {
   user: LoginResponse | null;
@@ -10,28 +12,45 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<LoginResponse | null>(null);
-
-  useEffect(() => {
+/** Restore user from localStorage, checking 4h expiry */
+const getStoredUser = (): LoginResponse | null => {
+  try {
     const stored = localStorage.getItem('user');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
+    const loginTime = localStorage.getItem('loginTime');
+    if (!stored) return null;
+
+    // Check 4h expiry
+    if (loginTime) {
+      const elapsed = Date.now() - Number(loginTime);
+      if (elapsed > SESSION_DURATION_MS) {
         localStorage.removeItem('user');
+        localStorage.removeItem('loginTime');
+        return null;
       }
     }
-  }, []);
+
+    return JSON.parse(stored);
+  } catch {
+    localStorage.removeItem('user');
+    localStorage.removeItem('loginTime');
+    return null;
+  }
+};
+
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Initialize directly from localStorage — no flash of unauthenticated state
+  const [user, setUser] = useState<LoginResponse | null>(getStoredUser);
 
   const login = (userData: LoginResponse) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('loginTime', String(Date.now()));
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('loginTime');
   };
 
   return (

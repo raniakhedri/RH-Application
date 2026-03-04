@@ -21,6 +21,14 @@ public class EmployeDTO {
     private String telephone;
     private LocalDate dateEmbauche;
     private Double soldeConge;
+    private String cnss;
+    private String poste;
+    private String typeContrat;
+    private String genre;
+    private String departement;
+    private String ribBancaire;
+    private Double salaireBase;
+    private String imageUrl;
     private Long managerId;
     private String managerNom;
 }

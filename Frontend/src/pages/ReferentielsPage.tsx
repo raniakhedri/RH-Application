@@ -23,7 +23,7 @@ const ReferentielsPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState<TypeReferentiel>(ALL_TYPES[0]);
   const [showModal, setShowModal] = useState(false);
   const [editingRef, setEditingRef] = useState<Referentiel | null>(null);
-  const [refForm, setRefForm] = useState({ libelle: '', description: '', typeReferentiel: ALL_TYPES[0] as string });
+  const [refForm, setRefForm] = useState({ libelle: '', description: '', valeur: '', typeReferentiel: ALL_TYPES[0] as string });
 
   useEffect(() => {
     loadReferentiels();
@@ -61,6 +61,7 @@ const ReferentielsPage: React.FC = () => {
     setRefForm({
       libelle: ref.libelle,
       description: ref.description || '',
+      valeur: ref.valeur || '',
       typeReferentiel: ref.typeReferentiel,
     });
     setShowModal(true);
@@ -87,7 +88,7 @@ const ReferentielsPage: React.FC = () => {
   };
 
   const resetForm = () => {
-    setRefForm({ libelle: '', description: '', typeReferentiel: selectedType });
+    setRefForm({ libelle: '', description: '', valeur: '', typeReferentiel: selectedType });
   };
 
   const filteredRefs = referentiels.filter((r) => {
@@ -105,19 +106,43 @@ const ReferentielsPage: React.FC = () => {
     {
       key: 'libelle',
       label: 'Libellé',
+      className: 'w-[30%] min-w-[200px]',
       render: (item: Referentiel) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400 flex items-center justify-center shrink-0">
             <HiOutlineTag size={16} />
           </div>
-          <span className="font-medium text-gray-800 dark:text-white">{item.libelle}</span>
+          <span className="font-medium text-gray-800 dark:text-white break-all">{item.libelle}</span>
         </div>
       ),
     },
-    { key: 'description', label: 'Description' },
+    { key: 'description', label: 'Description', className: 'w-[30%] min-w-[150px]' },
+    ...(selectedType === TypeReferentiel.PARAMETRE_SYSTEME
+      ? [
+          {
+            key: 'valeur',
+            label: 'Valeur',
+            className: 'w-[15%] min-w-[100px]',
+            render: (item: Referentiel) => {
+              if (!item.valeur) return <span className="text-gray-400">—</span>;
+              const lib = item.libelle.toUpperCase();
+              let unit = '';
+              if (lib.includes('MINUTE')) unit = 'minutes';
+              else if (lib.includes('HEURE')) unit = 'heures';
+              else if (lib.includes('CONGE') || lib.includes('JOUR') || lib.includes('SOLDE')) unit = 'jours';
+              return (
+                <span className="font-mono text-theme-sm text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10 px-2 py-0.5 rounded">
+                  {item.valeur}{unit ? ` ${unit}` : ''}
+                </span>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: 'actif',
       label: 'Statut',
+      className: 'w-[10%] min-w-[80px]',
       render: (item: Referentiel) => (
         <button onClick={() => handleToggleActif(item.id)} className="cursor-pointer" title="Cliquer pour changer le statut">
           <Badge text={item.actif ? 'Actif' : 'Inactif'} variant={item.actif ? 'success' : 'danger'} />
@@ -127,6 +152,7 @@ const ReferentielsPage: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
+      className: 'w-[10%] min-w-[80px]',
       render: (item: Referentiel) => (
         <div className="flex gap-2">
           <button onClick={() => handleEdit(item)} className="p-1.5 rounded-lg hover:bg-brand-50 text-brand-500 transition-colors" title="Modifier">
@@ -198,7 +224,7 @@ const ReferentielsPage: React.FC = () => {
                 className="h-11 w-full rounded-lg border border-gray-300 bg-transparent pl-10 pr-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
               />
             </div>
-            <Button onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType }); setShowModal(true); }}>
+            <Button onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', valeur: '', typeReferentiel: selectedType }); setShowModal(true); }}>
               <HiOutlinePlus size={18} /> Ajouter
             </Button>
           </div>
@@ -214,7 +240,7 @@ const ReferentielsPage: React.FC = () => {
               <Button
                 variant="ghost"
                 className="mt-4"
-                onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType }); setShowModal(true); }}
+                onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', valeur: '', typeReferentiel: selectedType }); setShowModal(true); }}
               >
                 <HiOutlinePlus size={16} /> Créer le premier
               </Button>

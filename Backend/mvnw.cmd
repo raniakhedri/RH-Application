@@ -4,7 +4,7 @@
 @echo off
 setlocal
 
-@REM Force JDK 17
+@REM Set JAVA_HOME to Oracle JDK 17
 set "JAVA_HOME=C:\Program Files\Java\jdk-17"
 
 set "MAVEN_PROJECTBASEDIR=%~dp0"

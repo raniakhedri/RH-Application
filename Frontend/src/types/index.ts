@@ -67,12 +67,20 @@ export interface Employe {
   id: number;
   matricule: string;
   cin: string;
+  cnss: string;
   nom: string;
   prenom: string;
   email: string;
   telephone: string;
   dateEmbauche: string;
   soldeConge: number;
+  poste: string;
+  typeContrat: string;
+  genre: string;
+  departement: string;
+  ribBancaire: string;
+  salaireBase: number;
+  imageUrl: string;
   managerId: number | null;
   managerNom: string | null;
 }
@@ -97,6 +105,8 @@ export interface LoginResponse {
   prenom: string;
   email: string;
   roles: string[];
+  permissions: string[];
+  mustChangePassword: boolean;
   message: string;
 }
 
@@ -152,6 +162,14 @@ export interface Pointage {
   statut: StatutPointage;
   source: SourcePointage;
   employeId: number;
+  employeNom?: string;
+  employePrenom?: string;
+  retardMinutes: number;
+  tempsActifMinutes: number;
+  tempsInactifMinutes: number;
+  scoreJournalier: number;
+  confirmationsReussies: number;
+  confirmationsRatees: number;
 }
 
 export interface Projet {
@@ -196,6 +214,7 @@ export enum TypeReferentiel {
   TYPE_CONGE = 'TYPE_CONGE',
   TYPE_DEMANDE = 'TYPE_DEMANDE',
   GENRE = 'GENRE',
+  PARAMETRE_SYSTEME = 'PARAMETRE_SYSTEME',
 }
 
 export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
@@ -207,12 +226,14 @@ export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
   [TypeReferentiel.TYPE_CONGE]: 'Type congé',
   [TypeReferentiel.TYPE_DEMANDE]: 'Type demande',
   [TypeReferentiel.GENRE]: 'Genre',
+  [TypeReferentiel.PARAMETRE_SYSTEME]: 'Paramètre système',
 };
 
 export interface Referentiel {
   id: number;
   libelle: string;
   description: string;
+  valeur: string;
   actif: boolean;
   typeReferentiel: string;
   typeReferentielLabel: string;
@@ -221,6 +242,7 @@ export interface Referentiel {
 export interface ReferentielRequest {
   libelle: string;
   description: string;
+  valeur: string;
   typeReferentiel: string;
 }
 
@@ -270,4 +292,152 @@ export interface SidebarItem {
   icon: React.ReactNode;
   path: string;
   children?: SidebarItem[];
+}
+
+export interface HistoriqueStatut {
+  id: number;
+  ancienStatut: string;
+  nouveauStatut: string;
+  dateChangement: string;
+  modifieParNom: string | null;
+  commentaire: string | null;
+}
+
+export interface NotificationResponse {
+  id: number;
+  titre: string;
+  message: string;
+  lu: boolean;
+  dateCreation: string;
+  demandeId: number | null;
+}
+
+export interface CalculateDaysResult {
+  nombreJours: number;
+  joursOuvrables: number;
+  details: string;
+  dateDebutEffective: string;
+  dateFinEffective: string;
+}
+
+export interface SoldeCongeInfo {
+  employeId: number;
+  employeNom: string;
+  dateEmbauche: string | null;
+  ancienneteAnnees: number;
+  ancienneteMois: number;
+  droitAnnuel: number;
+  tauxMensuel: number;
+  joursAcquis: number;
+  moisTravaillesAnneeEnCours: number;
+  joursReportes: number;
+  joursConsommes: number;
+  joursEnAttente: number;
+  soldeDisponible: number;
+  soldePrevisionnel: number;
+  debutAnneeConge: string;
+  finAnneeConge: string;
+}
+
+// =====================
+// FICHES DE PAIE
+// =====================
+export enum StatutFichePaie {
+  BROUILLON = 'BROUILLON',
+  VALIDEE = 'VALIDEE',
+}
+
+export interface FichePaie {
+  id: number;
+  employeId: number;
+  employeNom: string;
+  employePrenom: string;
+  employeMatricule: string;
+  mois: number;
+  annee: number;
+  salaireBase: number;
+  totalRetardMinutes: number;
+  montantPenaliteRetard: number;
+  totalInactiviteMinutes: number;
+  montantDeductionInactivite: number;
+  joursPresence: number;
+  joursAbsence: number;
+  joursConge: number;
+  scoreMoyen: number;
+  salaireNet: number;
+  statut: string;
+  dateGeneration: string | null;
+  dateValidation: string | null;
+  valideParNom: string | null;
+}
+
+// =====================
+// RAPPORTS INACTIVITÉ
+// =====================
+export enum DecisionInactivite {
+  EN_ATTENTE = 'EN_ATTENTE',
+  DEDUIT = 'DEDUIT',
+  ANNULE = 'ANNULE',
+}
+
+export interface RapportInactivite {
+  id: number;
+  employeId: number;
+  employeNom: string;
+  employePrenom: string;
+  employeMatricule: string;
+  semaineDebut: string;
+  semaineFin: string;
+  salaireBase: number;
+  totalInactiviteMinutes: number;
+  montantDeductionInactivite: number;
+  totalRetardMinutes: number;
+  montantRetard: number;
+  coutParMinute: number;
+  salaireNet: number;
+  toleranceMinutes: number;
+  inactiviteExcedentaire: number;
+  montantDeduction: number;
+  decision: string;
+  dateGeneration: string | null;
+  dateDecision: string | null;
+  decideParNom: string | null;
+  commentaire: string | null;
+}
+
+// =====================
+// DASHBOARD TEMPS RÉEL
+// =====================
+export interface DashboardEmployeStatus {
+  employeId: number;
+  nom: string;
+  prenom: string;
+  poste: string;
+  departement: string;
+  statut: string;
+  heureEntree: string | null;
+  heureSortie: string | null;
+  retardMinutes: number;
+  scoreJournalier: number;
+  agentActif: boolean;
+  imageUrl: string | null;
+  ssidConnecte: string | null;
+  surReseauEntreprise: boolean;
+  tempsActifMinutes: number;
+  tempsInactifMinutes: number;
+}
+
+// =====================
+// AGENT CONFIG
+// =====================
+export interface AgentConfig {
+  toleranceRetardMinutes: number;
+  popupIntervalleHeures: number;
+  popupTimeoutSecondes: number;
+  inactiviteToleranceMinutesJour: number;
+  reseauEntrepriseIp: string;
+  reseauEntrepriseSsid: string;
+  heureDebutTravail: string;
+  heureFinTravail: string;
+  joursTravail: string;
 }

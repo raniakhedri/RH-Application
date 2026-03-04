@@ -8,7 +8,8 @@ public enum TypeReferentiel {
     NIVEAU_HIERARCHIQUE("Niveau hiérarchique"),
     TYPE_CONGE("Type congé"),
     TYPE_DEMANDE("Type demande"),
-    GENRE("Genre");
+    GENRE("Genre"),
+    PARAMETRE_SYSTEME("Paramètre système");
 
     private final String label;
 

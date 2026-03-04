@@ -14,8 +14,31 @@ import TachesPage from './pages/TachesPage';
 import EquipesPage from './pages/EquipesPage';
 import ReferentielsPage from './pages/ReferentielsPage';
 import CalendrierPage from './pages/CalendrierPage';
+import ComptesPage from './pages/ComptesPage';
+import RolesPage from './pages/RolesPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
+import MonProfilPage from './pages/MonProfilPage';
+import MonCalendrierPage from './pages/MonCalendrierPage';
+import MesDemandesPage from './pages/MesDemandesPage';
+import GestionPaiePage from './pages/GestionPaiePage';
+import SuiviTempsReelPage from './pages/SuiviTempsReelPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.mustChangePassword) return <Navigate to="/force-change-password" replace />;
+  return <>{children}</>;
+};
+
+const PermissionRoute: React.FC<{ permission: string; children: React.ReactNode }> = ({ permission, children }) => {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN');
+  const hasPermission = isSuperAdmin || user?.permissions?.includes(permission);
+  if (!hasPermission) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+
+const ProtectedRouteNoRedirect: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
@@ -25,6 +48,9 @@ const App: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/force-change-password" element={
+        <ProtectedRouteNoRedirect><ChangePasswordPage /></ProtectedRouteNoRedirect>
+      } />
       <Route
         path="/"
         element={
@@ -35,16 +61,24 @@ const App: React.FC = () => {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="employes" element={<EmployesPage />} />
-        <Route path="demandes" element={<DemandesPage />} />
-        <Route path="demandes/new" element={<NewDemandePage />} />
-        <Route path="validations" element={<ValidationsPage />} />
-        <Route path="pointage" element={<PointagePage />} />
-        <Route path="projets" element={<ProjetsPage />} />
-        <Route path="taches" element={<TachesPage />} />
-        <Route path="equipes" element={<EquipesPage />} />
-        <Route path="referentiels" element={<ReferentielsPage />} />
-        <Route path="calendrier" element={<CalendrierPage />} />
+        <Route path="employes" element={<PermissionRoute permission="VIEW_EMPLOYES"><EmployesPage /></PermissionRoute>} />
+        <Route path="demandes" element={<PermissionRoute permission="VIEW_DEMANDES"><DemandesPage /></PermissionRoute>} />
+        <Route path="demandes/new" element={<PermissionRoute permission="VIEW_DEMANDES"><NewDemandePage /></PermissionRoute>} />
+        <Route path="mes-demandes" element={<MesDemandesPage />} />
+        <Route path="validations" element={<PermissionRoute permission="VIEW_VALIDATIONS"><ValidationsPage /></PermissionRoute>} />
+        <Route path="pointage" element={<PermissionRoute permission="VIEW_POINTAGE"><PointagePage /></PermissionRoute>} />
+        <Route path="projets" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetsPage /></PermissionRoute>} />
+        <Route path="taches" element={<PermissionRoute permission="VIEW_PROJETS"><TachesPage /></PermissionRoute>} />
+        <Route path="equipes" element={<PermissionRoute permission="VIEW_EQUIPES"><EquipesPage /></PermissionRoute>} />
+        <Route path="referentiels" element={<PermissionRoute permission="VIEW_REFERENTIELS"><ReferentielsPage /></PermissionRoute>} />
+        <Route path="calendrier" element={<PermissionRoute permission="VIEW_CALENDRIER"><CalendrierPage /></PermissionRoute>} />
+        <Route path="mon-calendrier" element={<MonCalendrierPage />} />
+        <Route path="comptes" element={<PermissionRoute permission="VIEW_COMPTES"><ComptesPage /></PermissionRoute>} />
+        <Route path="roles" element={<PermissionRoute permission="VIEW_ROLES"><RolesPage /></PermissionRoute>} />
+        <Route path="change-password" element={<ChangePasswordPage />} />
+        <Route path="mon-profil" element={<MonProfilPage />} />
+        <Route path="gestion-paie" element={<PermissionRoute permission="VIEW_FICHES_PAIE"><GestionPaiePage /></PermissionRoute>} />
+        <Route path="suivi-temps-reel" element={<PermissionRoute permission="VIEW_SUIVI_TEMPS_REEL"><SuiviTempsReelPage /></PermissionRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
