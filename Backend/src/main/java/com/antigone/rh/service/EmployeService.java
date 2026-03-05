@@ -8,9 +8,7 @@ import com.antigone.rh.entity.Referentiel;
 import com.antigone.rh.enums.StatutDemande;
 import com.antigone.rh.enums.TypeConge;
 import com.antigone.rh.enums.TypeReferentiel;
-import com.antigone.rh.repository.CongeRepository;
-import com.antigone.rh.repository.EmployeRepository;
-import com.antigone.rh.repository.ReferentielRepository;
+import com.antigone.rh.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,11 +27,29 @@ public class EmployeService {
     private final EmployeRepository employeRepository;
     private final ReferentielRepository referentielRepository;
     private final CongeRepository congeRepository;
+    private final PointageRepository pointageRepository;
+    private final NotificationRepository notificationRepository;
+    private final ValidationRepository validationRepository;
+    private final TacheRepository tacheRepository;
+    private final AffectationHoraireRepository affectationHoraireRepository;
+    private final ProjetRepository projetRepository;
+    private final EquipeRepository equipeRepository;
+    private final CompteRepository compteRepository;
+    private final DemandeRepository demandeRepository;
+    private final HistoriqueStatutRepository historiqueStatutRepository;
+    private final AccessLogRepository accessLogRepository;
+    private final PeriodeBloqueeRepository periodeBloqueeRepository;
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
     public List<EmployeDTO> findAll() {
         return employeRepository.findAll().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<EmployeDTO> findByRoleName(String roleName) {
+        return employeRepository.findByRoleName(roleName).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
@@ -63,6 +79,7 @@ public class EmployeService {
     }
 
     public EmployeDTO create(EmployeDTO dto) {
+        validateFields(dto);
         Employe employe = toEntity(dto);
         // Auto-generate matricule from département (3 first letters + 4 random digits)
         employe.setMatricule(generateMatricule(dto.getDepartement()));
@@ -81,6 +98,21 @@ public class EmployeService {
         }
 
         return toDTO(saved);
+    }
+
+    private void validateFields(EmployeDTO dto) {
+        if (dto.getCin() != null && !dto.getCin().matches("^[0-9]{8}$")) {
+            throw new RuntimeException("Le CIN doit contenir exactement 8 chiffres");
+        }
+        if (dto.getCnss() != null && !dto.getCnss().matches("^[0-9]{8,12}$")) {
+            throw new RuntimeException("Le CNSS doit contenir entre 8 et 12 chiffres");
+        }
+        if (dto.getRibBancaire() != null && !dto.getRibBancaire().matches("^[0-9]{20}$")) {
+            throw new RuntimeException("Le RIB doit contenir exactement 20 chiffres");
+        }
+        if (dto.getTelephonePro() != null && !dto.getTelephonePro().matches("^[0-9]+$")) {
+            throw new RuntimeException("Le téléphone professionnel doit contenir uniquement des chiffres");
+        }
     }
 
     /**
@@ -110,6 +142,7 @@ public class EmployeService {
     }
 
     public EmployeDTO update(Long id, EmployeDTO dto) {
+        validateFields(dto);
         Employe employe = employeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé avec l'id: " + id));
         // Le matricule ne change pas (généré automatiquement)
@@ -119,6 +152,8 @@ public class EmployeService {
         employe.setPrenom(dto.getPrenom());
         employe.setEmail(dto.getEmail());
         employe.setTelephone(dto.getTelephone());
+        employe.setTelephonePro(dto.getTelephonePro());
+        employe.setSalaire(dto.getSalaire());
         employe.setDateEmbauche(dto.getDateEmbauche());
         employe.setSoldeConge(dto.getSoldeConge());
         employe.setPoste(dto.getPoste());
@@ -147,10 +182,61 @@ public class EmployeService {
     }
 
     public void delete(Long id) {
-        if (!employeRepository.existsById(id)) {
-            throw new RuntimeException("Employé non trouvé avec l'id: " + id);
+        Employe employe = employeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employé non trouvé avec l'id: " + id));
+
+        // Détacher l'employé des équipes
+        for (var equipe : employe.getEquipes()) {
+            equipe.getMembres().remove(employe);
         }
-        employeRepository.deleteById(id);
+        equipeRepository.saveAll(employe.getEquipes());
+
+        // Détacher les subordonnés
+        for (Employe sub : employe.getSubordonnes()) {
+            sub.setManager(null);
+        }
+
+        // Détacher des projets (chef de projet)
+        projetRepository.findAll().stream()
+                .filter(p -> employe.equals(p.getChefDeProjet()))
+                .forEach(p -> p.setChefDeProjet(null));
+
+        // Supprimer les pointages
+        pointageRepository.deleteAll(pointageRepository.findByEmployeId(employe.getId()));
+
+        // Détacher les tâches assignées
+        tacheRepository.findAll().stream()
+                .filter(t -> employe.equals(t.getAssignee()))
+                .forEach(t -> t.setAssignee(null));
+
+        // Supprimer les notifications
+        notificationRepository.deleteAll(notificationRepository.findByEmployeId(employe.getId()));
+
+        // Supprimer les validations
+        validationRepository.deleteAll(validationRepository.findByValidateurId(employe.getId()));
+
+        // Supprimer les affectations horaires
+        affectationHoraireRepository.deleteAll(affectationHoraireRepository.findByEmployeId(employe.getId()));
+
+        // Supprimer historique statut lié
+        historiqueStatutRepository.deleteAll(historiqueStatutRepository.findByModifieParId(employe.getId()));
+
+        // Détacher des périodes bloquées créées par cet employé
+        periodeBloqueeRepository.findAll().stream()
+                .filter(p -> employe.equals(p.getCreePar()))
+                .forEach(p -> p.setCreePar(null));
+
+        // Supprimer les demandes (cascade supprime validations/historique liés)
+        demandeRepository.deleteAll(demandeRepository.findByEmployeId(employe.getId()));
+
+        // Supprimer les access logs et le compte
+        if (employe.getCompte() != null) {
+            accessLogRepository.deleteAll(
+                    accessLogRepository.findByCompteIdOrderByDateAccesDesc(employe.getCompte().getId()));
+            compteRepository.delete(employe.getCompte());
+        }
+
+        employeRepository.delete(employe);
     }
 
     public void updateSoldeConge(Long id, Double solde) {
@@ -337,6 +423,8 @@ public class EmployeService {
                 .prenom(employe.getPrenom())
                 .email(employe.getEmail())
                 .telephone(employe.getTelephone())
+                .telephonePro(employe.getTelephonePro())
+                .salaire(employe.getSalaire())
                 .dateEmbauche(employe.getDateEmbauche())
                 .soldeConge(employe.getSoldeConge())
                 .poste(employe.getPoste())
@@ -359,8 +447,10 @@ public class EmployeService {
                 .prenom(dto.getPrenom())
                 .email(dto.getEmail())
                 .telephone(dto.getTelephone())
+                .telephonePro(dto.getTelephonePro())
+                .salaire(dto.getSalaire())
                 .dateEmbauche(dto.getDateEmbauche())
-                .soldeConge(dto.getSoldeConge() != null ? dto.getSoldeConge() : 30.0)
+                .soldeConge(dto.getSoldeConge() != null ? dto.getSoldeConge() : 0.0)
                 .poste(dto.getPoste())
                 .typeContrat(dto.getTypeContrat())
                 .genre(dto.getGenre() != null ? com.antigone.rh.enums.Genre.valueOf(dto.getGenre()) : null)

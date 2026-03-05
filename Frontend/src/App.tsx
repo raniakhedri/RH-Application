@@ -46,6 +46,7 @@ const App: React.FC = () => {
     <NotificationProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
         <Route
           path="/"
           element={
@@ -71,7 +72,6 @@ const App: React.FC = () => {
           <Route path="mon-calendrier" element={<MonCalendrierPage />} />
           <Route path="comptes" element={<PermissionRoute permission="VIEW_COMPTES"><ComptesPage /></PermissionRoute>} />
           <Route path="roles" element={<PermissionRoute permission="VIEW_ROLES"><RolesPage /></PermissionRoute>} />
-          <Route path="change-password" element={<ChangePasswordPage />} />
           <Route path="mon-profil" element={<MonProfilPage />} />
           <Route path="demandes/papier" element={<NewDemandePapierPage />} />
           <Route path="demandes/liste-papier" element={<DemandesPapierPage />} />

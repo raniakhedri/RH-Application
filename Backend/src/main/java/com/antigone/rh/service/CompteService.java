@@ -113,7 +113,7 @@ public class CompteService {
                 .enabled(true)
                 .mustChangePassword(true)
                 .employe(employe)
-                .roles(Set.of(role))
+                .roles(new HashSet<>(Set.of(role)))
                 .build();
 
         Compte saved = compteRepository.save(compte);
@@ -140,7 +140,8 @@ public class CompteService {
         if (request.getRoleId() != null) {
             Role role = roleRepository.findById(request.getRoleId())
                     .orElseThrow(() -> new RuntimeException("Rôle non trouvé"));
-            compte.setRoles(Set.of(role));
+            compte.getRoles().clear();
+            compte.getRoles().add(role);
         }
 
         return toDTO(compteRepository.save(compte));

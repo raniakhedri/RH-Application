@@ -2,6 +2,8 @@ package com.antigone.rh.repository;
 
 import com.antigone.rh.entity.Employe;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,4 +17,7 @@ public interface EmployeRepository extends JpaRepository<Employe, Long> {
     Optional<Employe> findByCin(String cin);
     List<Employe> findByManagerId(Long managerId);
     List<Employe> findByManagerIsNull();
+
+    @Query("SELECT e FROM Employe e JOIN e.compte c JOIN c.roles r WHERE UPPER(r.nom) = UPPER(:roleName)")
+    List<Employe> findByRoleName(@Param("roleName") String roleName);
 }

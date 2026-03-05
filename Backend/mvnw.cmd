@@ -5,7 +5,7 @@
 setlocal
 
 @REM Set JAVA_HOME to Adoptium JDK 17
-
+set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot"
 
 set "MAVEN_PROJECTBASEDIR=%~dp0"
 set "MAVEN_WRAPPER_PROPERTIES=%MAVEN_PROJECTBASEDIR%.mvn\wrapper\maven-wrapper.properties"
