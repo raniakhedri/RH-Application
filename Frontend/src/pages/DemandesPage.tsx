@@ -257,7 +257,7 @@ const DemandesPage: React.FC = () => {
   const [batchRefuseOpen, setBatchRefuseOpen] = useState(false);
   const [batchRefuseComment, setBatchRefuseComment] = useState('');
 
-  const isAdmin = user?.roles?.includes('SUPER_ADMIN');
+  const canViewDemandes = user?.permissions?.includes('VIEW_DEMANDES');
 
   useEffect(() => {
     loadDemandes();
@@ -266,7 +266,7 @@ const DemandesPage: React.FC = () => {
   const loadDemandes = async () => {
     try {
       let response;
-      if (isAdmin) {
+      if (canViewDemandes) {
         response = await demandeService.getAll();
       } else if (user) {
         response = await demandeService.getByEmploye(user.employeId);
@@ -395,7 +395,7 @@ const DemandesPage: React.FC = () => {
 
   const columns = [
     // Checkbox column for admin batch selection
-    ...(isAdmin
+    ...(canViewDemandes
       ? [
           {
             key: 'select',
@@ -475,7 +475,7 @@ const DemandesPage: React.FC = () => {
           >
             <HiOutlineEye size={16} />
           </button>
-          {isAdmin && item.statut === 'EN_ATTENTE' && (
+          {canViewDemandes && item.statut === 'EN_ATTENTE' && (
             <>
               <button
                 onClick={() => handleApprove(item.id)}
@@ -493,7 +493,7 @@ const DemandesPage: React.FC = () => {
               </button>
             </>
           )}
-          {!isAdmin && item.statut === 'EN_ATTENTE' && item.employeId === user?.employeId && (
+          {!canViewDemandes && item.statut === 'EN_ATTENTE' && item.employeId === user?.employeId && (
             <button
               onClick={() => handleCancel(item.id)}
               className="rounded-lg p-1.5 text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10"
@@ -513,20 +513,20 @@ const DemandesPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">
-            {isAdmin ? 'Gestion des demandes' : 'Mes demandes'}
-            {isAdmin && pendingCount > 0 && (
+            {canViewDemandes ? 'Gestion des demandes' : 'Mes demandes'}
+            {canViewDemandes && pendingCount > 0 && (
               <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-warning-500 text-white text-theme-xs font-semibold">
                 {pendingCount}
               </span>
             )}
           </h1>
           <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
-            {isAdmin
+            {canViewDemandes
               ? 'Approuver ou refuser les demandes de congé, autorisation et télétravail'
               : 'Suivre vos demandes de congé, autorisation et télétravail'}
           </p>
         </div>
-        {isAdmin && (
+        {canViewDemandes && (
           <div className="flex gap-2">
             <Button variant={showStats ? 'primary' : 'outline'} onClick={() => setShowStats(!showStats)}>
               <HiOutlineChartBar size={16} /> Stats
@@ -539,13 +539,13 @@ const DemandesPage: React.FC = () => {
       </div>
 
       {/* Statistics */}
-      {isAdmin && showStats && <StatsCards demandes={demandes} />}
+      {canViewDemandes && showStats && <StatsCards demandes={demandes} />}
 
       {/* Team Calendar */}
-      {isAdmin && showCalendar && <TeamCalendar demandes={demandes} />}
+      {canViewDemandes && showCalendar && <TeamCalendar demandes={demandes} />}
 
       {/* Batch Actions Bar */}
-      {isAdmin && selectedIds.size > 0 && (
+      {canViewDemandes && selectedIds.size > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 p-3 dark:border-brand-500/30 dark:bg-brand-500/10">
           <span className="text-theme-sm font-medium text-brand-700 dark:text-brand-300">
             {selectedIds.size} demande(s) sélectionnée(s)
@@ -696,7 +696,7 @@ const DemandesPage: React.FC = () => {
             </div>
 
             {/* Admin actions in modal */}
-            {isAdmin && selectedDemande.statut === 'EN_ATTENTE' && (
+            {canViewDemandes && selectedDemande.statut === 'EN_ATTENTE' && (
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <Button
                   variant="outline"

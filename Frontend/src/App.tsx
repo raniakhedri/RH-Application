@@ -36,8 +36,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const PermissionRoute: React.FC<{ permission: string; children: React.ReactNode }> = ({ permission, children }) => {
   const { user } = useAuth();
-  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN');
-  const hasPermission = isSuperAdmin || user?.permissions?.includes(permission);
+  const hasPermission = user?.permissions?.includes(permission);
   if (!hasPermission) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
