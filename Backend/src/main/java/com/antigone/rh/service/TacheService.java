@@ -21,6 +21,7 @@ public class TacheService {
     private final TacheRepository tacheRepository;
     private final ProjetRepository projetRepository;
     private final EmployeRepository employeRepository;
+    private final NotificationService notificationService;
 
     public List<Tache> findAll() {
         return tacheRepository.findAll();
@@ -59,7 +60,16 @@ public class TacheService {
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé"));
 
         tache.setAssignee(employe);
-        return tacheRepository.save(tache);
+        Tache saved = tacheRepository.save(tache);
+
+        // Notify the newly assigned employee
+        notificationService.create(
+                employe,
+                "Nouvelle tâche assignée",
+                "La tâche \"" + tache.getTitre() + "\" vous a été assignée.",
+                null);
+
+        return saved;
     }
 
     public Tache changeStatut(Long tacheId, StatutTache statut) {

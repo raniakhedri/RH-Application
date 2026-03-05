@@ -27,6 +27,7 @@ public class DemandePapierService {
     private final EmployeRepository employeRepository;
     private final HistoriqueStatutRepository historiqueStatutRepository;
     private final DemandeService demandeService; // reuse toResponse mapper
+    private final NotificationService notificationService;
 
     /** Return all ADMINISTRATION demandes */
     public List<DemandeResponse> findAll() {
@@ -75,6 +76,14 @@ public class DemandePapierService {
         demandeRepository.save(demande);
 
         saveHistorique(demande, ancien, StatutDemande.VALIDEE, demande.getEmploye());
+
+        // Notify the employee
+        notificationService.create(
+                demande.getEmploye(),
+                "Demande papier acceptée ✓",
+                "Votre demande papier a été acceptée.",
+                demande);
+
         return demandeService.toResponse(demande);
     }
 
@@ -94,6 +103,14 @@ public class DemandePapierService {
         demandeRepository.save(demande);
 
         saveHistorique(demande, ancien, StatutDemande.ANNULEE, demande.getEmploye());
+
+        // Notify the employee
+        notificationService.create(
+                demande.getEmploye(),
+                "Demande papier refusée ✗",
+                "Votre demande papier a été refusée" + (motif != null && !motif.isBlank() ? " : " + motif : "."),
+                demande);
+
         return demandeService.toResponse(demande);
     }
 

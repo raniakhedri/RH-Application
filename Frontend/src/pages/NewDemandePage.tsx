@@ -8,6 +8,7 @@ import { TypeDemande, Referentiel, CalendrierJour, HoraireTravail, CalculateDays
 import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi';
+import { useTachesObligatoires } from '../hooks/useTachesObligatoires';
 
 // Map JS Date.getDay() (0=Sunday) to French day names used in joursTravail
 const DOW_TO_JOUR: Record<number, string> = {
@@ -63,9 +64,10 @@ interface MiniCalendarProps {
   dateDebut: string;
   dateFin: string;
   horaires: HoraireTravail[];
+  blockedDates?: Set<string>;
 }
 
-const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFin, horaires }) => {
+const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFin, horaires, blockedDates = new Set() }) => {
   const [viewDate, setViewDate] = useState(() => {
     if (dateDebut) return new Date(dateDebut + 'T00:00:00');
     return new Date();
@@ -139,9 +141,17 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFi
           const holiday = holidaySet.get(dateStr);
           const isSelected = selectedRange.has(dateStr);
 
+          const isBlocked = blockedDates.has(dateStr);
+
           let bg = '';
           let textColor = 'text-gray-700 dark:text-gray-300';
           let title = '';
+
+          if (isBlocked) {
+            bg = 'bg-yellow-100 dark:bg-yellow-500/20';
+            textColor = 'text-yellow-700 dark:text-yellow-400 font-semibold';
+            title = 'Tâche obligatoire — congé non autorisé';
+          }
 
           if (holiday) {
             bg = 'bg-error-100 dark:bg-error-500/20';
@@ -185,27 +195,31 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFi
           <div className="w-3 h-3 rounded bg-brand-100 dark:bg-brand-500/20 border border-brand-200 dark:border-brand-500/30" />
           Sélection
         </div>
+        <div className="flex items-center gap-1.5 text-theme-xs text-gray-500">
+          <div className="w-3 h-3 rounded bg-yellow-100 dark:bg-yellow-500/20 border border-yellow-200 dark:border-yellow-500/30" />
+          Tâche obligatoire
+        </div>
       </div>
       {/* Show holidays list for current view */}
       {holidays.filter((h) => {
         const d = new Date(h.dateJour + 'T00:00:00');
         return d.getMonth() === month && d.getFullYear() === year;
       }).length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1.5">
-          <p className="text-theme-xs font-medium text-gray-500 dark:text-gray-400">Jours fériés ce mois :</p>
-          {holidays
-            .filter((h) => {
-              const d = new Date(h.dateJour + 'T00:00:00');
-              return d.getMonth() === month && d.getFullYear() === year;
-            })
-            .map((h) => (
-              <div key={h.id} className="flex items-center gap-2 text-theme-xs">
-                <span className="text-error-500 font-medium">{new Date(h.dateJour + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-                <span className="text-gray-600 dark:text-gray-400">{h.nomJour}</span>
-              </div>
-            ))}
-        </div>
-      )}
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1.5">
+            <p className="text-theme-xs font-medium text-gray-500 dark:text-gray-400">Jours fériés ce mois :</p>
+            {holidays
+              .filter((h) => {
+                const d = new Date(h.dateJour + 'T00:00:00');
+                return d.getMonth() === month && d.getFullYear() === year;
+              })
+              .map((h) => (
+                <div key={h.id} className="flex items-center gap-2 text-theme-xs">
+                  <span className="text-error-500 font-medium">{new Date(h.dateJour + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                  <span className="text-gray-600 dark:text-gray-400">{h.nomJour}</span>
+                </div>
+              ))}
+          </div>
+        )}
     </div>
   );
 };
@@ -214,6 +228,7 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFi
 const NewDemandePage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { blockedDates } = useTachesObligatoires(user?.employeId);
   const [type, setType] = useState<TypeDemande>(TypeDemande.CONGE);
   const [typeConge, setTypeConge] = useState('');
   const [congeTypes, setCongeTypes] = useState<Referentiel[]>([]);
@@ -419,6 +434,28 @@ const NewDemandePage: React.FC = () => {
     if (!user) return;
     setError('');
 
+    // Block submission if any selected date falls on a tache obligatoire
+    if (type === TypeDemande.CONGE && dateDebut) {
+      const rangeDates = dateFin ? (() => {
+        const dates: string[] = [];
+        const cur = new Date(dateDebut + 'T00:00:00');
+        const last = new Date(dateFin + 'T00:00:00');
+        while (cur <= last) {
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const d = String(cur.getDate()).padStart(2, '0');
+          dates.push(`${y}-${m}-${d}`);
+          cur.setDate(cur.getDate() + 1);
+        }
+        return dates;
+      })() : [dateDebut];
+      const conflict = rangeDates.find((d) => blockedDates.has(d));
+      if (conflict) {
+        setError(`Vous avez une tâche obligatoire le ${conflict}. Le congé n'est pas autorisé ce jour-là.`);
+        return;
+      }
+    }
+
     // Validate justificatif
     if (needsJustificatif && !justificatif) {
       const docNames: Record<string, string> = {
@@ -572,13 +609,12 @@ const NewDemandePage: React.FC = () => {
 
                 {/* Computed effective days info */}
                 {!isFixedDays && dateDebut && dateFin && (
-                  <div className={`rounded-lg border p-3 text-theme-sm ${
-                    calcLoading
-                      ? 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
-                      : calcResult && calcResult.nombreJours > 0
-                        ? 'border-brand-200 bg-brand-50 dark:border-brand-500/30 dark:bg-brand-500/10'
-                        : 'border-error-200 bg-error-50 dark:border-error-500/30 dark:bg-error-500/10'
-                  }`}>
+                  <div className={`rounded-lg border p-3 text-theme-sm ${calcLoading
+                    ? 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
+                    : calcResult && calcResult.nombreJours > 0
+                      ? 'border-brand-200 bg-brand-50 dark:border-brand-500/30 dark:bg-brand-500/10'
+                      : 'border-error-200 bg-error-50 dark:border-error-500/30 dark:bg-error-500/10'
+                    }`}>
                     {calcLoading ? (
                       <p className="text-gray-500 dark:text-gray-400">Calcul en cours...</p>
                     ) : calcResult ? (
@@ -820,7 +856,7 @@ const NewDemandePage: React.FC = () => {
         {type === TypeDemande.CONGE && (
           <div className="w-72 shrink-0 space-y-4">
             <h3 className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300">Calendrier entreprise</h3>
-            <MiniCalendar holidays={holidays} dateDebut={dateDebut} dateFin={dateFin} horaires={allHoraires} />
+            <MiniCalendar holidays={holidays} dateDebut={dateDebut} dateFin={dateFin} horaires={allHoraires} blockedDates={blockedDates} />
           </div>
         )}
       </div>
