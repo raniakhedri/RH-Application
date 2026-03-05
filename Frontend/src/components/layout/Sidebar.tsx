@@ -108,11 +108,12 @@ const Sidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, openSubmenu, setIsHovered, setOpenSubmenu, toggleMobileSidebar } = useSidebar();
   const [pendingCount, setPendingCount] = useState(0);
 
-  const isAdmin = user?.roles?.includes('SUPER_ADMIN');
+  const userPermissions = user?.permissions || [];
+  const canViewValidations = userPermissions.includes('VIEW_VALIDATIONS');
 
-  // Fetch pending demandes count for admin
+  // Fetch pending demandes count for users with validation permission
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canViewValidations) return;
     const fetchPending = async () => {
       try {
         const res = await demandeService.getByStatut('EN_ATTENTE' as any);
@@ -122,17 +123,14 @@ const Sidebar: React.FC = () => {
     fetchPending();
     const interval = setInterval(fetchPending, 30000); // refresh every 30s
     return () => clearInterval(interval);
-  }, [isAdmin]);
+  }, [canViewValidations]);
 
-  const userPermissions = user?.permissions || [];
-  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN');
-
-  // Filter menu groups: SUPER_ADMIN sees everything, others need permissions
+  // Filter menu groups by user permissions
   const filteredMenuGroups = menuGroups
     .map((group) => ({
       ...group,
       items: group.items.filter((item) =>
-        isSuperAdmin || !item.permission || userPermissions.includes(item.permission)
+        !item.permission || userPermissions.includes(item.permission)
       ),
     }))
     .filter((group) => group.items.length > 0);
@@ -187,7 +185,7 @@ const Sidebar: React.FC = () => {
                 {group.items.map((item) => (
                   <SidebarItem
                     key={item.key}
-                    item={item.key === 'demandes' && isAdmin && pendingCount > 0 ? { ...item, badge: pendingCount } : item}
+                    item={item.key === 'demandes' && canViewValidations && pendingCount > 0 ? { ...item, badge: pendingCount } : item}
                     isActive={isActive}
                     showText={showText}
                     openSubmenu={openSubmenu}

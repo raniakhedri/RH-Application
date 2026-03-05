@@ -404,9 +404,8 @@ const NewDemandePage: React.FC = () => {
         }
         let types: Referentiel[] = congeRes.data.data || [];
 
-        // Gender-based filtering (Super Admin sees all)
-        const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN');
-        if (!isSuperAdmin && user?.genre) {
+        // Gender-based filtering
+        if (user?.genre) {
           if (user.genre === 'HOMME') {
             // Men: no maternité, no règles
             types = types.filter((t) => t.libelle !== 'CONGE_MATERNITE' && t.libelle !== 'CONGE_REGLES');

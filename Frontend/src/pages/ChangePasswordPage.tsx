@@ -78,44 +78,28 @@ const ChangePasswordPage: React.FC = () => {
   };
 
   return (
-    <div className={isForced ? 'min-h-screen bg-gradient-to-br from-secondary-700 to-secondary-900 flex items-center justify-center p-4' : 'flex items-center justify-center py-8 px-4'}>
-      {/* Background decorations (only for forced change) */}
-      {isForced && (
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-brand-500/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary-500/10 rounded-full blur-3xl" />
-        </div>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-secondary-700 to-secondary-900 flex items-center justify-center p-4">
+      {/* Background decorations */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-brand-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary-500/10 rounded-full blur-3xl" />
+      </div>
 
-      <div className={`relative w-full max-w-md ${isForced ? '' : ''}`}>
+      <div className="relative w-full max-w-md">
         {/* Header icon */}
-        {isForced && (
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-500 rounded-2xl shadow-lg mb-4">
-              <HiOutlineLockClosed className="text-white" size={32} />
-            </div>
-            <h1 className="text-2xl font-bold text-white">Changement de mot de passe</h1>
-            <p className="text-white/60 mt-2 text-sm">
-              Pour des raisons de sécurité, vous devez changer votre mot de passe avant de continuer.
-            </p>
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-500 rounded-2xl shadow-lg mb-4">
+            <HiOutlineLockClosed className="text-white" size={32} />
           </div>
-        )}
+          <h1 className="text-2xl font-bold text-white">Changement de mot de passe</h1>
+          <p className="text-white/60 mt-2 text-sm">
+            {isForced
+              ? 'Pour des raisons de sécurité, vous devez changer votre mot de passe avant de continuer.'
+              : 'Sécurisez votre compte en modifiant votre mot de passe.'}
+          </p>
+        </div>
 
-        <div className={isForced
-          ? 'bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 shadow-2xl'
-          : 'bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-200 dark:border-gray-700 shadow-theme-lg'
-        }>
-          {!isForced && (
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center justify-center w-10 h-10 bg-brand-100 dark:bg-brand-500/20 rounded-xl">
-                <HiOutlineLockClosed className="text-brand-500" size={22} />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Changer le mot de passe</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Sécurisez votre compte</p>
-              </div>
-            </div>
-          )}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 shadow-2xl">
 
           {error && (
             <div className="mb-5 p-3 bg-error-500/10 border border-error-500/30 rounded-lg text-error-500 dark:text-error-400 text-theme-sm">
@@ -126,7 +110,7 @@ const ChangePasswordPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Old password */}
             <div>
-              <label className={`block text-theme-sm mb-1.5 ${isForced ? 'text-white/70' : 'text-gray-700 dark:text-gray-300'}`}>
+              <label className="block text-theme-sm mb-1.5 text-white/70">
                 Mot de passe actuel
               </label>
               <div className="relative">
@@ -136,16 +120,12 @@ const ChangePasswordPage: React.FC = () => {
                   onChange={(e) => setOldPassword(e.target.value)}
                   placeholder="Entrez votre mot de passe actuel"
                   required
-                  className={`w-full px-4 py-3 pr-11 rounded-lg transition-all focus:outline-none focus:ring-2 ${
-                    isForced
-                      ? 'bg-white/10 border border-white/20 text-white placeholder-white/40 focus:ring-brand-500/20 focus:border-brand-400'
-                      : 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:ring-brand-500/20 focus:border-brand-400'
-                  }`}
+                  className="w-full px-4 py-3 pr-11 rounded-lg transition-all focus:outline-none focus:ring-2 bg-white/10 border border-white/20 text-white placeholder-white/40 focus:ring-brand-500/20 focus:border-brand-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowOld(!showOld)}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${isForced ? 'text-white/50 hover:text-white/80' : 'text-gray-400 hover:text-gray-600'}`}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
                 >
                   {showOld ? <HiOutlineEyeOff size={20} /> : <HiOutlineEye size={20} />}
                 </button>
@@ -154,7 +134,7 @@ const ChangePasswordPage: React.FC = () => {
 
             {/* New password */}
             <div>
-              <label className={`block text-theme-sm mb-1.5 ${isForced ? 'text-white/70' : 'text-gray-700 dark:text-gray-300'}`}>
+              <label className="block text-theme-sm mb-1.5 text-white/70">
                 Nouveau mot de passe
               </label>
               <div className="relative">
@@ -164,16 +144,12 @@ const ChangePasswordPage: React.FC = () => {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Minimum 8 caractères"
                   required
-                  className={`w-full px-4 py-3 pr-11 rounded-lg transition-all focus:outline-none focus:ring-2 ${
-                    isForced
-                      ? 'bg-white/10 border border-white/20 text-white placeholder-white/40 focus:ring-brand-500/20 focus:border-brand-400'
-                      : 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:ring-brand-500/20 focus:border-brand-400'
-                  }`}
+                  className="w-full px-4 py-3 pr-11 rounded-lg transition-all focus:outline-none focus:ring-2 bg-white/10 border border-white/20 text-white placeholder-white/40 focus:ring-brand-500/20 focus:border-brand-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNew(!showNew)}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${isForced ? 'text-white/50 hover:text-white/80' : 'text-gray-400 hover:text-gray-600'}`}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
                 >
                   {showNew ? <HiOutlineEyeOff size={20} /> : <HiOutlineEye size={20} />}
                 </button>
@@ -187,12 +163,12 @@ const ChangePasswordPage: React.FC = () => {
                       <div
                         key={level}
                         className={`h-1.5 flex-1 rounded-full transition-colors ${
-                          level <= strength ? strengthColor : (isForced ? 'bg-white/10' : 'bg-gray-200 dark:bg-gray-700')
+                          level <= strength ? strengthColor : 'bg-white/10'
                         }`}
                       />
                     ))}
                   </div>
-                  <p className={`text-xs ${isForced ? 'text-white/50' : 'text-gray-500 dark:text-gray-400'}`}>
+                  <p className="text-xs text-white/50">
                     Force : {strengthLabel}
                   </p>
                 </div>
@@ -201,7 +177,7 @@ const ChangePasswordPage: React.FC = () => {
 
             {/* Confirm password */}
             <div>
-              <label className={`block text-theme-sm mb-1.5 ${isForced ? 'text-white/70' : 'text-gray-700 dark:text-gray-300'}`}>
+              <label className="block text-theme-sm mb-1.5 text-white/70">
                 Confirmer le nouveau mot de passe
               </label>
               <div className="relative">
@@ -211,16 +187,12 @@ const ChangePasswordPage: React.FC = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Retapez le nouveau mot de passe"
                   required
-                  className={`w-full px-4 py-3 pr-11 rounded-lg transition-all focus:outline-none focus:ring-2 ${
-                    isForced
-                      ? 'bg-white/10 border border-white/20 text-white placeholder-white/40 focus:ring-brand-500/20 focus:border-brand-400'
-                      : 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:ring-brand-500/20 focus:border-brand-400'
-                  }`}
+                  className="w-full px-4 py-3 pr-11 rounded-lg transition-all focus:outline-none focus:ring-2 bg-white/10 border border-white/20 text-white placeholder-white/40 focus:ring-brand-500/20 focus:border-brand-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${isForced ? 'text-white/50 hover:text-white/80' : 'text-gray-400 hover:text-gray-600'}`}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
                 >
                   {showConfirm ? <HiOutlineEyeOff size={20} /> : <HiOutlineEye size={20} />}
                 </button>
@@ -242,9 +214,7 @@ const ChangePasswordPage: React.FC = () => {
               className={`w-full py-3 rounded-lg font-semibold transition-all ${
                 isValid && !loading
                   ? 'bg-brand-500 text-white hover:bg-brand-600 shadow-lg shadow-brand-500/25'
-                  : isForced
-                    ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                  : 'bg-white/10 text-white/40 cursor-not-allowed'
               }`}
             >
               {loading ? (
@@ -265,7 +235,7 @@ const ChangePasswordPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="w-full py-3 rounded-lg font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                className="w-full py-3 rounded-lg font-medium text-white/50 hover:bg-white/10 transition-all"
               >
                 Annuler
               </button>

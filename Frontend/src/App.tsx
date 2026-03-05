@@ -37,8 +37,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const PermissionRoute: React.FC<{ permission: string; children: React.ReactNode }> = ({ permission, children }) => {
   const { user } = useAuth();
-  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN');
-  const hasPermission = isSuperAdmin || user?.permissions?.includes(permission);
+  const hasPermission = user?.permissions?.includes(permission);
   if (!hasPermission) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
@@ -48,6 +47,7 @@ const App: React.FC = () => {
     <NotificationProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
         <Route
           path="/"
           element={
@@ -73,7 +73,6 @@ const App: React.FC = () => {
           <Route path="mon-calendrier" element={<MonCalendrierPage />} />
           <Route path="comptes" element={<PermissionRoute permission="VIEW_COMPTES"><ComptesPage /></PermissionRoute>} />
           <Route path="roles" element={<PermissionRoute permission="VIEW_ROLES"><RolesPage /></PermissionRoute>} />
-          <Route path="change-password" element={<ChangePasswordPage />} />
           <Route path="mon-profil" element={<MonProfilPage />} />
           <Route path="demandes/papier" element={<NewDemandePapierPage />} />
           <Route path="demandes/liste-papier" element={<DemandesPapierPage />} />

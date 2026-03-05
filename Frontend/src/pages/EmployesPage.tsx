@@ -22,10 +22,12 @@ const EmployesPage: React.FC = () => {
   const [postes, setPostes] = useState<Referentiel[]>([]);
   const [typesContrat, setTypesContrat] = useState<Referentiel[]>([]);
   const [roles, setRoles] = useState<RoleDTO[]>([]);
+  const [managers, setManagers] = useState<Employe[]>([]);
 
   const [formData, setFormData] = useState({
     cin: '', cnss: '', nom: '', prenom: '', email: '', telephone: '',
-    dateEmbauche: '', soldeConge: 30, poste: '', typeContrat: '', genre: '',
+    telephonePro: '', salaire: '' as string | number,
+    dateEmbauche: '', soldeConge: 0, poste: '', typeContrat: '', genre: '',
     departement: '', ribBancaire: '', managerId: null as number | null,
   });
 
@@ -58,6 +60,10 @@ const EmployesPage: React.FC = () => {
       setPostes((postRes.data.data || []).filter((r: Referentiel) => r.actif));
       setTypesContrat((contratRes.data.data || []).filter((r: Referentiel) => r.actif));
       setRoles(rolesRes.data.data || []);
+      try {
+        const managersRes = await employeService.getByRole('MANAGER');
+        setManagers(managersRes.data.data || []);
+      } catch { setManagers([]); }
     } catch (err) {
       console.error('Erreur chargement:', err);
     } finally {
@@ -74,6 +80,8 @@ const EmployesPage: React.FC = () => {
       if (!payload.cin) payload.cin = null;
       if (!payload.cnss) payload.cnss = null;
       if (!payload.telephone) payload.telephone = null;
+      if (!payload.telephonePro) payload.telephonePro = null;
+      if (payload.salaire === '' || payload.salaire === null) payload.salaire = null; else payload.salaire = Number(payload.salaire);
       if (!payload.poste) payload.poste = null;
       if (!payload.typeContrat) payload.typeContrat = null;
       if (!payload.departement) payload.departement = null;
@@ -129,7 +137,9 @@ const EmployesPage: React.FC = () => {
     setFormData({
       cin: employe.cin || '', cnss: employe.cnss || '',
       nom: employe.nom, prenom: employe.prenom, email: employe.email,
-      telephone: employe.telephone || '', dateEmbauche: employe.dateEmbauche || '',
+      telephone: employe.telephone || '', telephonePro: employe.telephonePro || '',
+      salaire: employe.salaire ?? '',
+      dateEmbauche: employe.dateEmbauche || '',
       soldeConge: employe.soldeConge, poste: employe.poste || '',
       typeContrat: employe.typeContrat || '', genre: employe.genre || '',
       departement: employe.departement || '', ribBancaire: employe.ribBancaire || '',
@@ -163,7 +173,9 @@ const EmployesPage: React.FC = () => {
       try {
         await employeService.delete(id);
         loadAll();
-      } catch (err) {
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || 'Impossible de supprimer cet employé.';
+        alert(msg);
         console.error('Erreur suppression:', err);
       }
     }
@@ -172,7 +184,8 @@ const EmployesPage: React.FC = () => {
   const resetForm = () => {
     setFormData({
       cin: '', cnss: '', nom: '', prenom: '', email: '', telephone: '',
-      dateEmbauche: '', soldeConge: 30, poste: '', typeContrat: '', genre: '',
+      telephonePro: '', salaire: '',
+      dateEmbauche: '', soldeConge: 0, poste: '', typeContrat: '', genre: '',
       departement: '', ribBancaire: '', managerId: null,
     });
     setCreateCompte(false);
@@ -250,8 +263,12 @@ const EmployesPage: React.FC = () => {
     nom: !formData.nom.trim(),
     prenom: !formData.prenom.trim(),
     email: !formData.email.trim() || !isValidEmail(formData.email),
+    cin: !!formData.cin && formData.cin.length !== 8,
+    cnss: !!formData.cnss && (formData.cnss.length < 8 || formData.cnss.length > 12),
+    ribBancaire: !!formData.ribBancaire && formData.ribBancaire.length !== 20,
+    telephonePro: !!formData.telephonePro && !/^[0-9]+$/.test(formData.telephonePro),
   };
-  const hasErrors = formErrors.nom || formErrors.prenom || formErrors.email;
+  const hasErrors = formErrors.nom || formErrors.prenom || formErrors.email || formErrors.cin || formErrors.cnss || formErrors.ribBancaire || formErrors.telephonePro;
 
   return (
     <div className="space-y-6">
@@ -337,11 +354,13 @@ const EmployesPage: React.FC = () => {
           )}
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CIN</label>
-            <input type="text" value={formData.cin} onChange={(e) => setFormData({ ...formData, cin: onlyDigits(e.target.value) })} placeholder="Chiffres uniquement" className={inputClass} />
+            <input type="text" value={formData.cin} onChange={(e) => setFormData({ ...formData, cin: onlyDigits(e.target.value).slice(0, 8) })} placeholder="8 chiffres" maxLength={8} className={formErrors.cin ? inputErrorClass : inputClass} />
+            {formErrors.cin && <p className="text-theme-xs text-error-500 mt-1">Le CIN doit contenir exactement 8 chiffres</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CNSS</label>
-            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: onlyDigits(e.target.value) })} placeholder="Chiffres uniquement" className={inputClass} />
+            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: onlyDigits(e.target.value).slice(0, 12) })} placeholder="8 à 12 chiffres" maxLength={12} className={formErrors.cnss ? inputErrorClass : inputClass} />
+            {formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir entre 8 et 12 chiffres</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genre</label>
@@ -369,6 +388,11 @@ const EmployesPage: React.FC = () => {
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone</label>
             <input type="text" value={formData.telephone} onChange={(e) => setFormData({ ...formData, telephone: onlyDigits(e.target.value) })} placeholder="Chiffres uniquement" className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone professionnel</label>
+            <input type="text" value={formData.telephonePro} onChange={(e) => setFormData({ ...formData, telephonePro: onlyDigits(e.target.value) })} placeholder="Chiffres uniquement" className={formErrors.telephonePro ? inputErrorClass : inputClass} />
+            {formErrors.telephonePro && <p className="text-theme-xs text-error-500 mt-1">Le téléphone professionnel doit contenir uniquement des chiffres</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Poste</label>
@@ -399,7 +423,8 @@ const EmployesPage: React.FC = () => {
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RIB Bancaire</label>
-            <input type="text" value={formData.ribBancaire} onChange={(e) => setFormData({ ...formData, ribBancaire: onlyDigits(e.target.value) })} placeholder="Chiffres uniquement" className={inputClass} />
+            <input type="text" value={formData.ribBancaire} onChange={(e) => setFormData({ ...formData, ribBancaire: onlyDigits(e.target.value).slice(0, 20) })} placeholder="20 chiffres" maxLength={20} className={formErrors.ribBancaire ? inputErrorClass : inputClass} />
+            {formErrors.ribBancaire && <p className="text-theme-xs text-error-500 mt-1">Le RIB doit contenir exactement 20 chiffres</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date d'embauche</label>
@@ -407,8 +432,17 @@ const EmployesPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Solde congé</label>
-            <input type="number" value={formData.soldeConge} onChange={(e) => setFormData({ ...formData, soldeConge: Number(e.target.value) })} className={inputClass} />
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Salaire</label>
+            <input type="number" min="0" step="0.01" value={formData.salaire} onChange={(e) => setFormData({ ...formData, salaire: e.target.value })} placeholder="Montant en DT" className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manager</label>
+            <select value={formData.managerId ?? ''} onChange={(e) => setFormData({ ...formData, managerId: e.target.value ? Number(e.target.value) : null })} className={selectClass}>
+              <option value="">Aucun manager</option>
+              {managers.filter(m => m.id !== editingEmploye?.id).map((m) => (
+                <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>
+              ))}
+            </select>
           </div>
         </div>
 

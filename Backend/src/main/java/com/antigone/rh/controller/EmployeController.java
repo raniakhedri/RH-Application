@@ -48,6 +48,11 @@ public class EmployeController {
         return ResponseEntity.ok(ApiResponse.ok(employeService.findSubordinates(id)));
     }
 
+    @GetMapping("/by-role/{roleName}")
+    public ResponseEntity<ApiResponse<List<EmployeDTO>>> getByRole(@PathVariable String roleName) {
+        return ResponseEntity.ok(ApiResponse.ok(employeService.findByRoleName(roleName)));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<EmployeDTO>> create(@RequestBody EmployeDTO dto) {
         return ResponseEntity.ok(ApiResponse.ok("Employé créé", employeService.create(dto)));
