@@ -22,7 +22,9 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
 import MonProfilPage from './pages/MonProfilPage';
 import MonCalendrierPage from './pages/MonCalendrierPage';
 import MesDemandesPage from './pages/MesDemandesPage';
+
 import MesTachesPage from './pages/MesTachesPage';
+
 import MesDemandesPapierPage from './pages/MesDemandesPapierPage';
 import { NotificationProvider } from './context/NotificationContext';
 
@@ -59,6 +61,7 @@ const App: React.FC = () => {
           <Route path="demandes" element={<PermissionRoute permission="VIEW_DEMANDES"><DemandesPage /></PermissionRoute>} />
           <Route path="demandes/new" element={<PermissionRoute permission="VIEW_DEMANDES"><NewDemandePage /></PermissionRoute>} />
           <Route path="mes-demandes" element={<MesDemandesPage />} />
+          <Route path="mes-demandes/papier" element={<MesDemandesPapierPage />} />
           <Route path="validations" element={<PermissionRoute permission="VIEW_VALIDATIONS"><ValidationsPage /></PermissionRoute>} />
           <Route path="pointage" element={<PermissionRoute permission="VIEW_POINTAGE"><PointagePage /></PermissionRoute>} />
           <Route path="projets" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetsPage /></PermissionRoute>} />

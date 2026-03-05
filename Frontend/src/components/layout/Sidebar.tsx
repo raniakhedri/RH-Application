@@ -37,10 +37,19 @@ const menuGroups = [
     items: [
       { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} />, permission: 'VIEW_DASHBOARD' },
       { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} />, permission: 'VIEW_EMPLOYES' },
-      { key: 'mes-demandes', label: 'Mes demandes', path: '/mes-demandes', icon: <HiOutlineClipboardList size={20} /> },
+
+      {
+        key: 'mes-demandes',
+        label: 'Mes demandes',
+        path: '/mes-demandes',
+        icon: <HiOutlineClipboardList size={20} />,
+        children: [
+          { label: 'Mes demandes congés', path: '/mes-demandes' },
+          { label: 'Mes demandes papiers', path: '/mes-demandes-papier' },
+        ],
+      },
       { key: 'mes-taches', label: 'Mes Tâches', path: '/mes-taches', icon: <HiOutlineViewBoards size={20} /> },
       { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} /> },
-      { key: 'Mes-Demandes-Papier', label: 'Mes Demandes Papier', path: '/mes-demandes-papier', icon: <HiOutlineCalendar size={20} /> },
 
     ] as NavItemDef[],
   },
@@ -48,19 +57,20 @@ const menuGroups = [
     title: 'GESTION',
     items: [
       {
-        key: 'demandes',
-        label: 'Demandes',
-        path: '/demandes',
-        icon: <HiOutlineDocumentText size={20} />,
-        permission: 'VIEW_DEMANDES',
+        key: 'validations',
+        label: 'Validation demandes',
+        path: '/validations',
+        icon: <HiOutlineClipboardCheck size={20} />,
+        permission: 'VIEW_VALIDATIONS',
         children: [
           { label: 'Demandes congés', path: '/demandes' },
+
           { label: 'Demandes papier', path: 'demandes/papier' },
           { label: 'Les Demandes papier', path: 'demandes/liste-papier' },
 
+
         ],
       },
-      { key: 'validations', label: 'Validations', path: '/validations', icon: <HiOutlineClipboardCheck size={20} />, permission: 'VIEW_VALIDATIONS' },
       { key: 'pointage', label: 'Pointage', path: '/pointage', icon: <HiOutlineClock size={20} />, permission: 'VIEW_POINTAGE' },
     ] as NavItemDef[],
   },
@@ -238,7 +248,7 @@ const SidebarItem: React.FC<{
                 <li key={child.path}>
                   <NavLink
                     to={child.path}
-                    end={child.path === item.path}
+                    end
                     className={({ isActive: childActive }) =>
                       `menu-dropdown-item ${childActive ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'}`
                     }
