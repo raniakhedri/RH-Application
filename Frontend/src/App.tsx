@@ -24,6 +24,7 @@ import MonCalendrierPage from './pages/MonCalendrierPage';
 import MesDemandesPage from './pages/MesDemandesPage';
 
 import MesTachesPage from './pages/MesTachesPage';
+import ProjetTachesPage from './pages/ProjetTachesPage';
 
 import MesDemandesPapierPage from './pages/MesDemandesPapierPage';
 import { NotificationProvider } from './context/NotificationContext';
@@ -78,6 +79,7 @@ const App: React.FC = () => {
           <Route path="demandes/liste-papier" element={<DemandesPapierPage />} />
           <Route path="mes-taches" element={<MesTachesPage />} />
           <Route path="mes-demandes-papier" element={<MesDemandesPapierPage />} />
+          <Route path="projets/:projetId/taches" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetTachesPage /></PermissionRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

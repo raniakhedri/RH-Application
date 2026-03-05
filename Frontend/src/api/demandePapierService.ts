@@ -29,4 +29,8 @@ export const demandePapierService = {
             `/demandes-papier/${id}/cancel`,
             motif ? { motifAnnulation: motif } : {}
         ),
+
+    /** Update raison of a demande papier (only while editable) */
+    update: (id: number, data: Partial<DemandePapierCreateRequest>) =>
+        api.put<ApiResponse<DemandeResponse>>(`/demandes-papier/${id}`, data),
 };

@@ -68,21 +68,22 @@ public class ProjetService {
 
         Projet savedProjet = projetRepository.save(projet);
 
-        // Team assignment (optional, but cannot be already assigned to another project)
-        if (request.getEquipeId() != null) {
-            Equipe equipe = equipeRepository.findById(request.getEquipeId())
-                    .orElseThrow(() -> new RuntimeException("Équipe non trouvée avec l'id: " + request.getEquipeId()));
+        // Team assignment (multiple, optional)
+        if (request.getEquipeIds() != null && !request.getEquipeIds().isEmpty()) {
+            for (Long equipeId : request.getEquipeIds()) {
+                Equipe equipe = equipeRepository.findById(equipeId)
+                        .orElseThrow(() -> new RuntimeException("Équipe non trouvée avec l'id: " + equipeId));
 
-            // Check if team is already assigned to a DIFFERENT project
-            if (equipe.getProjet() != null && !equipe.getProjet().getId().equals(savedProjet.getId())) {
-                throw new IllegalArgumentException(
-                        "L'équipe \"" + equipe.getNom() + "\" est déjà assignée au projet \""
-                                + equipe.getProjet().getNom()
-                                + "\". Une équipe ne peut appartenir qu'à un seul projet.");
+                if (equipe.getProjet() != null && !equipe.getProjet().getId().equals(savedProjet.getId())) {
+                    throw new IllegalArgumentException(
+                            "L'équipe \"" + equipe.getNom() + "\" est déjà assignée au projet \""
+                                    + equipe.getProjet().getNom()
+                                    + "\". Une équipe ne peut appartenir qu'à un seul projet.");
+                }
+
+                equipe.setProjet(savedProjet);
+                equipeRepository.save(equipe);
             }
-
-            equipe.setProjet(savedProjet);
-            equipeRepository.save(equipe);
         }
 
         return toDTO(savedProjet);
@@ -116,12 +117,23 @@ public class ProjetService {
 
         Projet savedProjet = projetRepository.save(projet);
 
-        // Team assignment (optional, but cannot be already assigned to another project)
-        if (request.getEquipeId() != null) {
-            Equipe equipe = equipeRepository.findById(request.getEquipeId())
-                    .orElseThrow(() -> new RuntimeException("Équipe non trouvée avec l'id: " + request.getEquipeId()));
+        // Handle multiple team assignments on update:
+        // 1. Unassign équipes currently linked but not in the new list
+        List<Equipe> currentEquipes = equipeRepository.findByProjetId(savedProjet.getId());
+        List<Long> newEquipeIds = request.getEquipeIds() != null ? request.getEquipeIds() : Collections.emptyList();
 
-            // Check if team is already assigned to a DIFFERENT project
+        for (Equipe eq : currentEquipes) {
+            if (!newEquipeIds.contains(eq.getId())) {
+                eq.setProjet(null);
+                equipeRepository.save(eq);
+            }
+        }
+
+        // 2. Assign newly requested équipes
+        for (Long equipeId : newEquipeIds) {
+            Equipe equipe = equipeRepository.findById(equipeId)
+                    .orElseThrow(() -> new RuntimeException("Équipe non trouvée avec l'id: " + equipeId));
+
             if (equipe.getProjet() != null && !equipe.getProjet().getId().equals(savedProjet.getId())) {
                 throw new IllegalArgumentException(
                         "L'équipe \"" + equipe.getNom() + "\" est déjà assignée au projet \""
@@ -137,7 +149,6 @@ public class ProjetService {
     }
 
     public void delete(Long id) {
-        // Unassign all teams first to avoid constraint issues
         List<Equipe> equipes = equipeRepository.findByProjetId(id);
         for (Equipe eq : equipes) {
             eq.setProjet(null);
@@ -153,8 +164,8 @@ public class ProjetService {
     }
 
     public ProjetDTO toDTO(Projet projet) {
-        // Explicitly query from DB to avoid lazy-loading issues with stale collections
         List<Equipe> equipes = equipeRepository.findByProjetId(projet.getId());
+        List<Long> equipeIds = equipes.stream().map(Equipe::getId).collect(Collectors.toList());
         return ProjetDTO.builder()
                 .id(projet.getId())
                 .nom(projet.getNom())
@@ -163,6 +174,7 @@ public class ProjetService {
                 .dateFin(projet.getDateFin())
                 .chefDeProjet(projet.getChefDeProjet() != null ? employeService.toDTO(projet.getChefDeProjet()) : null)
                 .equipeId(equipes != null && !equipes.isEmpty() ? equipes.get(0).getId() : null)
+                .equipeIds(equipeIds)
                 .equipeNoms(equipes != null
                         ? equipes.stream().map(Equipe::getNom).collect(Collectors.toList())
                         : Collections.emptyList())
