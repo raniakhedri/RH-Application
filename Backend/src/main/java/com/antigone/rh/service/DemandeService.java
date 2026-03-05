@@ -43,8 +43,7 @@ public class DemandeService {
             DayOfWeek.THURSDAY, "JEUDI",
             DayOfWeek.FRIDAY, "VENDREDI",
             DayOfWeek.SATURDAY, "SAMEDI",
-            DayOfWeek.SUNDAY, "DIMANCHE"
-    );
+            DayOfWeek.SUNDAY, "DIMANCHE");
 
     // =========================================
     // QUERIES
@@ -52,6 +51,9 @@ public class DemandeService {
 
     public List<DemandeResponse> findAll() {
         return demandeRepository.findAll().stream()
+                // ADMINISTRATION demandes are managed exclusively via /demandes-papier —
+                // exclude here
+                .filter(d -> d.getType() != TypeDemande.ADMINISTRATION)
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -64,6 +66,9 @@ public class DemandeService {
 
     public List<DemandeResponse> findByEmploye(Long employeId) {
         return demandeRepository.findByEmployeId(employeId).stream()
+                // ADMINISTRATION demandes are managed exclusively via /demandes-papier —
+                // exclude here
+                .filter(d -> d.getType() != TypeDemande.ADMINISTRATION)
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -94,6 +99,8 @@ public class DemandeService {
             case TELETRAVAIL:
                 demande = createTeletravail(request, employe);
                 break;
+            case ADMINISTRATION:
+                throw new RuntimeException("Les demandes administratives doivent être créées via /api/demandes-papier");
             default:
                 throw new RuntimeException("Type de demande non supporté: " + request.getType());
         }
@@ -144,7 +151,8 @@ public class DemandeService {
         }
 
         // Calculate effective days (includes trailing weekends/holidays + pont rule)
-        Map<String, Object> calcResult = computeEffectiveDays(request.getDateDebut(), request.getDateFin(), typeConge.name());
+        Map<String, Object> calcResult = computeEffectiveDays(request.getDateDebut(), request.getDateFin(),
+                typeConge.name());
         int nombreJours = (int) calcResult.get("nombreJours");
         int joursOuvrables = (int) calcResult.get("joursOuvrables");
 
@@ -199,7 +207,8 @@ public class DemandeService {
             throw new RuntimeException("Un congé existe déjà pour cette période");
         }
 
-        // Check solde for paid leave (use joursOuvrables for deduction, not full calendar span)
+        // Check solde for paid leave (use joursOuvrables for deduction, not full
+        // calendar span)
         if (typeConge == TypeConge.CONGE_PAYE) {
             double solde = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
             if (solde < joursOuvrables) {
@@ -342,9 +351,9 @@ public class DemandeService {
         notificationService.create(
                 demande.getEmploye(),
                 "Demande approuvée",
-                "Votre demande de " + typeLabel + " a été approuvée par " + admin.getNom() + " " + admin.getPrenom() + ".",
-                demande
-        );
+                "Votre demande de " + typeLabel + " a été approuvée par " + admin.getNom() + " " + admin.getPrenom()
+                        + ".",
+                demande);
 
         return toResponse(demande);
     }
@@ -371,7 +380,8 @@ public class DemandeService {
         if (demande instanceof Conge conge) {
             typeLabel = conge.getTypeConge().getLabel();
         }
-        String message = "Votre demande de " + typeLabel + " a été refusée par " + admin.getNom() + " " + admin.getPrenom() + ".";
+        String message = "Votre demande de " + typeLabel + " a été refusée par " + admin.getNom() + " "
+                + admin.getPrenom() + ".";
         if (commentaire != null && !commentaire.isBlank()) {
             message += "\nMotif : " + commentaire;
         }
@@ -379,8 +389,7 @@ public class DemandeService {
                 demande.getEmploye(),
                 "Demande refusée",
                 message,
-                demande
-        );
+                demande);
 
         return toResponse(demande);
     }
@@ -464,13 +473,16 @@ public class DemandeService {
     }
 
     /**
-     * Compute effective leave days including trailing weekends/holidays and pont rule.
+     * Compute effective leave days including trailing weekends/holidays and pont
+     * rule.
      *
      * Rules:
-     * - Forward extension: after dateFin, include consecutive non-working days (weekends+holidays)
-     *   e.g. Friday leave → Fri+Sat+Sun = 3 days
-     * - Backward extension (pont): before dateDebut, include consecutive holidays (not weekends)
-     *   e.g. Thursday is holiday + Friday leave → Thu+Fri+Sat+Sun = 4 days
+     * - Forward extension: after dateFin, include consecutive non-working days
+     * (weekends+holidays)
+     * e.g. Friday leave → Fri+Sat+Sun = 3 days
+     * - Backward extension (pont): before dateDebut, include consecutive holidays
+     * (not weekends)
+     * e.g. Thursday is holiday + Friday leave → Thu+Fri+Sat+Sun = 4 days
      * - The total is the calendar days from extendedStart to extendedEnd
      */
     public Map<String, Object> computeEffectiveDays(LocalDate dateDebut, LocalDate dateFin, String typeCongeStr) {
@@ -507,7 +519,8 @@ public class DemandeService {
             cur = cur.plusDays(1);
         }
 
-        // Backward extension: include consecutive HOLIDAYS immediately before dateDebut (pont rule)
+        // Backward extension: include consecutive HOLIDAYS immediately before dateDebut
+        // (pont rule)
         LocalDate extendedStart = dateDebut;
         LocalDate prev = extendedStart.minusDays(1);
         while (holidays.contains(prev)) {
@@ -548,7 +561,8 @@ public class DemandeService {
     }
 
     /**
-     * Calculate working days between two dates, excluding weekends (Sat/Sun) and holidays.
+     * Calculate working days between two dates, excluding weekends (Sat/Sun) and
+     * holidays.
      */
     private int calculateWorkingDays(LocalDate start, LocalDate end) {
         Set<LocalDate> holidays = calendrierRepository
@@ -627,7 +641,8 @@ public class DemandeService {
         saveHistorique(demande, ancien, nouveau, employe, null);
     }
 
-    private void saveHistorique(Demande demande, StatutDemande ancien, StatutDemande nouveau, Employe employe, String commentaire) {
+    private void saveHistorique(Demande demande, StatutDemande ancien, StatutDemande nouveau, Employe employe,
+            String commentaire) {
         HistoriqueStatut historique = HistoriqueStatut.builder()
                 .demande(demande)
                 .ancienStatut(ancien)
@@ -666,7 +681,8 @@ public class DemandeService {
             builder.date(autorisation.getDate());
             builder.heureDebut(autorisation.getHeureDebut());
             builder.heureFin(autorisation.getHeureFin());
-            builder.dureeMinutes(Duration.between(autorisation.getHeureDebut(), autorisation.getHeureFin()).toMinutes());
+            builder.dureeMinutes(
+                    Duration.between(autorisation.getHeureDebut(), autorisation.getHeureFin()).toMinutes());
         } else if (demande instanceof Teletravail teletravail) {
             builder.dateDebut(teletravail.getDateDebut());
             builder.dateFin(teletravail.getDateFin());

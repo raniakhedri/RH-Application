@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HiOutlinePlus, HiOutlineUserRemove, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineUserRemove, HiOutlineTrash, HiOutlinePencil } from 'react-icons/hi';
 import { equipeService } from '../api/equipeService';
 import { projetService } from '../api/projetService';
 import { employeService } from '../api/employeService';
@@ -18,7 +18,6 @@ const EquipesPage: React.FC = () => {
   const [editingEquipe, setEditingEquipe] = useState<Equipe | null>(null);
   const [selectedEmployeId, setSelectedEmployeId] = useState<number>(0);
 
-  // Create form state
   const [createForm, setCreateForm] = useState<EquipeCreateRequest>({
     nom: '',
     projetId: null,
@@ -146,7 +145,7 @@ const EquipesPage: React.FC = () => {
             Gérer les équipes et leurs membres
           </p>
         </div>
-        <Button onClick={() => { resetCreateForm(); setShowCreateModal(true); }}>
+        <Button onClick={() => { resetCreateForm(); setEditingEquipe(null); setShowCreateModal(true); }}>
           <HiOutlinePlus size={18} /> Nouvelle équipe
         </Button>
       </div>
@@ -162,8 +161,7 @@ const EquipesPage: React.FC = () => {
           {equipes.map((equipe) => (
             <div
               key={equipe.id}
-              onDoubleClick={() => handleEdit(equipe)}
-              className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark cursor-pointer hover:border-brand-300 transition-colors"
+              className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark"
             >
               {/* Equipe Header */}
               <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
@@ -177,8 +175,15 @@ const EquipesPage: React.FC = () => {
                 </div>
                 <div className="flex gap-1">
                   <button
-                    onClick={() => { setSelectedEquipe(equipe); setSelectedEmployeId(employes[0]?.id || 0); setShowAddMemberModal(true); }}
+                    onClick={() => handleEdit(equipe)}
                     className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50"
+                    title="Modifier"
+                  >
+                    <HiOutlinePencil size={16} />
+                  </button>
+                  <button
+                    onClick={() => { setSelectedEquipe(equipe); setSelectedEmployeId(employes[0]?.id || 0); setShowAddMemberModal(true); }}
+                    className="rounded-lg p-1.5 text-secondary-500 hover:bg-secondary-50"
                     title="Ajouter un membre"
                   >
                     <HiOutlinePlus size={18} />
@@ -193,7 +198,6 @@ const EquipesPage: React.FC = () => {
                 </div>
               </div>
 
-
               {/* Members */}
               <div className="p-4">
                 <p className="mb-2 text-theme-xs font-medium text-gray-400 uppercase">
@@ -206,19 +210,36 @@ const EquipesPage: React.FC = () => {
                     {equipe.membres.map((membre) => (
                       <li
                         key={membre.id}
-                        className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800"
+                        className="flex items-start justify-between rounded-lg bg-gray-50 px-3 py-2.5 dark:bg-gray-800"
                       >
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary-50 text-secondary-500 text-theme-xs font-semibold dark:bg-secondary-500/[0.12] dark:text-secondary-400">
-                            {membre.prenom[0]}{membre.nom[0]}
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <div className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-secondary-50 text-secondary-500 text-theme-xs font-semibold dark:bg-secondary-500/[0.12] dark:text-secondary-400 mt-0.5">
+                            {membre.prenom?.[0]}{membre.nom?.[0]}
                           </div>
-                          <span className="text-theme-sm text-gray-700 dark:text-gray-300">
-                            {membre.prenom} {membre.nom}
-                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-theme-sm font-medium text-gray-800 dark:text-white truncate">
+                              {membre.prenom} {membre.nom}
+                            </p>
+                            {membre.telephone && (
+                              <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+                                📞 {membre.telephone}
+                              </p>
+                            )}
+                            {membre.departement && (
+                              <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+                                🏢 {membre.departement}
+                              </p>
+                            )}
+                            {membre.email && (
+                              <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+                                ✉️ {membre.email}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <button
                           onClick={() => handleRemoveMember(equipe.id, membre.id)}
-                          className="rounded p-1 text-error-400 hover:text-error-500 hover:bg-error-50"
+                          className="flex-shrink-0 rounded p-1 text-error-400 hover:text-error-500 hover:bg-error-50 ml-1"
                           title="Retirer"
                         >
                           <HiOutlineUserRemove size={14} />
@@ -233,7 +254,7 @@ const EquipesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Create Equipe Modal */}
+      {/* Create / Edit Equipe Modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => { setShowCreateModal(false); setEditingEquipe(null); }}
@@ -241,7 +262,6 @@ const EquipesPage: React.FC = () => {
         size="lg"
       >
         <div className="space-y-5">
-          {/* Team Name */}
           <div>
             <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Nom de l'équipe *</label>
             <input
@@ -254,7 +274,6 @@ const EquipesPage: React.FC = () => {
             />
           </div>
 
-          {/* Project (optional) */}
           <div>
             <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Projet (optionnel)</label>
             <select
@@ -269,35 +288,44 @@ const EquipesPage: React.FC = () => {
             </select>
           </div>
 
-
-          {/* Members (optional, multi-select) */}
+          {/* Members multi-select with full info */}
           <div>
             <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
               Membres ({createForm.memberIds.length} sélectionné{createForm.memberIds.length > 1 ? 's' : ''})
             </label>
-            <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600">
-              {employes.map((emp) => (
-                <label
-                  key={emp.id}
-                  className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${createForm.memberIds.includes(emp.id)
-                    ? 'bg-secondary-50 dark:bg-secondary-500/10'
-                    : ''
-                    }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={createForm.memberIds.includes(emp.id)}
-                    onChange={() => toggleMember(emp.id)}
-                    className="h-4 w-4 rounded text-brand-500 focus:ring-brand-500"
-                  />
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary-50 text-secondary-500 text-theme-xs font-semibold dark:bg-secondary-500/[0.12] dark:text-secondary-400">
-                    {emp.prenom[0]}{emp.nom[0]}
-                  </div>
-                  <span className="text-theme-sm text-gray-700 dark:text-gray-300">
-                    {emp.prenom} {emp.nom}
-                  </span>
-                </label>
-              ))}
+            <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600">
+              {employes.map((emp) => {
+                const isSelected = createForm.memberIds.includes(emp.id);
+                return (
+                  <label
+                    key={emp.id}
+                    className={`flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-700 last:border-b-0 ${isSelected ? 'bg-secondary-50 dark:bg-secondary-500/10' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleMember(emp.id)}
+                      className="mt-1 h-4 w-4 rounded text-brand-500 focus:ring-brand-500"
+                    />
+                    <div className="flex items-start gap-2 flex-1">
+                      <div className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-secondary-50 text-secondary-500 text-theme-xs font-semibold dark:bg-secondary-500/[0.12] dark:text-secondary-400">
+                        {emp.prenom?.[0]}{emp.nom?.[0]}
+                      </div>
+                      <div>
+                        <p className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                          {emp.prenom} {emp.nom}
+                        </p>
+                        {emp.telephone && (
+                          <p className="text-theme-xs text-gray-500 dark:text-gray-400">📞 {emp.telephone}</p>
+                        )}
+                        {emp.departement && (
+                          <p className="text-theme-xs text-gray-500 dark:text-gray-400">🏢 {emp.departement}</p>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -328,7 +356,7 @@ const EquipesPage: React.FC = () => {
               className={inputClass}
             >
               {employes.map((e) => (
-                <option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>
+                <option key={e.id} value={e.id}>{e.prenom} {e.nom} {e.departement ? `— ${e.departement}` : ''}</option>
               ))}
             </select>
           </div>

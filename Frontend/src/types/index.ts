@@ -272,6 +272,7 @@ export interface Projet {
   dateFin: string;
   chefDeProjet?: Employe | null;
   equipeId?: number | null;
+  equipeIds?: number[];
   equipeNoms?: string[];
 }
 
@@ -295,6 +296,36 @@ export interface Tache {
   dateEcheance: string;
   projetId: number;
   assigneeId: number | null;
+}
+
+export interface TacheMembreInfo {
+  id: number;
+  nom: string;
+  prenom: string;
+  telephone: string;
+  departement: string;
+  email?: string;
+}
+
+export interface TacheEquipeInfo {
+  id: number;
+  nom: string;
+  membres: TacheMembreInfo[];
+}
+
+export interface TacheDetail {
+  id: number;
+  titre: string;
+  statut: StatutTache;
+  dateEcheance: string | null;
+  projetId: number | null;
+  projetNom: string | null;
+  projetDateFin: string | null;
+  projetStatut: string | null;
+  chefDeProjetNom: string | null;
+  chefDeProjetId: number | null;
+  assigneeId: number | null;
+  equipes: TacheEquipeInfo[];
 }
 
 export interface ApiResponse<T> {
