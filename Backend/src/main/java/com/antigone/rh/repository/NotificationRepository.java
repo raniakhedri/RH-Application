@@ -14,4 +14,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByEmployeIdAndLuFalseOrderByDateCreationDesc(Long employeId);
 
     long countByEmployeIdAndLuFalse(Long employeId);
+
+    List<Notification> findByEmployeId(Long employeId);
 }

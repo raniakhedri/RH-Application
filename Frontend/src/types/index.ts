@@ -108,6 +108,8 @@ export interface Employe {
   prenom: string;
   email: string;
   telephone: string;
+  telephonePro: string;
+  salaire: number | null;
   dateEmbauche: string;
   soldeConge: number;
   poste: string;

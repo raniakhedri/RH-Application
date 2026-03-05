@@ -14,18 +14,23 @@ import java.time.LocalDate;
 public class EmployeDTO {
     private Long id;
     private String matricule;
+    @jakarta.validation.constraints.Pattern(regexp = "^[0-9]{8}$", message = "Le CIN doit contenir exactement 8 chiffres")
     private String cin;
+    @jakarta.validation.constraints.Pattern(regexp = "^[0-9]{8,12}$", message = "Le CNSS doit contenir entre 8 et 12 chiffres")
     private String cnss;
     private String nom;
     private String prenom;
     private String email;
     private String telephone;
+    private String telephonePro;
+    private Double salaire;
     private LocalDate dateEmbauche;
     private Double soldeConge;
     private String poste;
     private String typeContrat;
     private String genre;
     private String departement;
+    @jakarta.validation.constraints.Pattern(regexp = "^[0-9]{20}$", message = "Le RIB doit contenir exactement 20 chiffres")
     private String ribBancaire;
     private Long managerId;
     private String managerNom;
