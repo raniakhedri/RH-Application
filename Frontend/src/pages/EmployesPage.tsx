@@ -29,6 +29,7 @@ const EmployesPage: React.FC = () => {
     telephonePro: '', salaire: '' as string | number,
     dateEmbauche: '', soldeConge: 0, poste: '', typeContrat: '', genre: '',
     departement: '', ribBancaire: '', managerId: null as number | null,
+    useInitialSolde: false, soldeCongeInitial: '' as string | number,
   });
 
   // Compte creation (only for new employee)
@@ -87,6 +88,14 @@ const EmployesPage: React.FC = () => {
       if (!payload.departement) payload.departement = null;
       if (!payload.ribBancaire) payload.ribBancaire = null;
 
+      // Initial solde congé
+      if (payload.useInitialSolde && payload.soldeCongeInitial !== '' && payload.soldeCongeInitial !== null) {
+        payload.soldeCongeInitial = Number(payload.soldeCongeInitial);
+      } else {
+        payload.soldeCongeInitial = null;
+        payload.useInitialSolde = false;
+      }
+
       if (editingEmploye) {
         await employeService.update(editingEmploye.id, payload);
         // Upload image if selected
@@ -144,6 +153,7 @@ const EmployesPage: React.FC = () => {
       typeContrat: employe.typeContrat || '', genre: employe.genre || '',
       departement: employe.departement || '', ribBancaire: employe.ribBancaire || '',
       managerId: employe.managerId,
+      useInitialSolde: employe.soldeCongeInitial != null, soldeCongeInitial: employe.soldeCongeInitial ?? '',
     });
     setCreateCompte(false);
     setSelectedRoleId(0);
@@ -187,6 +197,7 @@ const EmployesPage: React.FC = () => {
       telephonePro: '', salaire: '',
       dateEmbauche: '', soldeConge: 0, poste: '', typeContrat: '', genre: '',
       departement: '', ribBancaire: '', managerId: null,
+      useInitialSolde: false, soldeCongeInitial: '',
     });
     setCreateCompte(false);
     setSelectedRoleId(0);
@@ -445,6 +456,40 @@ const EmployesPage: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {/* Solde congé initial */}
+        <div className="mt-5 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.useInitialSolde}
+                onChange={(e) => {
+                  setFormData({ ...formData, useInitialSolde: e.target.checked, soldeCongeInitial: e.target.checked ? formData.soldeCongeInitial : '' });
+                }}
+                className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 dark:border-gray-600"
+              />
+              <span className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                Définir le solde congé manuellement
+              </span>
+            </label>
+            {formData.useInitialSolde && (
+              <div className="mt-3">
+                <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Solde congé actuel (jours)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={formData.soldeCongeInitial}
+                  onChange={(e) => setFormData({ ...formData, soldeCongeInitial: e.target.value })}
+                  placeholder="Ex: 10"
+                  className={inputClass}
+                />
+                <p className="text-theme-xs text-gray-400 mt-1">
+                  Saisissez le solde congé actuel de l'employé. Le calcul automatique basé sur la date d'embauche sera désactivé.
+                </p>
+              </div>
+            )}
+          </div>
 
         {/* Compte + Role assignment (only for new employee) */}
         {!editingEmploye && (

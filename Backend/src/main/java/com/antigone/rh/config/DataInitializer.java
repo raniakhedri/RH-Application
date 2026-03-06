@@ -92,19 +92,6 @@ public class DataInitializer implements CommandLineRunner {
         createParamIfNotExists("MAX_REPORT_CONGE", "5",
                 "Nombre maximum de jours de congé reportables d'une année sur l'autre",
                 TypeReferentiel.PARAMETRE_SYSTEME);
-
-        // Horaires de l'entreprise (communs à tous les employés)
-        createParamIfNotExists("HEURE_DEBUT_TRAVAIL", "09:00",
-                "Heure de début de travail de l'entreprise",
-                TypeReferentiel.PARAMETRE_SYSTEME);
-
-        createParamIfNotExists("HEURE_FIN_TRAVAIL", "18:00",
-                "Heure de fin de travail de l'entreprise",
-                TypeReferentiel.PARAMETRE_SYSTEME);
-
-        createParamIfNotExists("JOURS_TRAVAIL", "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI",
-                "Jours de travail de l'entreprise (séparés par des virgules)",
-                TypeReferentiel.PARAMETRE_SYSTEME);
     }
 
     // ===================== Types de Congé =====================

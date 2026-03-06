@@ -2,11 +2,14 @@ package com.antigone.rh.service;
 
 import com.antigone.rh.dto.EmployeDTO;
 import com.antigone.rh.dto.SoldeCongeInfo;
+import com.antigone.rh.entity.Calendrier;
 import com.antigone.rh.entity.Conge;
 import com.antigone.rh.entity.Employe;
+import com.antigone.rh.entity.HoraireTravail;
 import com.antigone.rh.entity.Referentiel;
 import com.antigone.rh.enums.StatutDemande;
 import com.antigone.rh.enums.TypeConge;
+import com.antigone.rh.enums.TypeJour;
 import com.antigone.rh.enums.TypeReferentiel;
 import com.antigone.rh.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -14,9 +17,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.Period;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,8 +47,21 @@ public class EmployeService {
     private final HistoriqueStatutRepository historiqueStatutRepository;
     private final AccessLogRepository accessLogRepository;
     private final PeriodeBloqueeRepository periodeBloqueeRepository;
+    private final CalendrierRepository calendrierRepository;
+    private final HoraireTravailRepository horaireTravailRepository;
 
     private static final SecureRandom RANDOM = new SecureRandom();
+
+    // Mapping DayOfWeek → French day names used in HoraireTravail.joursTravail
+    private static final Map<DayOfWeek, String> DOW_TO_FRENCH = Map.of(
+            DayOfWeek.MONDAY, "LUNDI",
+            DayOfWeek.TUESDAY, "MARDI",
+            DayOfWeek.WEDNESDAY, "MERCREDI",
+            DayOfWeek.THURSDAY, "JEUDI",
+            DayOfWeek.FRIDAY, "VENDREDI",
+            DayOfWeek.SATURDAY, "SAMEDI",
+            DayOfWeek.SUNDAY, "DIMANCHE"
+    );
 
     public List<EmployeDTO> findAll() {
         return employeRepository.findAll().stream()
@@ -90,11 +111,18 @@ public class EmployeService {
         }
         Employe saved = employeRepository.save(employe);
 
-        // Auto-calculate solde congé from dateEmbauche
-        if (saved.getDateEmbauche() != null) {
-            SoldeCongeInfo info = getSoldeCongeInfo(saved.getId());
-            saved.setSoldeConge(info.getSoldeDisponible());
+        if (Boolean.TRUE.equals(dto.getUseInitialSolde()) && dto.getSoldeCongeInitial() != null) {
+            // Solde congé initial saisi manuellement — on ne recalcule pas
+            saved.setSoldeCongeInitial(dto.getSoldeCongeInitial());
+            saved.setSoldeConge(dto.getSoldeCongeInitial());
             employeRepository.save(saved);
+        } else {
+            // Auto-calculate solde congé from dateEmbauche
+            if (saved.getDateEmbauche() != null) {
+                SoldeCongeInfo info = getSoldeCongeInfo(saved.getId());
+                saved.setSoldeConge(info.getSoldeDisponible());
+                employeRepository.save(saved);
+            }
         }
 
         return toDTO(saved);
@@ -169,10 +197,20 @@ public class EmployeService {
         } else {
             employe.setManager(null);
         }
+
+        // Handle initial solde toggle
+        if (Boolean.TRUE.equals(dto.getUseInitialSolde()) && dto.getSoldeCongeInitial() != null) {
+            employe.setSoldeCongeInitial(dto.getSoldeCongeInitial());
+            employe.setSoldeConge(dto.getSoldeCongeInitial());
+        } else if (Boolean.FALSE.equals(dto.getUseInitialSolde())) {
+            // User unchecked — clear initial balance, re-enable auto-calculation
+            employe.setSoldeCongeInitial(null);
+        }
+
         Employe saved = employeRepository.save(employe);
 
-        // Recalculate solde from dateEmbauche
-        if (saved.getDateEmbauche() != null) {
+        // Auto-recalculate for employees without initial balance
+        if (saved.getSoldeCongeInitial() == null && saved.getDateEmbauche() != null) {
             SoldeCongeInfo info = getSoldeCongeInfo(saved.getId());
             saved.setSoldeConge(info.getSoldeDisponible());
             employeRepository.save(saved);
@@ -315,12 +353,44 @@ public class EmployeService {
         } else {
             Period p = Period.between(debutAnneeConge, today);
             moisTravailles = p.getYears() * 12 + p.getMonths();
-            // Count partial month if > 15 days worked
+            // Count partial month if >= 15 calendar days
             if (p.getDays() >= 15) {
                 moisTravailles++;
             }
         }
         moisTravailles = Math.min(moisTravailles, 12);
+
+        // ── Règlement 7.2.1 : "pour chaque mois travaillé" ──
+        // Si un salarié a un congé sans solde couvrant la totalité des jours
+        // ouvrables d'un mois, ce mois ne compte pas pour l'acquisition.
+        List<Conge> congeSansSoldeApprouves = congeRepository.findOverlappingByTypeCongeAndStatut(
+                employeId, TypeConge.CONGE_SANS_SOLDE, StatutDemande.APPROUVEE,
+                debutAnneeConge, today.isBefore(finAnneeConge) ? today : finAnneeConge);
+
+        int moisNonTravailles = 0;
+        for (int m = 0; m < moisTravailles; m++) {
+            LocalDate moisDebut = debutAnneeConge.plusMonths(m);
+            LocalDate moisFin = debutAnneeConge.plusMonths(m + 1).minusDays(1);
+            if (moisFin.isAfter(today)) moisFin = today;
+
+            int joursOuvMois = countWorkingDaysInPeriod(moisDebut, moisFin);
+            if (joursOuvMois == 0) continue;
+
+            // Count congé sans solde working days overlapping this month
+            int joursCssDansMois = 0;
+            for (Conge css : congeSansSoldeApprouves) {
+                LocalDate overlapStart = css.getDateDebut().isBefore(moisDebut) ? moisDebut : css.getDateDebut();
+                LocalDate overlapEnd = css.getDateFin().isAfter(moisFin) ? moisFin : css.getDateFin();
+                if (!overlapStart.isAfter(overlapEnd)) {
+                    joursCssDansMois += countWorkingDaysInPeriod(overlapStart, overlapEnd);
+                }
+            }
+
+            if (joursCssDansMois >= joursOuvMois) {
+                moisNonTravailles++;
+            }
+        }
+        moisTravailles = Math.max(0, moisTravailles - moisNonTravailles);
 
         // Days acquired this year
         double joursAcquis = Math.min(moisTravailles * tauxMensuel, droitAnnuel);
@@ -337,7 +407,16 @@ public class EmployeService {
             boolean prevIsFirstYear = (ancienneteAnnees - 1) < 1;
             double prevDroit = prevIsFirstYear ? droitAn1 : droitAn2Plus;
             double prevTaux = prevIsFirstYear ? tauxAn1 : tauxAn2Plus;
-            double prevAcquis = prevDroit; // full 12 months
+
+            // For the first year, compute actual months worked (may be < 12)
+            int prevMoisTravailles;
+            if (prevIsFirstYear) {
+                Period pp = Period.between(debutAnneePrecedente, finAnneePrecedente.plusDays(1));
+                prevMoisTravailles = Math.min(pp.getYears() * 12 + pp.getMonths() + (pp.getDays() >= 15 ? 1 : 0), 12);
+            } else {
+                prevMoisTravailles = 12;
+            }
+            double prevAcquis = Math.min(prevMoisTravailles * prevTaux, prevDroit);
 
             // Consumed in previous year
             List<Conge> prevApprouves = congeRepository.findByEmployeIdAndTypeCongeAndStatutAndDateDebutBetween(
@@ -354,28 +433,41 @@ public class EmployeService {
         // Total available = acquired this year + carry-over - consumed this year
         joursAcquis += joursReportes;
 
-        // Consumed congés payés (APPROUVEE) this congé year
+        // Consumed congés payés (APPROUVEE) this congé year — use joursOuvrables for consistency
         List<Conge> approuves = congeRepository.findByEmployeIdAndTypeCongeAndStatutAndDateDebutBetween(
                 employeId, TypeConge.CONGE_PAYE, StatutDemande.APPROUVEE,
                 debutAnneeConge, finAnneeConge);
         double joursConsommes = approuves.stream()
-                .mapToDouble(c -> c.getNombreJours() != null ? c.getNombreJours() : 0)
+                .mapToDouble(c -> c.getJoursOuvrables() != null && c.getJoursOuvrables() > 0
+                        ? c.getJoursOuvrables()
+                        : (c.getNombreJours() != null ? c.getNombreJours() : 0))
                 .sum();
 
-        // Pending congés payés (EN_ATTENTE) this congé year
+        // Pending congés payés (EN_ATTENTE) this congé year — use joursOuvrables for consistency
         List<Conge> enAttente = congeRepository.findByEmployeIdAndTypeCongeAndStatutAndDateDebutBetween(
                 employeId, TypeConge.CONGE_PAYE, StatutDemande.EN_ATTENTE,
                 debutAnneeConge, finAnneeConge);
         double joursEnAttente = enAttente.stream()
-                .mapToDouble(c -> c.getNombreJours() != null ? c.getNombreJours() : 0)
+                .mapToDouble(c -> c.getJoursOuvrables() != null && c.getJoursOuvrables() > 0
+                        ? c.getJoursOuvrables()
+                        : (c.getNombreJours() != null ? c.getNombreJours() : 0))
                 .sum();
 
-        double soldeDisponible = Math.max(0, joursAcquis - joursConsommes);
-        double soldePrevisionnel = Math.max(0, joursAcquis - joursConsommes - joursEnAttente);
+        double soldeDisponible;
+        double soldePrevisionnel;
 
-        // Also update the stored soldeConge to keep it in sync
-        employe.setSoldeConge(soldeDisponible);
-        employeRepository.save(employe);
+        if (employe.getSoldeCongeInitial() != null) {
+            // Solde géré manuellement — on utilise la valeur stockée
+            soldeDisponible = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
+            soldePrevisionnel = Math.max(0, soldeDisponible - joursEnAttente);
+        } else {
+            soldeDisponible = Math.max(0, joursAcquis - joursConsommes);
+            soldePrevisionnel = Math.max(0, joursAcquis - joursConsommes - joursEnAttente);
+
+            // Also update the stored soldeConge to keep it in sync
+            employe.setSoldeConge(soldeDisponible);
+            employeRepository.save(employe);
+        }
 
         return SoldeCongeInfo.builder()
                 .employeId(employe.getId())
@@ -395,6 +487,47 @@ public class EmployeService {
                 .debutAnneeConge(debutAnneeConge)
                 .finAnneeConge(finAnneeConge)
                 .build();
+    }
+
+    /**
+     * Count working days based on HoraireTravail (not hardcoded Sat/Sun) excluding holidays.
+     */
+    private int countWorkingDaysInPeriod(LocalDate start, LocalDate end) {
+        Set<LocalDate> holidays = calendrierRepository
+                .findByTypeJourAndDateJourBetween(TypeJour.FERIE, start, end)
+                .stream()
+                .map(Calendrier::getDateJour)
+                .collect(Collectors.toSet());
+
+        HoraireTravail horaire = getDefaultHoraire();
+        Set<String> joursTravail = Arrays.stream(horaire.getJoursTravail().split(","))
+                .map(String::trim).map(String::toUpperCase).collect(Collectors.toSet());
+
+        int count = 0;
+        LocalDate d = start;
+        while (!d.isAfter(end)) {
+            String jourFr = DOW_TO_FRENCH.get(d.getDayOfWeek());
+            if (joursTravail.contains(jourFr) && !holidays.contains(d)) {
+                count++;
+            }
+            d = d.plusDays(1);
+        }
+        return count;
+    }
+
+    /**
+     * Get the default (first) HoraireTravail, or a sensible fallback.
+     */
+    private HoraireTravail getDefaultHoraire() {
+        return horaireTravailRepository.findAll().stream().findFirst()
+                .orElseGet(() -> {
+                    HoraireTravail fallback = new HoraireTravail();
+                    fallback.setNom("Défaut");
+                    fallback.setHeureDebut(LocalTime.of(9, 0));
+                    fallback.setHeureFin(LocalTime.of(18, 0));
+                    fallback.setJoursTravail("LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI");
+                    return fallback;
+                });
     }
 
     /**
@@ -427,6 +560,7 @@ public class EmployeService {
                 .salaire(employe.getSalaire())
                 .dateEmbauche(employe.getDateEmbauche())
                 .soldeConge(employe.getSoldeConge())
+                .soldeCongeInitial(employe.getSoldeCongeInitial())
                 .poste(employe.getPoste())
                 .typeContrat(employe.getTypeContrat())
                 .genre(employe.getGenre() != null ? employe.getGenre().name() : null)
@@ -451,6 +585,7 @@ public class EmployeService {
                 .salaire(dto.getSalaire())
                 .dateEmbauche(dto.getDateEmbauche())
                 .soldeConge(dto.getSoldeConge() != null ? dto.getSoldeConge() : 0.0)
+                .soldeCongeInitial(dto.getSoldeCongeInitial())
                 .poste(dto.getPoste())
                 .typeContrat(dto.getTypeContrat())
                 .genre(dto.getGenre() != null ? com.antigone.rh.enums.Genre.valueOf(dto.getGenre()) : null)

@@ -112,6 +112,7 @@ export interface Employe {
   salaire: number | null;
   dateEmbauche: string;
   soldeConge: number;
+  soldeCongeInitial: number | null;
   poste: string;
   typeContrat: string;
   genre: string;

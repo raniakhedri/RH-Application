@@ -17,6 +17,17 @@ export const demandeService = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  update: (id: number, data: DemandeRequest) => api.put<ApiResponse<DemandeResponse>>(`/demandes/${id}`, data),
+  updateWithFile: (id: number, data: DemandeRequest, justificatif?: File) => {
+    const formData = new FormData();
+    formData.append('demande', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (justificatif) {
+      formData.append('justificatif', justificatif);
+    }
+    return api.put<ApiResponse<DemandeResponse>>(`/demandes/${id}/with-file`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   getFileUrl: (filename: string) => `/api/demandes/fichier/${filename}`,
   approve: (id: number, adminEmployeId: number) =>
     api.patch<ApiResponse<DemandeResponse>>(`/demandes/${id}/approve?adminEmployeId=${adminEmployeId}`),

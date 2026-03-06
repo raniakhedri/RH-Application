@@ -26,6 +26,8 @@ public class EmployeDTO {
     private Double salaire;
     private LocalDate dateEmbauche;
     private Double soldeConge;
+    private Double soldeCongeInitial;
+    private Boolean useInitialSolde;
     private String poste;
     private String typeContrat;
     private String genre;

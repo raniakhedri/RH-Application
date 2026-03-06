@@ -51,4 +51,19 @@ public interface CongeRepository extends JpaRepository<Conge, Long> {
             @Param("statuts") List<StatutDemande> statuts,
             @Param("debut") LocalDate debut,
             @Param("fin") LocalDate fin);
+
+    /**
+     * Find congés that OVERLAP a given date range (for full-month absence check).
+     * A congé overlaps [debut, fin] when congé.dateDebut <= fin AND congé.dateFin >= debut.
+     */
+    @Query("SELECT c FROM Conge c WHERE c.employe.id = :employeId " +
+           "AND c.typeConge = :typeConge " +
+           "AND c.statut = :statut " +
+           "AND c.dateDebut <= :fin AND c.dateFin >= :debut")
+    List<Conge> findOverlappingByTypeCongeAndStatut(
+            @Param("employeId") Long employeId,
+            @Param("typeConge") TypeConge typeConge,
+            @Param("statut") StatutDemande statut,
+            @Param("debut") LocalDate debut,
+            @Param("fin") LocalDate fin);
 }

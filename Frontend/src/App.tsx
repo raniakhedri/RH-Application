@@ -60,6 +60,7 @@ const App: React.FC = () => {
           <Route path="employes" element={<PermissionRoute permission="VIEW_EMPLOYES"><EmployesPage /></PermissionRoute>} />
           <Route path="demandes" element={<PermissionRoute permission="VIEW_DEMANDES"><DemandesPage /></PermissionRoute>} />
           <Route path="demandes/new" element={<PermissionRoute permission="VIEW_DEMANDES"><NewDemandePage /></PermissionRoute>} />
+          <Route path="demandes/edit/:id" element={<NewDemandePage />} />
           <Route path="mes-demandes" element={<MesDemandesPage />} />
           <Route path="mes-demandes/papier" element={<MesDemandesPapierPage />} />
           <Route path="validations" element={<PermissionRoute permission="VIEW_VALIDATIONS"><ValidationsPage /></PermissionRoute>} />
