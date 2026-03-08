@@ -5,6 +5,7 @@ import {
   HiOutlineUsers,
   HiOutlineDocumentText,
   HiOutlineClipboardCheck,
+  HiOutlineClock,
   HiOutlineBriefcase,
   HiOutlineUserGroup,
   HiOutlineChevronDown,
@@ -13,12 +14,13 @@ import {
   HiOutlineKey,
   HiOutlineShieldCheck,
   HiOutlineClipboardList,
-  HiOutlineViewBoards,
-  HiOutlinePaperClip,
+  HiOutlineDownload,
+  HiOutlineCurrencyDollar,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
 import { useAuth } from '../../context/AuthContext';
 import { demandeService } from '../../api/demandeService';
+import axios from '../../api/axios';
 
 interface NavItemDef {
   label: string;
@@ -26,7 +28,6 @@ interface NavItemDef {
   icon: React.ReactNode;
   key: string;
   permission?: string;
-  badge?: number;
   children?: { label: string; path: string }[];
 }
 
@@ -34,52 +35,25 @@ const menuGroups = [
   {
     title: 'MENU',
     items: [
-      { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} />, permission: 'VIEW_DASHBOARD' },
-      {
-        key: 'employes',
-        label: 'Employés',
-        path: '/employes',
-        icon: <HiOutlineUsers size={20} />,
-        permission: 'VIEW_EMPLOYES',
-        children: [
-          { label: 'Liste des employés', path: '/employes' },
-          { label: 'Organigramme', path: '/organigramme' },
-        ],
-      },
-
-      {
-        key: 'mes-demandes',
-        label: 'Mes demandes',
-        path: '/mes-demandes',
-        icon: <HiOutlineClipboardList size={20} />,
-        children: [
-          { label: 'Mes demandes congés', path: '/mes-demandes' },
-          { label: 'Mes demandes papiers', path: '/mes-demandes-papier' },
-        ],
-      },
-      { key: 'mes-taches', label: 'Mes projets', path: '/mes-taches', icon: <HiOutlineViewBoards size={20} /> },
-      { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} /> },
-
+      { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} /> },
+      { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} /> },
     ] as NavItemDef[],
   },
   {
     title: 'GESTION',
     items: [
       {
-        key: 'validations',
-        label: 'Validation demandes',
-        path: '/validations',
-        icon: <HiOutlineClipboardCheck size={20} />,
-        permission: 'VIEW_VALIDATIONS',
+        key: 'demandes',
+        label: 'Demandes',
+        path: '/demandes',
+        icon: <HiOutlineDocumentText size={20} />,
         children: [
-          { label: 'Demandes congés', path: '/demandes' },
-
-          //{ label: 'Demandes papier', path: 'demandes/papier' },
-          { label: 'Demandes papier', path: 'demandes/liste-papier' },
-
-
+          { label: 'Toutes les demandes', path: '/demandes' },
+          { label: 'Nouvelle demande', path: '/demandes/new' },
         ],
       },
+      { key: 'validations', label: 'Validations', path: '/validations', icon: <HiOutlineClipboardCheck size={20} /> },
+      { key: 'pointage', label: 'Pointage', path: '/pointage', icon: <HiOutlineClock size={20} /> },
     ] as NavItemDef[],
   },
   {
@@ -90,38 +64,79 @@ const menuGroups = [
         label: 'Projets',
         path: '/projets',
         icon: <HiOutlineBriefcase size={20} />,
-        permission: 'VIEW_PROJETS',
-       /* children: [
+        children: [
           { label: 'Tous les projets', path: '/projets' },
-         { label: 'Tâches', path: '/taches' },
-        ],*/
+          { label: 'Tâches', path: '/taches' },
+        ],
       },
-      { key: 'equipes', label: 'Équipes', path: '/equipes', icon: <HiOutlineUserGroup size={20} />, permission: 'VIEW_EQUIPES' },
+      { key: 'equipes', label: 'Équipes', path: '/equipes', icon: <HiOutlineUserGroup size={20} /> },
     ] as NavItemDef[],
   },
   {
     title: 'ADMINISTRATION',
     items: [
-      { key: 'comptes', label: 'Comptes', path: '/comptes', icon: <HiOutlineKey size={20} />, permission: 'VIEW_COMPTES' },
-      { key: 'roles', label: 'Rôles', path: '/roles', icon: <HiOutlineShieldCheck size={20} />, permission: 'VIEW_ROLES' },
-      { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} />, permission: 'VIEW_REFERENTIELS' },
-      { key: 'calendrier', label: 'Calendrier Entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
+      { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} /> },
+      { key: 'calendrier', label: 'Calendrier', path: '/calendrier', icon: <HiOutlineCalendar size={20} /> },
+    ] as NavItemDef[],
+  },
+  {
+    title: 'MONITORING',
+    items: [
+      { key: 'suivi-temps-reel', label: 'Suivi temps réel', path: '/suivi-temps-reel', icon: <HiOutlineClock size={20} />, permission: 'VIEW_SUIVI_TEMPS_REEL' },
+      { key: 'gestion-paie', label: 'Gestion de paie', path: '/gestion-paie', icon: <HiOutlineCurrencyDollar size={20} />, permission: 'VIEW_FICHES_PAIE' },
     ] as NavItemDef[],
   },
 ];
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { user } = useAuth();
   const { isExpanded, isMobileOpen, isHovered, openSubmenu, setIsHovered, setOpenSubmenu, toggleMobileSidebar } = useSidebar();
+  const { user } = useAuth();
   const [pendingCount, setPendingCount] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+  const [agentAvailable, setAgentAvailable] = useState(false);
 
-  const userPermissions = user?.permissions || [];
-  const canViewValidations = userPermissions.includes('VIEW_VALIDATIONS');
+  const isAdmin = user?.roles?.includes('SUPER_ADMIN');
 
-  // Fetch pending demandes count for users with validation permission
+  // Check if agent installer is available AND employee doesn't have it yet
   useEffect(() => {
-    if (!canViewValidations) return;
+    const checkAgent = async () => {
+      try {
+        const employeId = user?.employeId;
+        const url = employeId ? `/agent/download/info?employeId=${employeId}` : '/agent/download/info';
+        const resp = await axios.get(url);
+        if (resp.data?.available && !resp.data?.alreadyInstalled) {
+          setAgentAvailable(true);
+        } else {
+          setAgentAvailable(false);
+        }
+      } catch { /* ignore */ }
+    };
+    checkAgent();
+  }, [user?.employeId]);
+
+  const handleDownloadAgent = async () => {
+    setDownloading(true);
+    try {
+      const response = await axios.get('/agent/download', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Antigone-RH-Agent-Setup.exe');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert('Erreur lors du téléchargement de l\'agent.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Fetch pending demandes count for admin
+  useEffect(() => {
+    if (!isAdmin) return;
     const fetchPending = async () => {
       try {
         const res = await demandeService.getByStatut('EN_ATTENTE' as any);
@@ -131,14 +146,17 @@ const Sidebar: React.FC = () => {
     fetchPending();
     const interval = setInterval(fetchPending, 30000); // refresh every 30s
     return () => clearInterval(interval);
-  }, [canViewValidations]);
+  }, [isAdmin]);
 
-  // Filter menu groups by user permissions
+  const userPermissions = user?.permissions || [];
+  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN');
+
+  // Filter menu groups: SUPER_ADMIN sees everything, others need permissions
   const filteredMenuGroups = menuGroups
     .map((group) => ({
       ...group,
       items: group.items.filter((item) =>
-        !item.permission || userPermissions.includes(item.permission)
+        isSuperAdmin || !item.permission || userPermissions.includes(item.permission)
       ),
     }))
     .filter((group) => group.items.length > 0);
@@ -193,7 +211,7 @@ const Sidebar: React.FC = () => {
                 {group.items.map((item) => (
                   <SidebarItem
                     key={item.key}
-                    item={item.key === 'demandes' && canViewValidations && pendingCount > 0 ? { ...item, badge: pendingCount } : item}
+                    item={item}
                     isActive={isActive}
                     showText={showText}
                     openSubmenu={openSubmenu}
@@ -204,6 +222,36 @@ const Sidebar: React.FC = () => {
             </div>
           ))}
         </nav>
+
+        {/* Agent Download Button */}
+        {agentAvailable && (
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800">
+            <button
+              onClick={handleDownloadAgent}
+              disabled={downloading}
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all disabled:opacity-50"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500 text-white">
+                {downloading ? (
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <HiOutlineDownload size={18} />
+                )}
+              </span>
+              {showText && (
+                <div className="overflow-hidden text-left">
+                  <p className="text-sm font-semibold truncate">
+                    {downloading ? 'Téléchargement...' : 'Télécharger l\'Agent'}
+                  </p>
+                  <p className="text-[10px] text-blue-400 dark:text-blue-500">Monitoring PC</p>
+                </div>
+              )}
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );
@@ -232,11 +280,6 @@ const SidebarItem: React.FC<{
           {showText && (
             <>
               <span className="flex-1 text-left">{item.label}</span>
-              {item.badge && item.badge > 0 && (
-                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-warning-500 text-white text-[10px] font-bold">
-                  {item.badge}
-                </span>
-              )}
               <HiOutlineChevronDown
                 size={16}
                 className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
@@ -254,7 +297,7 @@ const SidebarItem: React.FC<{
                 <li key={child.path}>
                   <NavLink
                     to={child.path}
-                    end
+                    end={child.path === item.path}
                     className={({ isActive: childActive }) =>
                       `menu-dropdown-item ${childActive ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'}`
                     }

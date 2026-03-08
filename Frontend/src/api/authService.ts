@@ -1,8 +1,10 @@
 import api from './axios';
-import { ApiResponse, ForgotPasswordRequest, LoginRequest, LoginResponse, ResetPasswordRequest } from '../types';
+import { ApiResponse, LoginRequest, LoginResponse } from '../types';
 
 export const authService = {
   login: (data: LoginRequest) => api.post<ApiResponse<LoginResponse>>('/auth/login', data),
-  forgotPassword: (data: ForgotPasswordRequest) => api.post<ApiResponse<void>>('/auth/forgot-password', data),
-  resetPassword: (data: ResetPasswordRequest) => api.post<ApiResponse<void>>('/auth/reset-password', data),
+  register: (employeId: number, username: string, password: string, role: string = 'EMPLOYE') =>
+    api.post<ApiResponse<string>>(`/auth/register?employeId=${employeId}&username=${username}&password=${password}&role=${role}`),
+  changePassword: (data: { username: string; oldPassword: string; newPassword: string }) =>
+    api.post<ApiResponse<string>>('/auth/change-password', data),
 };

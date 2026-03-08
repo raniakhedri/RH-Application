@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ReferentielRepository extends JpaRepository<Referentiel, Long> {
@@ -18,5 +19,5 @@ public interface ReferentielRepository extends JpaRepository<Referentiel, Long> 
 
     boolean existsByLibelleAndTypeReferentiel(String libelle, TypeReferentiel typeReferentiel);
 
-    java.util.Optional<Referentiel> findByLibelleAndTypeReferentiel(String libelle, TypeReferentiel typeReferentiel);
+    Optional<Referentiel> findByLibelleAndTypeReferentiel(String libelle, TypeReferentiel typeReferentiel);
 }

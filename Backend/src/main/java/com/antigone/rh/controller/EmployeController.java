@@ -2,16 +2,8 @@ package com.antigone.rh.controller;
 
 import com.antigone.rh.dto.ApiResponse;
 import com.antigone.rh.dto.EmployeDTO;
-import com.antigone.rh.dto.EmployeStatsDTO;
-import com.antigone.rh.dto.SoldeCongeInfo;
-import com.antigone.rh.entity.HoraireTravail;
-import com.antigone.rh.enums.TypeReferentiel;
-import com.antigone.rh.repository.HoraireTravailRepository;
-import com.antigone.rh.repository.ReferentielRepository;
 import com.antigone.rh.service.EmployeService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,9 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -31,8 +21,6 @@ import java.util.UUID;
 public class EmployeController {
 
     private final EmployeService employeService;
-    private final ReferentielRepository referentielRepository;
-    private final HoraireTravailRepository horaireTravailRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<EmployeDTO>>> getAll() {
@@ -52,11 +40,6 @@ public class EmployeController {
     @GetMapping("/{id}/subordinates")
     public ResponseEntity<ApiResponse<List<EmployeDTO>>> getSubordinates(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(employeService.findSubordinates(id)));
-    }
-
-    @GetMapping("/by-role/{roleName}")
-    public ResponseEntity<ApiResponse<List<EmployeDTO>>> getByRole(@PathVariable String roleName) {
-        return ResponseEntity.ok(ApiResponse.ok(employeService.findByRoleName(roleName)));
     }
 
     @PostMapping
@@ -82,114 +65,25 @@ public class EmployeController {
     }
 
     @PostMapping("/{id}/image")
-    public ResponseEntity<ApiResponse<EmployeDTO>> uploadImage(
-            @PathVariable Long id,
-            @RequestParam("file") MultipartFile file) {
+    public ResponseEntity<ApiResponse<EmployeDTO>> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         try {
-            // Validate file
-            if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body(ApiResponse.error("Le fichier est vide"));
-            }
-            String contentType = file.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                return ResponseEntity.badRequest().body(ApiResponse.error("Le fichier doit être une image"));
-            }
-            if (file.getSize() > 5 * 1024 * 1024) {
-                return ResponseEntity.badRequest().body(ApiResponse.error("L'image ne doit pas dépasser 5 Mo"));
-            }
-
-            // Create uploads directory
-            String uploadDir = System.getProperty("user.dir") + "/uploads/images";
+            String uploadDir = "uploads/images";
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
-
-            // Generate unique filename
-            String extension = file.getOriginalFilename() != null
-                    ? file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf('.'))
-                    : ".jpg";
-            String filename = UUID.randomUUID() + extension;
-
-            // Save file
+            String ext = "";
+            String orig = file.getOriginalFilename();
+            if (orig != null && orig.contains(".")) {
+                ext = orig.substring(orig.lastIndexOf("."));
+            }
+            String filename = UUID.randomUUID() + ext;
             Path filePath = uploadPath.resolve(filename);
             Files.copy(file.getInputStream(), filePath);
-
-            // Update employee imageUrl
             String imageUrl = "/uploads/images/" + filename;
-            EmployeDTO updated = employeService.updateImage(id, imageUrl);
-
-            return ResponseEntity.ok(ApiResponse.ok("Image mise à jour", updated));
+            return ResponseEntity.ok(ApiResponse.ok("Image mise à jour", employeService.updateImage(id, imageUrl)));
         } catch (IOException e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error("Erreur lors de l'upload: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Erreur upload image: " + e.getMessage()));
         }
-    }
-
-    @GetMapping("/{id}/solde-info")
-    public ResponseEntity<ApiResponse<SoldeCongeInfo>> getSoldeInfo(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.ok(employeService.getSoldeCongeInfo(id)));
-    }
-
-    @GetMapping("/horaire-entreprise")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getHoraireEntreprise() {
-        HoraireTravail horaire = horaireTravailRepository.findAll().stream().findFirst().orElse(null);
-
-        Map<String, Object> result = new HashMap<>();
-        if (horaire != null) {
-            result.put("heureDebut", horaire.getHeureDebut().toString());
-            result.put("heureFin", horaire.getHeureFin().toString());
-            result.put("joursTravail", horaire.getJoursTravail());
-        } else {
-            result.put("heureDebut", "09:00");
-            result.put("heureFin", "18:00");
-            result.put("joursTravail", "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI");
-        }
-        result.put("maxAutorisationMinutes", getRef("MAX_AUTORISATION_MINUTES", "120"));
-        return ResponseEntity.ok(ApiResponse.ok(result));
-    }
-
-    // =================== MÉTIERS AVANCÉS ===================
-
-    @GetMapping("/stats")
-    public ResponseEntity<ApiResponse<EmployeStatsDTO>> getStats() {
-        return ResponseEntity.ok(ApiResponse.ok(employeService.getStatistics()));
-    }
-
-    @GetMapping("/search")
-    public ResponseEntity<ApiResponse<List<EmployeDTO>>> search(
-            @RequestParam(required = false) String departement,
-            @RequestParam(required = false) String typeContrat,
-            @RequestParam(required = false) String genre,
-            @RequestParam(required = false) String poste,
-            @RequestParam(required = false) String dateEmbaucheFrom,
-            @RequestParam(required = false) String dateEmbaucheTo,
-            @RequestParam(required = false) Double salaireMin,
-            @RequestParam(required = false) Double salaireMax,
-            @RequestParam(required = false) Long managerId,
-            @RequestParam(required = false) String q) {
-        return ResponseEntity.ok(ApiResponse.ok(
-                employeService.advancedSearch(departement, typeContrat, genre, poste,
-                        dateEmbaucheFrom, dateEmbaucheTo, salaireMin, salaireMax, managerId, q)));
-    }
-
-    @GetMapping("/export/csv")
-    public ResponseEntity<byte[]> exportCsv() {
-        byte[] csvBytes = employeService.exportToCsv();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=employes.csv")
-                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                .body(csvBytes);
-    }
-
-    @GetMapping("/organigramme")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getOrganigramme() {
-        return ResponseEntity.ok(ApiResponse.ok(employeService.getOrganigramme()));
-    }
-
-    private String getRef(String libelle, String defaultValue) {
-        return referentielRepository
-                .findByLibelleAndTypeReferentiel(libelle, TypeReferentiel.PARAMETRE_SYSTEME)
-                .map(ref -> ref.getValeur() != null ? ref.getValeur() : defaultValue)
-                .orElse(defaultValue);
     }
 }
