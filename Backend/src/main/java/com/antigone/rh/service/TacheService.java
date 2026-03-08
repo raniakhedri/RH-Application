@@ -61,7 +61,19 @@ public class TacheService {
         tache.setProjet(projet);
         validateTacheDate(tache, projet);
         tache.setStatut(StatutTache.TODO);
-        return tacheRepository.save(tache);
+        Tache saved = tacheRepository.save(tache);
+
+        // Notify assignee of the new task
+        if (saved.getAssignee() != null) {
+            notificationService.create(
+                    saved.getAssignee(),
+                    "Nouvelle tâche assignée",
+                    "Une nouvelle tâche \"" + saved.getTitre() + "\" vous a été assignée"
+                            + (projet.getNom() != null ? " dans le projet \"" + projet.getNom() + "\"." : "."),
+                    null);
+        }
+
+        return saved;
     }
 
     public Tache assign(Long tacheId, Long employeId) {
