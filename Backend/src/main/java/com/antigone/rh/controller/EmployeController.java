@@ -2,11 +2,14 @@ package com.antigone.rh.controller;
 
 import com.antigone.rh.dto.ApiResponse;
 import com.antigone.rh.dto.EmployeDTO;
+import com.antigone.rh.dto.EmployeStatsDTO;
 import com.antigone.rh.dto.SoldeCongeInfo;
 import com.antigone.rh.enums.TypeReferentiel;
 import com.antigone.rh.repository.ReferentielRepository;
 import com.antigone.rh.service.EmployeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -132,6 +135,44 @@ public class EmployeController {
         result.put("joursTravail", getRef("JOURS_TRAVAIL", "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI"));
         result.put("maxAutorisationMinutes", getRef("MAX_AUTORISATION_MINUTES", "120"));
         return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    // =================== MÉTIERS AVANCÉS ===================
+
+    @GetMapping("/stats")
+    public ResponseEntity<ApiResponse<EmployeStatsDTO>> getStats() {
+        return ResponseEntity.ok(ApiResponse.ok(employeService.getStatistics()));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<EmployeDTO>>> search(
+            @RequestParam(required = false) String departement,
+            @RequestParam(required = false) String typeContrat,
+            @RequestParam(required = false) String genre,
+            @RequestParam(required = false) String poste,
+            @RequestParam(required = false) String dateEmbaucheFrom,
+            @RequestParam(required = false) String dateEmbaucheTo,
+            @RequestParam(required = false) Double salaireMin,
+            @RequestParam(required = false) Double salaireMax,
+            @RequestParam(required = false) Long managerId,
+            @RequestParam(required = false) String q) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                employeService.advancedSearch(departement, typeContrat, genre, poste,
+                        dateEmbaucheFrom, dateEmbaucheTo, salaireMin, salaireMax, managerId, q)));
+    }
+
+    @GetMapping("/export/csv")
+    public ResponseEntity<byte[]> exportCsv() {
+        byte[] csvBytes = employeService.exportToCsv();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=employes.csv")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csvBytes);
+    }
+
+    @GetMapping("/organigramme")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getOrganigramme() {
+        return ResponseEntity.ok(ApiResponse.ok(employeService.getOrganigramme()));
     }
 
     private String getRef(String libelle, String defaultValue) {

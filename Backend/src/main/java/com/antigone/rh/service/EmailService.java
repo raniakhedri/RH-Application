@@ -25,6 +25,16 @@ public class EmailService {
     public void sendCredentials(String toEmail, String employeNom, String username, String password) {
         String subject = "Antigone RH - Vos identifiants de connexion";
         String htmlBody = buildCredentialsHtml(employeNom, username, password);
+        sendEmail(toEmail, subject, htmlBody, employeNom);
+    }
+
+    public void sendPasswordReset(String toEmail, String employeNom, String resetLink) {
+        String subject = "Antigone RH - Réinitialisation de votre mot de passe";
+        String htmlBody = buildResetPasswordHtml(employeNom, resetLink);
+        sendEmail(toEmail, subject, htmlBody, employeNom);
+    }
+
+    private void sendEmail(String toEmail, String subject, String htmlBody, String recipientName) {
 
         if (mailEnabled) {
             try {
@@ -35,7 +45,7 @@ public class EmailService {
                 helper.setSubject(subject);
                 helper.setText(htmlBody, true);
                 mailSender.send(mimeMessage);
-                log.info("Email envoyé à {} avec les identifiants", toEmail);
+                log.info("Email envoyé à {} - {}", toEmail, subject);
             } catch (MessagingException e) {
                 log.error("Erreur lors de l'envoi de l'email à {}: {}", toEmail, e.getMessage());
             } catch (Exception e) {
@@ -45,7 +55,7 @@ public class EmailService {
             log.info("=== EMAIL (mode simulation) ===");
             log.info("À: {}", toEmail);
             log.info("Sujet: {}", subject);
-            log.info("Corps HTML généré pour: {}", employeNom);
+            log.info("Corps HTML généré pour: {}", recipientName);
             log.info("=== FIN EMAIL ===");
         }
     }
@@ -168,5 +178,108 @@ public class EmailService {
             </body>
             </html>
             """.formatted(employeNom, username, password);
+    }
+
+    private String buildResetPasswordHtml(String employeNom, String resetLink) {
+        return """
+            <!DOCTYPE html>
+            <html lang="fr">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Antigone RH - Réinitialisation</title>
+            </head>
+            <body style="margin:0; padding:0; background-color:#f4f5f7; font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7; padding:40px 0;">
+                <tr>
+                  <td align="center">
+                    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%%;">
+
+                      <!-- HEADER -->
+                      <tr>
+                        <td style="background: linear-gradient(135deg, #f36904 0%%, #cc5500 100%%); border-radius:16px 16px 0 0; padding:36px 40px; text-align:center;">
+                          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td align="center">
+                                <div style="width:56px; height:56px; background-color:rgba(255,255,255,0.2); border-radius:14px; display:inline-block; line-height:56px; margin-bottom:16px;">
+                                  <span style="font-size:28px; color:#ffffff;">&#128274;</span>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td align="center">
+                                <h1 style="margin:0; font-size:28px; font-weight:800; color:#ffffff; letter-spacing:-0.5px; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Antigone RH</h1>
+                                <p style="margin:8px 0 0; font-size:14px; color:#ffffff; font-weight:500; text-shadow:0 1px 3px rgba(0,0,0,0.2);">Réinitialisation du mot de passe</p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+
+                      <!-- BODY -->
+                      <tr>
+                        <td style="background-color:#ffffff; padding:40px;">
+
+                          <p style="margin:0 0 8px; font-size:20px; font-weight:600; color:#1a1a2e;">
+                            Bonjour %s &#128075;
+                          </p>
+                          <p style="margin:0 0 28px; font-size:15px; color:#64748b; line-height:1.6;">
+                            Vous avez demandé la réinitialisation de votre mot de passe sur <strong style="color:#f36904;">Antigone RH</strong>. Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.
+                          </p>
+
+                          <!-- CTA Button -->
+                          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                            <tr>
+                              <td align="center">
+                                <a href="%s" style="display:inline-block; padding:14px 36px; background:linear-gradient(135deg, #f36904 0%%, #cc5500 100%%); color:#ffffff; font-size:16px; font-weight:700; text-decoration:none; border-radius:10px; box-shadow:0 4px 12px rgba(243,105,4,0.4);">
+                                  Réinitialiser mon mot de passe
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
+
+                          <!-- Warning -->
+                          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="margin-top:8px;">
+                            <tr>
+                              <td style="background-color:#fef3cd; border-left:4px solid #f59e0b; border-radius:0 8px 8px 0; padding:14px 18px;">
+                                <p style="margin:0; font-size:13px; color:#92400e; line-height:1.5;">
+                                  &#9888;&#65039; Ce lien est valable <strong>30 minutes</strong>. Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+
+                          <!-- Fallback link -->
+                          <p style="margin:24px 0 0; font-size:12px; color:#94a3b8; line-height:1.5;">
+                            Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br/>
+                            <a href="%s" style="color:#f36904; word-break:break-all;">%s</a>
+                          </p>
+
+                        </td>
+                      </tr>
+
+                      <!-- FOOTER -->
+                      <tr>
+                        <td style="background-color:#f8fafc; border-top:1px solid #e2e8f0; border-radius:0 0 16px 16px; padding:28px 40px; text-align:center;">
+                          <p style="margin:0 0 6px; font-size:13px; color:#94a3b8;">
+                            Cet email a été envoyé automatiquement par
+                          </p>
+                          <p style="margin:0 0 16px; font-size:14px; font-weight:600; color:#f36904;">
+                            Antigone RH
+                          </p>
+                          <div style="height:1px; background-color:#e2e8f0; margin:0 40px 16px;"></div>
+                          <p style="margin:0; font-size:11px; color:#cbd5e1;">
+                            &copy; 2025 Antigone RH. Tous droits réservés.
+                          </p>
+                        </td>
+                      </tr>
+
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </body>
+            </html>
+            """.formatted(employeNom, resetLink, resetLink, resetLink);
     }
 }

@@ -5,7 +5,6 @@ public enum TypeReferentiel {
     TYPE_CONTRAT("Type contrat"),
     SITE_ETABLISSEMENT("Site / Établissement"),
     POSTE("Poste"),
-    NIVEAU_HIERARCHIQUE("Niveau hiérarchique"),
     TYPE_CONGE("Type congé"),
     TYPE_DEMANDE("Type demande"),
     GENRE("Genre"),

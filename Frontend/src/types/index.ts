@@ -71,18 +71,6 @@ export enum StatutTache {
   DONE = 'DONE',
 }
 
-export enum StatutPointage {
-  PRESENT = 'PRESENT',
-  ABSENT = 'ABSENT',
-  RETARD = 'RETARD',
-  INCOMPLET = 'INCOMPLET',
-}
-
-export enum SourcePointage {
-  MANUEL = 'MANUEL',
-  AUTOMATIQUE = 'AUTOMATIQUE',
-}
-
 export enum TypeJour {
   OUVRABLE = 'OUVRABLE',
   FERIE = 'FERIE',
@@ -174,6 +162,15 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
 export interface Compte {
   id: number;
   username: string;
@@ -254,16 +251,6 @@ export interface ValidationRequest {
   commentaire: string;
 }
 
-export interface Pointage {
-  id: number;
-  dateJour: string;
-  heureEntree: string | null;
-  heureSortie: string | null;
-  statut: StatutPointage;
-  source: SourcePointage;
-  employeId: number;
-}
-
 export interface Projet {
   id: number;
   nom: string;
@@ -342,7 +329,6 @@ export enum TypeReferentiel {
   TYPE_CONTRAT = 'TYPE_CONTRAT',
   SITE_ETABLISSEMENT = 'SITE_ETABLISSEMENT',
   POSTE = 'POSTE',
-  NIVEAU_HIERARCHIQUE = 'NIVEAU_HIERARCHIQUE',
   TYPE_CONGE = 'TYPE_CONGE',
   TYPE_DEMANDE = 'TYPE_DEMANDE',
   GENRE = 'GENRE',
@@ -354,7 +340,6 @@ export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
   [TypeReferentiel.TYPE_CONTRAT]: 'Type contrat',
   [TypeReferentiel.SITE_ETABLISSEMENT]: 'Site / Établissement',
   [TypeReferentiel.POSTE]: 'Poste',
-  [TypeReferentiel.NIVEAU_HIERARCHIQUE]: 'Niveau hiérarchique',
   [TypeReferentiel.TYPE_CONGE]: 'Type congé',
   [TypeReferentiel.TYPE_DEMANDE]: 'Type demande',
   [TypeReferentiel.GENRE]: 'Genre',
@@ -482,4 +467,60 @@ export interface SoldeCongeInfo {
   soldePrevisionnel: number;
   debutAnneeConge: string;
   finAnneeConge: string;
+}
+
+// =====================
+// COMPÉTENCES
+// =====================
+export interface CompetenceDTO {
+  id: number;
+  nom: string;
+  categorie: string;
+  niveau: number;
+  employeId: number;
+  employeNom: string;
+}
+
+// =====================
+// DOCUMENTS EMPLOYÉ
+// =====================
+export interface DocumentEmployeDTO {
+  id: number;
+  nom: string;
+  type: string;
+  fichierUrl: string | null;
+  dateExpiration: string | null;
+  employeId: number;
+  employeNom: string;
+}
+
+// =====================
+// STATISTIQUES RH
+// =====================
+export interface EmployeStatsDTO {
+  totalEmployes: number;
+  employesActifs: number;
+  nouveauxCeMois: number;
+  masseSalariale: number;
+  moyenneSalaire: number;
+  moyenneAnciennete: number;
+  parDepartement: Record<string, number>;
+  parTypeContrat: Record<string, number>;
+  parGenre: Record<string, number>;
+  parPoste: Record<string, number>;
+  embaucheParMois: Record<string, number>;
+}
+
+// =====================
+// ORGANIGRAMME
+// =====================
+export interface OrgNode {
+  id: number;
+  nom: string;
+  matricule: string;
+  poste: string | null;
+  departement: string | null;
+  imageUrl: string | null;
+  email: string;
+  children: OrgNode[];
 }

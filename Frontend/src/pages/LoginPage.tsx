@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../api/authService';
 
@@ -95,9 +95,9 @@ const LoginPage: React.FC = () => {
                 <input type="checkbox" className="rounded border-white/30 accent-brand-500" />
                 Se souvenir de moi
               </label>
-              <a href="#" className="text-theme-sm text-brand-400 hover:text-brand-300 transition-colors">
+              <Link to="/forgot-password" className="text-theme-sm text-brand-400 hover:text-brand-300 transition-colors">
                 Mot de passe oublié ?
-              </a>
+              </Link>
             </div>
 
             <button
