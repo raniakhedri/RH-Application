@@ -102,6 +102,8 @@ const ReferentielsPage: React.FC = () => {
   const countByType = (type: TypeReferentiel) =>
     referentiels.filter((r) => r.typeReferentiel === type).length;
 
+  const isTypeConge = selectedType === TypeReferentiel.TYPE_CONGE;
+
   const columns = [
     {
       key: 'libelle',
@@ -151,12 +153,16 @@ const ReferentielsPage: React.FC = () => {
       label: 'Actions',
       render: (item: Referentiel) => (
         <div className="flex gap-2">
-          <button onClick={() => handleEdit(item)} className="p-1.5 rounded-lg hover:bg-brand-50 text-brand-500 transition-colors" title="Modifier">
-            <HiOutlinePencil size={16} />
-          </button>
-          <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded-lg hover:bg-error-50 text-error-500 transition-colors" title="Supprimer">
-            <HiOutlineTrash size={16} />
-          </button>
+          {!isTypeConge && (
+            <>
+              <button onClick={() => handleEdit(item)} className="p-1.5 rounded-lg hover:bg-brand-50 text-brand-500 transition-colors" title="Modifier">
+                <HiOutlinePencil size={16} />
+              </button>
+              <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded-lg hover:bg-error-50 text-error-500 transition-colors" title="Supprimer">
+                <HiOutlineTrash size={16} />
+              </button>
+            </>
+          )}
         </div>
       ),
     },
@@ -220,7 +226,7 @@ const ReferentielsPage: React.FC = () => {
                 className="h-11 w-full rounded-lg border border-gray-300 bg-transparent pl-10 pr-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
               />
             </div>
-            <Button onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType, valeur: '' }); setShowModal(true); }}>
+            <Button onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType, valeur: '' }); setShowModal(true); }} disabled={isTypeConge}>
               <HiOutlinePlus size={18} /> Ajouter
             </Button>
           </div>
@@ -233,13 +239,15 @@ const ReferentielsPage: React.FC = () => {
               <p className="mt-3 text-gray-500 dark:text-gray-400">
                 Aucun référentiel pour « {TypeReferentielLabels[selectedType]} »
               </p>
-              <Button
-                variant="ghost"
-                className="mt-4"
-                onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType, valeur: '' }); setShowModal(true); }}
-              >
-                <HiOutlinePlus size={16} /> Créer le premier
-              </Button>
+              {!isTypeConge && (
+                <Button
+                  variant="ghost"
+                  className="mt-4"
+                  onClick={() => { setEditingRef(null); setRefForm({ libelle: '', description: '', typeReferentiel: selectedType, valeur: '' }); setShowModal(true); }}
+                >
+                  <HiOutlinePlus size={16} /> Créer le premier
+                </Button>
+              )}
             </div>
           ) : (
             <DataTable columns={columns} data={filteredRefs} />
