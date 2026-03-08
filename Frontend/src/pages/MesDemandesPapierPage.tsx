@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { HiOutlineSearch } from 'react-icons/hi';
+import React, { useState, useEffect, useRef } from 'react';
+import { HiOutlineSearch, HiOutlinePlus, HiOutlineEye, HiOutlinePencil, HiOutlineBan } from 'react-icons/hi';
 import { demandePapierService } from '../api/demandePapierService';
+import { referentielService } from '../api/referentielService';
 import { useAuth } from '../context/AuthContext';
-import { DemandeResponse } from '../types';
+import { DemandeResponse, Referentiel } from '../types';
 import Badge from '../components/ui/Badge';
 import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
+import Button from '../components/ui/Button';
 
 const statutBadgeMap: Record<string, 'primary' | 'success' | 'danger' | 'warning' | 'secondary' | 'neutral'> = {
     BROUILLON: 'neutral',
@@ -58,8 +60,36 @@ const MesDemandesPapierPage: React.FC = () => {
     const [filterStatut, setFilterStatut] = useState<string>('');
     const [selectedDemande, setSelectedDemande] = useState<DemandeResponse | null>(null);
 
+    // Cancel state
+    const [cancellingId, setCancellingId] = useState<number | null>(null);
+    const [cancelMotif, setCancelMotif] = useState('');
+    const [cancelLoading, setCancelLoading] = useState(false);
+
+    // Edit state
+    const [editingDemande, setEditingDemande] = useState<DemandeResponse | null>(null);
+    const [editRaison, setEditRaison] = useState('');
+    const [editLibelle, setEditLibelle] = useState('');
+    const [editLoading, setEditLoading] = useState(false);
+
+    // New demande modal state
+    const [showNewModal, setShowNewModal] = useState(false);
+    const [referentiels, setReferentiels] = useState<Referentiel[]>([]);
+    const [selectedLibelle, setSelectedLibelle] = useState('');
+    const [raison, setRaison] = useState('');
+    const [newError, setNewError] = useState('');
+    const [newSuccess, setNewSuccess] = useState(false);
+    const [newLoading, setNewLoading] = useState(false);
+    const [loadingRef, setLoadingRef] = useState(false);
+    const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const inputClass =
+        'h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300';
+
     useEffect(() => {
         loadDemandes();
+        return () => {
+            if (successTimerRef.current) clearTimeout(successTimerRef.current);
+        };
     }, [user?.employeId]);
 
     const loadDemandes = async () => {
@@ -67,12 +97,103 @@ const MesDemandesPapierPage: React.FC = () => {
         try {
             const response = await demandePapierService.getAll();
             const all = response.data.data || [];
-            // Filter to only show the logged-in user's demandes
             setDemandes(all.filter((d: DemandeResponse) => d.employeId === user.employeId));
         } catch (err) {
             console.error('Erreur chargement mes demandes papier:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const openNewModal = async () => {
+        setShowNewModal(true);
+        setLoadingRef(true);
+        setRaison('');
+        setNewError('');
+        setNewSuccess(false);
+        try {
+            const res = await referentielService.getActiveByType('TYPE_DEMANDE');
+            const data = res.data.data || [];
+            setReferentiels(data);
+            if (data.length > 0) setSelectedLibelle(data[0].libelle);
+        } catch (err) {
+            console.error('Erreur chargement types de demande:', err);
+        } finally {
+            setLoadingRef(false);
+        }
+    };
+
+    const handleNewSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) return;
+        setNewError('');
+        setNewSuccess(false);
+        setNewLoading(true);
+        try {
+            await demandePapierService.create({
+                raison: `[${selectedLibelle}] ${raison}`,
+                employeId: user.employeId,
+            });
+            setRaison('');
+            if (referentiels.length > 0) setSelectedLibelle(referentiels[0].libelle);
+            setNewSuccess(true);
+            if (successTimerRef.current) clearTimeout(successTimerRef.current);
+            successTimerRef.current = setTimeout(() => {
+                setShowNewModal(false);
+                setNewSuccess(false);
+                loadDemandes(); // refresh list
+            }, 1500);
+        } catch (err: any) {
+            setNewError(err.response?.data?.message || 'Erreur lors de la création');
+        } finally {
+            setNewLoading(false);
+        }
+    };
+
+    const canEdit = (d: DemandeResponse) =>
+        !['VALIDEE', 'REFUSEE', 'ANNULEE'].includes(d.statut as string);
+
+    const handleCancelConfirm = async () => {
+        if (!cancellingId) return;
+        setCancelLoading(true);
+        try {
+            await demandePapierService.cancel(cancellingId, cancelMotif || undefined);
+            setCancellingId(null);
+            setCancelMotif('');
+            loadDemandes();
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Erreur lors de l\'annulation');
+        } finally {
+            setCancelLoading(false);
+        }
+    };
+
+    const openEdit = async (d: DemandeResponse) => {
+        setEditingDemande(d);
+        setEditLibelle(extractLibelle(d.raison || ''));
+        setEditRaison(extractRaison(d.raison || ''));
+        if (referentiels.length === 0) {
+            try {
+                const res = await referentielService.getActiveByType('TYPE_DEMANDE');
+                setReferentiels(res.data.data || []);
+            } catch { /* ignore */ }
+        }
+    };
+
+    const handleEditSave = async () => {
+        if (!editingDemande) return;
+        setEditLoading(true);
+        try {
+            await demandePapierService.update(editingDemande.id, {
+                raison: `[${editLibelle}] ${editRaison}`,
+                employeId: editingDemande.employeId,
+            });
+            setEditingDemande(null);
+            loadDemandes();
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Erreur lors de la modification');
+        } finally {
+            setEditLoading(false);
         }
     };
 
@@ -119,25 +240,63 @@ const MesDemandesPapierPage: React.FC = () => {
             key: 'actions',
             label: 'Actions',
             render: (item: DemandeResponse) => (
-                <button
-                    onClick={() => setSelectedDemande(item)}
-                    className="rounded-lg px-3 py-1 text-theme-xs text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
-                >
-                    Voir
-                </button>
+                <div className="flex items-center gap-0.5">
+                    {/* Voir */}
+                    <div className="relative group">
+                        <button
+                            onClick={() => setSelectedDemande(item)}
+                            className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+                        >
+                            <HiOutlineEye size={16} />
+                        </button>
+                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-0.5 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity z-10">Voir</span>
+                    </div>
+                    {canEdit(item) && (
+                        <>
+                            {/* Modifier */}
+                            <div className="relative group">
+                                <button
+                                    onClick={() => openEdit(item)}
+                                    className="rounded-lg p-1.5 text-secondary-600 hover:bg-secondary-50 dark:hover:bg-secondary-500/10 transition-colors"
+                                >
+                                    <HiOutlinePencil size={16} />
+                                </button>
+                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-0.5 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity z-10">Modifier</span>
+                            </div>
+                            {/* Annuler */}
+                            <div className="relative group">
+                                <button
+                                    onClick={() => { setCancellingId(item.id); setCancelMotif(''); }}
+                                    className="rounded-lg p-1.5 text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10 transition-colors"
+                                >
+                                    <HiOutlineBan size={16} />
+                                </button>
+                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-0.5 text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity z-10">Annuler</span>
+                            </div>
+                        </>
+                    )}
+                </div>
             ),
         },
     ];
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Mes Demandes Papier</h1>
-                <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Historique de vos demandes administratives
-                </p>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Mes Demandes Papier</h1>
+                    <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Historique de vos demandes administratives
+                    </p>
+                </div>
+                <Button onClick={openNewModal}>
+                    <HiOutlinePlus size={18} className="mr-1" />
+                    Nouvelle Demande
+                </Button>
             </div>
 
+            {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1 max-w-md">
                     <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -161,6 +320,7 @@ const MesDemandesPapierPage: React.FC = () => {
                 </select>
             </div>
 
+            {/* Table */}
             {loading ? (
                 <div className="py-12 text-center text-gray-500 dark:text-gray-400">Chargement...</div>
             ) : filtered.length === 0 ? (
@@ -175,6 +335,7 @@ const MesDemandesPapierPage: React.FC = () => {
                 />
             )}
 
+            {/* Detail Modal */}
             <Modal isOpen={!!selectedDemande} onClose={() => setSelectedDemande(null)} title="Détails de la demande papier">
                 {selectedDemande && (
                     <div className="space-y-4">
@@ -201,9 +362,132 @@ const MesDemandesPapierPage: React.FC = () => {
                     </div>
                 )}
             </Modal>
+
+            {/* Cancel Confirmation Modal */}
+            <Modal isOpen={!!cancellingId} onClose={() => setCancellingId(null)} title="Annuler la demande">
+                <div className="space-y-4">
+                    <p className="text-theme-sm text-gray-600 dark:text-gray-300">
+                        Êtes-vous sûr de vouloir annuler cette demande ?
+                    </p>
+                    <div>
+                        <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                            Motif d'annulation (optionnel)
+                        </label>
+                        <textarea
+                            value={cancelMotif}
+                            onChange={e => setCancelMotif(e.target.value)}
+                            rows={3}
+                            className={inputClass + ' !h-auto py-3'}
+                            placeholder="Précisez la raison de l'annulation..."
+                        />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="outline" onClick={() => setCancellingId(null)}>Retour</Button>
+                        <Button onClick={handleCancelConfirm} disabled={cancelLoading}>
+                            {cancelLoading ? 'Annulation...' : 'Confirmer l\'annulation'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Edit Demande Modal */}
+            <Modal isOpen={!!editingDemande} onClose={() => setEditingDemande(null)} title="Modifier la demande">
+                <div className="space-y-4">
+                    <div>
+                        <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Type de demande</label>
+                        <select
+                            value={editLibelle}
+                            onChange={e => setEditLibelle(e.target.value)}
+                            className={inputClass}
+                        >
+                            {referentiels.length === 0
+                                ? <option value={editLibelle}>{editLibelle}</option>
+                                : referentiels.map(r => <option key={r.id} value={r.libelle}>{r.libelle}</option>)
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Raison</label>
+                        <textarea
+                            value={editRaison}
+                            onChange={e => setEditRaison(e.target.value)}
+                            rows={4}
+                            className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="outline" onClick={() => setEditingDemande(null)}>Annuler</Button>
+                        <Button onClick={handleEditSave} disabled={editLoading}>
+                            {editLoading ? 'Enregistrement...' : 'Enregistrer'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* New Demande Modal */}
+            <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="Nouvelle Demande Papier">
+                <div className="space-y-4">
+                    {newSuccess && (
+                        <div className="flex items-center gap-3 rounded-xl border border-success-200 bg-success-50 px-4 py-3 text-theme-sm text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400">
+                            <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Demande créée avec succès !
+                        </div>
+                    )}
+                    {newError && (
+                        <div className="rounded-lg border border-error-200 bg-error-50 p-3 text-theme-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
+                            {newError}
+                        </div>
+                    )}
+                    <form onSubmit={handleNewSubmit} className="space-y-4">
+                        <div>
+                            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                                Type de demande
+                            </label>
+                            {loadingRef ? (
+                                <div className="h-11 flex items-center text-theme-sm text-gray-400">Chargement...</div>
+                            ) : referentiels.length === 0 ? (
+                                <div className="h-11 flex items-center text-theme-sm text-error-500">
+                                    Aucun type disponible. Créez-en dans les Référentiels.
+                                </div>
+                            ) : (
+                                <select
+                                    value={selectedLibelle}
+                                    onChange={(e) => setSelectedLibelle(e.target.value)}
+                                    className={inputClass}
+                                    required
+                                >
+                                    {referentiels.map((ref) => (
+                                        <option key={ref.id} value={ref.libelle}>{ref.libelle}</option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                        <div>
+                            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                                Raison
+                            </label>
+                            <textarea
+                                value={raison}
+                                onChange={(e) => setRaison(e.target.value)}
+                                rows={4}
+                                className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
+                                placeholder="Décrivez la raison de votre demande..."
+                                required
+                            />
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <Button variant="outline" type="button" onClick={() => setShowNewModal(false)}>Annuler</Button>
+                            <Button type="submit" disabled={newLoading || loadingRef || referentiels.length === 0}>
+                                {newLoading ? 'Création...' : 'Créer la demande'}
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
         </div>
     );
-
 };
 
 export default MesDemandesPapierPage;

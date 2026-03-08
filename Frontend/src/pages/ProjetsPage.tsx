@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineUserGroup } from 'react-icons/hi';
+import { useNavigate } from 'react-router-dom';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineX, HiOutlineClipboardList } from 'react-icons/hi';
 import { projetService } from '../api/projetService';
 import { equipeService } from '../api/equipeService';
 import { employeService } from '../api/employeService';
@@ -17,21 +18,19 @@ const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success' | 'danger
 };
 
 const ProjetsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [projets, setProjets] = useState<Projet[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showEquipeModal, setShowEquipeModal] = useState(false);
   const [editingProjet, setEditingProjet] = useState<Projet | null>(null);
-  const [selectedProjetId, setSelectedProjetId] = useState<number | null>(null);
-  const [selectedEquipeId, setSelectedEquipeId] = useState<number>(0);
   const [formData, setFormData] = useState({
     nom: '',
     dateDebut: '',
     dateFin: '',
     statut: StatutProjet.PLANIFIE,
     chefDeProjetId: null as number | null,
-    equipeId: null as number | null
+    equipeIds: [] as number[],
   });
   const [employes, setEmployes] = useState<Employe[]>([]);
   const [dateError, setDateError] = useState<string | null>(null);
@@ -61,7 +60,6 @@ const ProjetsPage: React.FC = () => {
 
   const validateDates = (): boolean => {
     if (!editingProjet) {
-      // Only validate dateDebut >= today for new projects
       if (formData.dateDebut && formData.dateDebut < today) {
         setDateError('La date de début doit être aujourd\'hui ou plus tard');
         return false;
@@ -81,7 +79,7 @@ const ProjetsPage: React.FC = () => {
       const payload = {
         ...formData,
         chefDeProjetId: formData.chefDeProjetId || null,
-        equipeId: formData.equipeId || null
+        equipeIds: formData.equipeIds.length > 0 ? formData.equipeIds : [],
       };
       if (editingProjet) {
         await projetService.update(editingProjet.id, payload);
@@ -107,7 +105,7 @@ const ProjetsPage: React.FC = () => {
       dateFin: projet.dateFin,
       statut: projet.statut,
       chefDeProjetId: projet.chefDeProjet?.id || null,
-      equipeId: projet.equipeId || null
+      equipeIds: projet.equipeIds || (projet.equipeId ? [projet.equipeId] : []),
     });
     setDateError(null);
     setShowModal(true);
@@ -133,23 +131,16 @@ const ProjetsPage: React.FC = () => {
     }
   };
 
-  const handleAssignEquipe = async () => {
-    if (!selectedProjetId || !selectedEquipeId) return;
-    try {
-      await equipeService.assignToProjet(selectedEquipeId, selectedProjetId);
-      setShowEquipeModal(false);
-      loadData();
-    } catch (err) {
-      console.error('Erreur assignation équipe:', err);
-    }
-  };
-
-  const openEquipeModal = (projetId: number) => {
-    setSelectedProjetId(projetId);
-    // Pre-select first available equipe
-    const available = equipes.filter(e => !e.projetId || e.projetId === projetId);
-    setSelectedEquipeId(available[0]?.id || 0);
-    setShowEquipeModal(true);
+  const toggleEquipe = (equipeId: number) => {
+    setFormData(prev => {
+      const exists = prev.equipeIds.includes(equipeId);
+      return {
+        ...prev,
+        equipeIds: exists
+          ? prev.equipeIds.filter(id => id !== equipeId)
+          : [...prev.equipeIds, equipeId],
+      };
+    });
   };
 
   const resetForm = () => {
@@ -159,13 +150,19 @@ const ProjetsPage: React.FC = () => {
       dateFin: '',
       statut: StatutProjet.PLANIFIE,
       chefDeProjetId: null,
-      equipeId: null
+      equipeIds: [],
     });
     setDateError(null);
   };
 
   const inputClass =
     'h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300';
+
+  // Available equipes: unassigned OR already linked to editing project
+  const availableEquipes = equipes.filter(e =>
+    !e.projetId ||
+    (editingProjet && e.projetId === editingProjet.id)
+  );
 
   const columns = [
     { key: 'id', label: '#' },
@@ -197,7 +194,7 @@ const ProjetsPage: React.FC = () => {
       render: (p: Projet) => {
         if (!p.dateDebut) return '-';
         const [y, m, d] = p.dateDebut.split('-');
-        return `${m}-${d}-${y}`;
+        return `${d}/${m}/${y}`;
       }
     },
     {
@@ -206,7 +203,7 @@ const ProjetsPage: React.FC = () => {
       render: (p: Projet) => {
         if (!p.dateFin) return '-';
         const [y, m, d] = p.dateFin.split('-');
-        return `${m}-${d}-${y}`;
+        return `${d}/${m}/${y}`;
       }
     },
     {
@@ -214,15 +211,6 @@ const ProjetsPage: React.FC = () => {
       label: 'Actions',
       render: (item: Projet) => (
         <div className="flex gap-1">
-          {(item.statut === 'PLANIFIE' || item.statut === 'EN_COURS') && (
-            <button
-              onClick={() => openEquipeModal(item.id)}
-              className="rounded-lg p-1.5 text-secondary-500 hover:bg-secondary-50"
-              title="Assigner une équipe"
-            >
-              <HiOutlineUserGroup size={16} />
-            </button>
-          )}
           {item.statut === 'PLANIFIE' && (
             <button
               onClick={() => handleChangeStatut(item.id, StatutProjet.EN_COURS)}
@@ -242,6 +230,13 @@ const ProjetsPage: React.FC = () => {
             </button>
           )}
           <button
+            onClick={() => navigate(`/projets/${item.id}/taches`)}
+            className="rounded-lg p-1.5 text-secondary-500 hover:bg-secondary-50"
+            title="Voir les tâches"
+          >
+            <HiOutlineClipboardList size={16} />
+          </button>
+          <button
             onClick={() => handleEdit(item)}
             className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50"
           >
@@ -257,9 +252,6 @@ const ProjetsPage: React.FC = () => {
       ),
     },
   ];
-
-  // Available equipes for assignment (no project yet, or already linked to this project)
-  const availableEquipes = equipes.filter(e => !e.projetId || e.projetId === selectedProjetId);
 
   return (
     <div className="space-y-6">
@@ -286,6 +278,7 @@ const ProjetsPage: React.FC = () => {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingProjet ? 'Modifier le projet' : 'Nouveau projet'}
+        size="lg"
       >
         <div className="space-y-4">
           <div>
@@ -311,19 +304,66 @@ const ProjetsPage: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Multi-select Équipes */}
           <div>
-            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Équipe (optionnel)</label>
-            <select
-              value={formData.equipeId || ''}
-              onChange={(e) => setFormData({ ...formData, equipeId: e.target.value ? Number(e.target.value) : null })}
-              className={inputClass}
-            >
-              <option value="">Aucune équipe assignée</option>
-              {equipes.map((eq) => (
-                <option key={eq.id} value={eq.id}>{eq.nom}</option>
-              ))}
-            </select>
+            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+              Équipes ({formData.equipeIds.length} sélectionnée{formData.equipeIds.length > 1 ? 's' : ''})
+            </label>
+            {availableEquipes.length === 0 ? (
+              <div className="rounded-lg bg-warning-50 px-4 py-3 text-theme-sm text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+                Aucune équipe disponible. Créez-en dans la page Équipes.
+              </div>
+            ) : (
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600">
+                {availableEquipes.map((eq) => {
+                  const isSelected = formData.equipeIds.includes(eq.id);
+                  return (
+                    <label
+                      key={eq.id}
+                      className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${isSelected ? 'bg-brand-50 dark:bg-brand-500/10' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleEquipe(eq.id)}
+                        className="h-4 w-4 rounded text-brand-500 focus:ring-brand-500"
+                      />
+                      <div className="flex-1">
+                        <span className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">{eq.nom}</span>
+                        {isSelected && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); toggleEquipe(eq.id); }}
+                            className="ml-2 text-error-400 hover:text-error-600"
+                          >
+                            <HiOutlineX size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            {/* Selected équipes chips */}
+            {formData.equipeIds.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {formData.equipeIds.map(id => {
+                  const eq = equipes.find(e => e.id === id);
+                  return eq ? (
+                    <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-theme-xs font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
+                      {eq.nom}
+                      <button type="button" onClick={() => toggleEquipe(id)} className="text-brand-400 hover:text-brand-600">
+                        <HiOutlineX size={12} />
+                      </button>
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            )}
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Date début</label>
@@ -331,10 +371,7 @@ const ProjetsPage: React.FC = () => {
                 type="date"
                 value={formData.dateDebut}
                 min={!editingProjet ? today : undefined}
-                onChange={(e) => {
-                  setFormData({ ...formData, dateDebut: e.target.value });
-                  setDateError(null);
-                }}
+                onChange={(e) => { setFormData({ ...formData, dateDebut: e.target.value }); setDateError(null); }}
                 className={inputClass}
                 required
               />
@@ -345,10 +382,7 @@ const ProjetsPage: React.FC = () => {
                 type="date"
                 value={formData.dateFin}
                 min={formData.dateDebut || today}
-                onChange={(e) => {
-                  setFormData({ ...formData, dateFin: e.target.value });
-                  setDateError(null);
-                }}
+                onChange={(e) => { setFormData({ ...formData, dateFin: e.target.value }); setDateError(null); }}
                 className={inputClass}
                 required
               />
@@ -376,45 +410,6 @@ const ProjetsPage: React.FC = () => {
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setShowModal(false)}>Annuler</Button>
             <Button onClick={handleSave}>{editingProjet ? 'Modifier' : 'Créer'}</Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Assign Equipe Modal */}
-      <Modal
-        isOpen={showEquipeModal}
-        onClose={() => setShowEquipeModal(false)}
-        title="Assigner une équipe"
-      >
-        <div className="space-y-4">
-          <p className="text-theme-sm text-gray-600 dark:text-gray-300">
-            Sélectionner une équipe pour ce projet
-          </p>
-          {availableEquipes.length === 0 ? (
-            <div className="rounded-lg bg-warning-50 px-4 py-3 text-theme-sm text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
-              Aucune équipe disponible. Créez d'abord une équipe dans la page Équipes.
-            </div>
-          ) : (
-            <div>
-              <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Équipe</label>
-              <select
-                value={selectedEquipeId}
-                onChange={(e) => setSelectedEquipeId(Number(e.target.value))}
-                className={inputClass}
-              >
-                {availableEquipes.map((eq) => (
-                  <option key={eq.id} value={eq.id}>
-                    {eq.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setShowEquipeModal(false)}>Annuler</Button>
-            <Button onClick={handleAssignEquipe} disabled={availableEquipes.length === 0}>
-              <HiOutlineUserGroup size={16} /> Assigner
-            </Button>
           </div>
         </div>
       </Modal>

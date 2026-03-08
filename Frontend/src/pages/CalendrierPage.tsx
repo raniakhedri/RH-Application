@@ -91,12 +91,14 @@ const CalendrierPage: React.FC = () => {
   const [tachesObl, setTachesObl] = useState<TacheObligatoireDTO[]>([]);
   const [tachesOblLoading, setTachesOblLoading] = useState(true);
   const [showTacheOblModal, setShowTacheOblModal] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<TacheObligatoireDTO[] | null>(null);
+  const [editTacheOblForm, setEditTacheOblForm] = useState({ nom: '', equipeIds: [] as string[], employeIds: [] as string[], dates: [] as string[] });
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [selectedEquipe, setSelectedEquipe] = useState<Equipe | null>(null);
   const [tacheOblForm, setTacheOblForm] = useState({
     nom: '',
-    equipeId: '' as string | number,
-    employeId: '' as string | number,
+    equipeIds: [] as string[],
+    employeIds: [] as string[],
     dates: [] as string[],
   });
   // Mini date-picker state for tache obl
@@ -314,10 +316,30 @@ const CalendrierPage: React.FC = () => {
     }
   };
 
-  const handleEquipeChange = (equipeId: string) => {
+  const toggleEquipeId = (equipeId: string) => {
+    setTacheOblForm((f) => {
+      const next = f.equipeIds.includes(equipeId)
+        ? f.equipeIds.filter((id) => id !== equipeId)
+        : [...f.equipeIds, equipeId];
+      return { ...f, equipeIds: next, employeIds: [] };
+    });
+    // Update selectedEquipe to ALL selected equipes combined members
     const eq = equipes.find((e) => String(e.id) === equipeId) || null;
     setSelectedEquipe(eq);
-    setTacheOblForm((f) => ({ ...f, equipeId, employeId: '' }));
+  };
+
+  const selectedEquipes = equipes.filter((e) => tacheOblForm.equipeIds.includes(String(e.id)));
+  const allMembers = selectedEquipes.flatMap((e) => e.membres).filter(
+    (m, i, arr) => arr.findIndex((x) => x.id === m.id) === i
+  );
+
+  const toggleEmployeId = (employeId: string) => {
+    setTacheOblForm((f) => ({
+      ...f,
+      employeIds: f.employeIds.includes(employeId)
+        ? f.employeIds.filter((id) => id !== employeId)
+        : [...f.employeIds, employeId],
+    }));
   };
 
   const togglePickerDate = (dateStr: string) => {
@@ -330,19 +352,42 @@ const CalendrierPage: React.FC = () => {
   };
 
   const handleSaveTacheObl = async () => {
-    if (!tacheOblForm.nom || !tacheOblForm.equipeId || tacheOblForm.dates.length === 0) {
-      alert('Veuillez remplir le nom, choisir une équipe et sélectionner au moins une date.');
+    if (!tacheOblForm.nom.trim()) {
+      alert('Veuillez renseigner le nom de la tâche.');
+      return;
+    }
+    if (tacheOblForm.equipeIds.length === 0) {
+      alert('Veuillez sélectionner au moins une équipe.');
+      return;
+    }
+    if (tacheOblForm.dates.length === 0) {
+      alert('Veuillez sélectionner au moins une date dans le calendrier.');
       return;
     }
     try {
-      await tacheObligatoireService.create({
-        nom: tacheOblForm.nom,
-        equipeId: Number(tacheOblForm.equipeId),
-        employeId: tacheOblForm.employeId ? Number(tacheOblForm.employeId) : null,
-        dates: tacheOblForm.dates,
-      });
+      // Create one tache obl per equipe × member combination
+      for (const equipeId of tacheOblForm.equipeIds) {
+        if (tacheOblForm.employeIds.length === 0) {
+          // Whole equipe
+          await tacheObligatoireService.create({
+            nom: tacheOblForm.nom,
+            equipeId: Number(equipeId),
+            employeId: null,
+            dates: tacheOblForm.dates,
+          });
+        } else {
+          for (const employeId of tacheOblForm.employeIds) {
+            await tacheObligatoireService.create({
+              nom: tacheOblForm.nom,
+              equipeId: Number(equipeId),
+              employeId: Number(employeId),
+              dates: tacheOblForm.dates,
+            });
+          }
+        }
+      }
       setShowTacheOblModal(false);
-      setTacheOblForm({ nom: '', equipeId: '', employeId: '', dates: [] });
+      setTacheOblForm({ nom: '', equipeIds: [], employeIds: [], dates: [] });
       setSelectedEquipe(null);
       loadTachesObl();
     } catch (err: any) {
@@ -351,13 +396,90 @@ const CalendrierPage: React.FC = () => {
   };
 
   const handleDeleteTacheObl = async (id: number) => {
-    if (window.confirm('Supprimer cette tâche obligatoire ?')) {
+    if (window.confirm('Supprimer cette restriction ?')) {
       try {
         await tacheObligatoireService.delete(id);
         loadTachesObl();
       } catch { /* ignore */ }
     }
   };
+
+  const handleDeleteGroup = async (records: TacheObligatoireDTO[]) => {
+    if (window.confirm(`Supprimer la restriction "${records[0]?.nom}" et toutes ses entrées ?`)) {
+      try {
+        await Promise.all(records.map(r => tacheObligatoireService.delete(r.id)));
+        loadTachesObl();
+      } catch { /* ignore */ }
+    }
+  };
+
+  const openEditGroup = (records: TacheObligatoireDTO[]) => {
+    setEditingGroup(records);
+    const equipeIds = [...new Set(records.map(r => String(r.equipeId)))];
+    const employeIds = [...new Set(records.filter(r => r.employeId).map(r => String(r.employeId)))];
+    const dates = [...new Set(records.flatMap(r => r.dates))].sort();
+    setEditTacheOblForm({ nom: records[0].nom, equipeIds, employeIds, dates });
+    setPickerYear(new Date().getFullYear());
+    setPickerMonth(new Date().getMonth());
+  };
+
+  const handleEditTacheOblSave = async () => {
+    if (!editingGroup) return;
+    if (!editTacheOblForm.nom.trim()) { alert('Veuillez renseigner le nom.'); return; }
+    if (editTacheOblForm.equipeIds.length === 0) { alert('Veuillez sélectionner au moins une équipe.'); return; }
+    if (editTacheOblForm.dates.length === 0) { alert('Veuillez sélectionner au moins une date.'); return; }
+    try {
+      // Delete all old records in the group
+      await Promise.all(editingGroup.map(r => tacheObligatoireService.delete(r.id)));
+      // Recreate with new equipes × members
+      for (const equipeId of editTacheOblForm.equipeIds) {
+        if (editTacheOblForm.employeIds.length === 0) {
+          await tacheObligatoireService.create({ nom: editTacheOblForm.nom, equipeId: Number(equipeId), employeId: null, dates: editTacheOblForm.dates });
+        } else {
+          for (const employeId of editTacheOblForm.employeIds) {
+            await tacheObligatoireService.create({ nom: editTacheOblForm.nom, equipeId: Number(equipeId), employeId: Number(employeId), dates: editTacheOblForm.dates });
+          }
+        }
+      }
+      setEditingGroup(null);
+      loadTachesObl();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Erreur lors de la modification');
+    }
+  };
+
+  const toggleEditDate = (dateStr: string) => {
+    setEditTacheOblForm(f => ({ ...f, dates: f.dates.includes(dateStr) ? f.dates.filter(d => d !== dateStr) : [...f.dates, dateStr] }));
+  };
+  const toggleEditEquipeId = (equipeId: string) => {
+    setEditTacheOblForm(f => {
+      const next = f.equipeIds.includes(equipeId) ? f.equipeIds.filter(id => id !== equipeId) : [...f.equipeIds, equipeId];
+      return { ...f, equipeIds: next, employeIds: [] };
+    });
+  };
+  const toggleEditEmployeId = (employeId: string) => {
+    setEditTacheOblForm(f => ({ ...f, employeIds: f.employeIds.includes(employeId) ? f.employeIds.filter(id => id !== employeId) : [...f.employeIds, employeId] }));
+  };
+  // Members visible when editing = from the selected equipes
+  const editSelectedEquipes = equipes.filter(e => editTacheOblForm.equipeIds.includes(String(e.id)));
+  const editAllMembers = editSelectedEquipes.flatMap(e => e.membres || []).filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
+
+  // Grouped view for table
+  const groupedRestrictions = React.useMemo(() => {
+    const map = new Map<string, TacheObligatoireDTO[]>();
+    for (const t of tachesObl) {
+      if (!map.has(t.nom)) map.set(t.nom, []);
+      map.get(t.nom)!.push(t);
+    }
+    return Array.from(map.values()).map(records => ({
+      nom: records[0].nom,
+      equipeNoms: [...new Set(records.map(r => r.equipeNom))],
+      membreNoms: [...new Set(records.filter(r => r.employeNom).map(r => r.employeNom!))],
+      toutesEquipes: records.every(r => !r.employeId),
+      dates: [...new Set(records.flatMap(r => r.dates))].sort(),
+      records,
+    }));
+  }, [tachesObl]);
 
   // Mini picker helpers
   const pickerDays = () => {
@@ -373,7 +495,7 @@ const CalendrierPage: React.FC = () => {
     `${pickerYear}-${String(pickerMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   const MONTHS_FR = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
   const tacheOblColumns = [
-    { key: 'nom', label: 'Tâche', render: (t: TacheObligatoireDTO) => <span className="font-medium">{t.nom}</span> },
+    { key: 'nom', label: 'Restriction', render: (t: TacheObligatoireDTO) => <span className="font-medium">{t.nom}</span> },
     { key: 'equipeNom', label: 'Équipe', render: (t: TacheObligatoireDTO) => <Badge text={t.equipeNom} variant="primary" /> },
     {
       key: 'employeNom', label: 'Assigné à', render: (t: TacheObligatoireDTO) => (
@@ -382,19 +504,26 @@ const CalendrierPage: React.FC = () => {
     },
     {
       key: 'dates', label: 'Dates', render: (t: TacheObligatoireDTO) => (
-        <div className="flex flex-wrap gap-1">
-          {t.dates.slice(0, 3).map((d) => (
-            <span key={d} className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 text-[10px] font-medium dark:bg-yellow-500/20 dark:text-yellow-400">{d}</span>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+          {t.dates.slice(0, 4).map((d) => (
+            <span key={d} className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 text-[10px] font-medium dark:bg-yellow-500/20 dark:text-yellow-400 whitespace-nowrap">{d}</span>
           ))}
-          {t.dates.length > 3 && <span className="text-theme-xs text-gray-400">+{t.dates.length - 3}</span>}
+          {t.dates.length > 4 && (
+            <span className="col-span-2 text-theme-xs text-gray-400">+{t.dates.length - 4} autres</span>
+          )}
         </div>
       )
     },
     {
       key: 'actions', label: '', render: (t: TacheObligatoireDTO) => (
-        <button onClick={() => handleDeleteTacheObl(t.id)} className="p-1.5 rounded-lg hover:bg-error-50 text-error-500 transition-colors">
-          <HiOutlineTrash size={16} />
-        </button>
+        <div className="flex gap-1">
+          <button onClick={() => openEditGroup([t])} className="p-1.5 rounded-lg hover:bg-brand-50 text-brand-500 transition-colors" title="Modifier">
+            <HiOutlinePencil size={16} />
+          </button>
+          <button onClick={() => handleDeleteTacheObl(t.id)} className="p-1.5 rounded-lg hover:bg-error-50 text-error-500 transition-colors" title="Supprimer">
+            <HiOutlineTrash size={16} />
+          </button>
+        </div>
       )
     },
   ];
@@ -510,8 +639,8 @@ const CalendrierPage: React.FC = () => {
             <span
               key={jour}
               className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${item.joursTravail.includes(jour)
-                  ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400'
-                  : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
+                ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400'
+                : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
                 }`}
             >
               {jour.substring(0, 3)}
@@ -584,8 +713,8 @@ const CalendrierPage: React.FC = () => {
         <button
           onClick={() => setActiveTab('jours')}
           className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${activeTab === 'jours'
-              ? 'bg-white text-brand-500 shadow-sm dark:bg-gray-700 dark:text-brand-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            ? 'bg-white text-brand-500 shadow-sm dark:bg-gray-700 dark:text-brand-400'
+            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
         >
           <HiOutlineCalendar size={16} />
@@ -594,8 +723,8 @@ const CalendrierPage: React.FC = () => {
         <button
           onClick={() => setActiveTab('horaires')}
           className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${activeTab === 'horaires'
-              ? 'bg-white text-brand-500 shadow-sm dark:bg-gray-700 dark:text-brand-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            ? 'bg-white text-brand-500 shadow-sm dark:bg-gray-700 dark:text-brand-400'
+            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
         >
           <HiOutlineClock size={16} />
@@ -604,12 +733,12 @@ const CalendrierPage: React.FC = () => {
         <button
           onClick={() => setActiveTab('taches-obligatoires')}
           className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${activeTab === 'taches-obligatoires'
-              ? 'bg-white text-yellow-600 shadow-sm dark:bg-gray-700 dark:text-yellow-400'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            ? 'bg-white text-yellow-600 shadow-sm dark:bg-gray-700 dark:text-yellow-400'
+            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
         >
           <HiOutlineExclamation size={16} />
-          Tâches Obligatoires
+          Restriction De congés
         </button>
       </div>
 
@@ -700,7 +829,7 @@ const CalendrierPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-theme-sm text-gray-500 dark:text-gray-400">Jours de travail obligatoires pour une équipe ou un membre</p>
-            <Button onClick={() => { setShowTacheOblModal(true); setTacheOblForm({ nom: '', equipeId: '', employeId: '', dates: [] }); setSelectedEquipe(null); }}>
+            <Button onClick={() => { setShowTacheOblModal(true); setTacheOblForm({ nom: '', equipeIds: [], employeIds: [], dates: [] }); setSelectedEquipe(null); }}>
               <HiOutlinePlus size={18} /> Ajouter
             </Button>
           </div>
@@ -709,10 +838,66 @@ const CalendrierPage: React.FC = () => {
           ) : tachesObl.length === 0 ? (
             <div className="text-center py-12">
               <HiOutlineExclamation className="mx-auto text-yellow-400" size={40} />
-              <p className="mt-3 text-gray-500">Aucune tâche obligatoire définie</p>
+              <p className="mt-3 text-gray-500">Aucune restriction configurée</p>
             </div>
           ) : (
-            <DataTable columns={tacheOblColumns} data={tachesObl} />
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark">
+              <p className="px-4 pt-3 pb-1 text-theme-xs text-gray-400 italic">Double-cliquez sur une ligne pour modifier</p>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-gray-700">
+                    {['Restriction', 'Équipes', 'Assigné à', 'Dates', ''].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-theme-xs font-medium text-gray-500 uppercase">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedRestrictions.map((g) => (
+                    <tr
+                      key={g.nom}
+                      onDoubleClick={() => openEditGroup(g.records)}
+                      className="border-b border-gray-50 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    >
+                      <td className="px-4 py-3 font-medium text-theme-sm text-gray-800 dark:text-white max-w-[160px] truncate">{g.nom}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {g.equipeNoms.map(e => <Badge key={e} text={e} variant="primary" />)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-theme-sm">
+                        {g.toutesEquipes && g.membreNoms.length === 0 ? (
+                          <span className="text-gray-400 italic">Toute l'équipe</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {g.membreNoms.map(m => (
+                              <span key={m} className="inline-flex items-center rounded-full bg-secondary-50 text-secondary-600 px-2 py-0.5 text-[10px] font-medium dark:bg-secondary-500/10">{m}</span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                          {g.dates.slice(0, 4).map(d => (
+                            <span key={d} className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 text-[10px] font-medium dark:bg-yellow-500/20 dark:text-yellow-400 whitespace-nowrap">{d}</span>
+                          ))}
+                          {g.dates.length > 4 && <span className="col-span-2 text-theme-xs text-gray-400">+{g.dates.length - 4} autres</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                          <button onClick={() => openEditGroup(g.records)} className="p-1.5 rounded-lg hover:bg-brand-50 text-brand-500" title="Modifier">
+                            <HiOutlinePencil size={15} />
+                          </button>
+                          <button onClick={() => handleDeleteGroup(g.records)} className="p-1.5 rounded-lg hover:bg-error-50 text-error-500" title="Supprimer">
+                            <HiOutlineTrash size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
@@ -731,29 +916,38 @@ const CalendrierPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Choisir l'équipe *</label>
-            <select
-              value={String(tacheOblForm.equipeId)}
-              onChange={(e) => handleEquipeChange(e.target.value)}
-              className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
-            >
-              <option value="">-- Sélectionner une équipe --</option>
-              {equipes.map((eq) => <option key={eq.id} value={eq.id}>{eq.nom}</option>)}
-            </select>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Choisir les équipes * ({tacheOblForm.equipeIds.length} sélectionnée{tacheOblForm.equipeIds.length > 1 ? 's' : ''})</label>
+            <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600">
+              {equipes.map((eq) => (
+                <label key={eq.id} className={`flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 ${tacheOblForm.equipeIds.includes(String(eq.id)) ? 'bg-brand-50 dark:bg-brand-500/10' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={tacheOblForm.equipeIds.includes(String(eq.id))}
+                    onChange={() => toggleEquipeId(String(eq.id))}
+                    className="h-4 w-4 rounded text-brand-500"
+                  />
+                  <span className="text-theme-sm text-gray-700 dark:text-gray-300">{eq.nom}</span>
+                </label>
+              ))}
+            </div>
           </div>
-          {selectedEquipe && (
+          {tacheOblForm.equipeIds.length > 0 && allMembers.length > 0 && (
             <div>
-              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assigner à</label>
-              <select
-                value={String(tacheOblForm.employeId)}
-                onChange={(e) => setTacheOblForm((f) => ({ ...f, employeId: e.target.value }))}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
-              >
-                <option value="">Toute l'équipe</option>
-                {selectedEquipe.membres.map((m) => (
-                  <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assigner à ({tacheOblForm.employeIds.length === 0 ? 'toute l\'équipe' : `${tacheOblForm.employeIds.length} membre${tacheOblForm.employeIds.length > 1 ? 's' : ''}`})</label>
+              <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600">
+                {allMembers.map((m) => (
+                  <label key={m.id} className={`flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 ${tacheOblForm.employeIds.includes(String(m.id)) ? 'bg-secondary-50 dark:bg-secondary-500/10' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={tacheOblForm.employeIds.includes(String(m.id))}
+                      onChange={() => toggleEmployeId(String(m.id))}
+                      className="h-4 w-4 rounded text-secondary-500"
+                    />
+                    <span className="text-theme-sm text-gray-700 dark:text-gray-300">{m.prenom} {m.nom}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
+              <p className="mt-1 text-theme-xs text-gray-400">Laisser vide = toute l'équipe</p>
             </div>
           )}
           <div>
@@ -782,8 +976,8 @@ const CalendrierPage: React.FC = () => {
                       type="button"
                       onClick={() => togglePickerDate(ds)}
                       className={`w-8 h-8 mx-auto flex items-center justify-center rounded-md text-theme-xs font-medium transition-colors ${selected
-                          ? 'bg-yellow-400 text-white dark:bg-yellow-500'
-                          : 'hover:bg-yellow-50 text-gray-700 dark:text-gray-300 dark:hover:bg-yellow-500/20'
+                        ? 'bg-yellow-400 text-white dark:bg-yellow-500'
+                        : 'hover:bg-yellow-50 text-gray-700 dark:text-gray-300 dark:hover:bg-yellow-500/20'
                         }`}
                     >
                       {day}
@@ -808,6 +1002,89 @@ const CalendrierPage: React.FC = () => {
           <Button variant="ghost" onClick={() => setShowTacheOblModal(false)}>Annuler</Button>
           <Button onClick={handleSaveTacheObl}>Créer</Button>
         </div>
+      </Modal>
+
+      {/* Edit Restriction Modal */}
+      <Modal isOpen={!!editingGroup} onClose={() => setEditingGroup(null)} title="Modifier la restriction" size="lg">
+        {editingGroup && (
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <div>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom *</label>
+              <input
+                type="text"
+                value={editTacheOblForm.nom}
+                onChange={e => setEditTacheOblForm(f => ({ ...f, nom: e.target.value }))}
+                className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+              />
+            </div>
+            {/* Equipe multi-select */}
+            <div>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Équipes * <span className="text-theme-xs text-brand-500 font-normal">({editTacheOblForm.equipeIds.length} sélectionnée{editTacheOblForm.equipeIds.length > 1 ? 's' : ''})</span>
+              </label>
+              <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600">
+                {equipes.map(eq => (
+                  <label key={eq.id} className={`flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 ${editTacheOblForm.equipeIds.includes(String(eq.id)) ? 'bg-brand-50 dark:bg-brand-500/10' : ''}`}>
+                    <input type="checkbox" checked={editTacheOblForm.equipeIds.includes(String(eq.id))} onChange={() => toggleEditEquipeId(String(eq.id))} className="h-4 w-4 rounded text-brand-500" />
+                    <span className="text-theme-sm text-gray-700 dark:text-gray-300">{eq.nom}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            {/* Member multi-select */}
+            {editTacheOblForm.equipeIds.length > 0 && editAllMembers.length > 0 && (
+              <div>
+                <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Assigner à <span className="text-theme-xs text-gray-400 font-normal">({editTacheOblForm.employeIds.length === 0 ? 'toute l\'équipe' : `${editTacheOblForm.employeIds.length} membre${editTacheOblForm.employeIds.length > 1 ? 's' : ''}`})</span>
+                </label>
+                <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600">
+                  {editAllMembers.map(m => (
+                    <label key={m.id} className={`flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 ${editTacheOblForm.employeIds.includes(String(m.id)) ? 'bg-secondary-50 dark:bg-secondary-500/10' : ''}`}>
+                      <input type="checkbox" checked={editTacheOblForm.employeIds.includes(String(m.id))} onChange={() => toggleEditEmployeId(String(m.id))} className="h-4 w-4 rounded text-secondary-500" />
+                      <span className="text-theme-sm text-gray-700 dark:text-gray-300">{m.prenom} {m.nom}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-theme-xs text-gray-400">Laisser vide = toute l'équipe</p>
+              </div>
+            )}
+            {/* Date picker */}
+            <div>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Dates <span className="text-theme-xs text-gray-400 font-normal">({editTacheOblForm.dates.length} sélectionnée{editTacheOblForm.dates.length > 1 ? 's' : ''})</span>
+              </label>
+              <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+                <div className="flex items-center justify-between mb-3">
+                  <button type="button" onClick={() => { if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(pickerYear - 1); } else setPickerMonth(pickerMonth - 1); }} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><HiOutlineChevronLeft size={16} /></button>
+                  <span className="text-theme-sm font-semibold text-gray-800 dark:text-white">{MONTHS_FR[pickerMonth]} {pickerYear}</span>
+                  <button type="button" onClick={() => { if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(pickerYear + 1); } else setPickerMonth(pickerMonth + 1); }} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"><HiOutlineChevronRight size={16} /></button>
+                </div>
+                <div className="grid grid-cols-7 gap-0.5 text-center">
+                  {['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'].map(d => <div key={d} className="text-theme-xs font-medium text-gray-400 py-1">{d}</div>)}
+                  {pickerDays().map((day, i) => {
+                    if (!day) return <div key={`e-${i}`} />;
+                    const ds = pickerDateStr(day);
+                    const sel = editTacheOblForm.dates.includes(ds);
+                    return <button key={ds} type="button" onClick={() => toggleEditDate(ds)} className={`w-8 h-8 mx-auto flex items-center justify-center rounded-md text-theme-xs font-medium transition-colors ${sel ? 'bg-yellow-400 text-white' : 'hover:bg-yellow-50 text-gray-700 dark:text-gray-300 dark:hover:bg-yellow-500/20'}`}>{day}</button>;
+                  })}
+                </div>
+              </div>
+              {editTacheOblForm.dates.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {editTacheOblForm.dates.sort().map(d => (
+                    <span key={d} className="inline-flex items-center gap-1 rounded-full bg-yellow-100 text-yellow-700 px-2 py-0.5 text-[10px] font-medium">
+                      {d}<button type="button" onClick={() => toggleEditDate(d)}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="ghost" onClick={() => setEditingGroup(null)}>Annuler</Button>
+              <Button onClick={handleEditTacheOblSave}>Enregistrer</Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Jour Modal */}
@@ -963,8 +1240,8 @@ const CalendrierPage: React.FC = () => {
                   type="button"
                   onClick={() => toggleJourTravail(jour)}
                   className={`rounded-lg px-3 py-2 text-theme-xs font-medium transition-colors ${horaireForm.joursTravail.includes(jour)
-                      ? 'bg-brand-500 text-white'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
                     }`}
                 >
                   {jour.substring(0, 3)}
@@ -982,8 +1259,8 @@ const CalendrierPage: React.FC = () => {
                   type="button"
                   onClick={() => toggleJourTeletravail(jour)}
                   className={`rounded-lg px-3 py-2 text-theme-xs font-medium transition-colors ${horaireForm.joursTeletravail.includes(jour)
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
                     }`}
                 >
                   {jour.substring(0, 3)}

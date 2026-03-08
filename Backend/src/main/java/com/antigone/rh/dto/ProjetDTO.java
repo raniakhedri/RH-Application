@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
@@ -19,6 +20,7 @@ public class ProjetDTO {
     private LocalDate dateDebut;
     private LocalDate dateFin;
     private EmployeDTO chefDeProjet;
-    private Long equipeId;
-    private java.util.List<String> equipeNoms;
+    private Long equipeId; // kept for backward compat (first equipe)
+    private List<Long> equipeIds; // all equipe IDs
+    private List<String> equipeNoms;
 }

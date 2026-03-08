@@ -1,10 +1,13 @@
 package com.antigone.rh.service;
 
+import com.antigone.rh.dto.TacheDetailDTO;
 import com.antigone.rh.entity.Employe;
+import com.antigone.rh.entity.Equipe;
 import com.antigone.rh.entity.Projet;
 import com.antigone.rh.entity.Tache;
 import com.antigone.rh.enums.StatutTache;
 import com.antigone.rh.repository.EmployeRepository;
+import com.antigone.rh.repository.EquipeRepository;
 import com.antigone.rh.repository.ProjetRepository;
 import com.antigone.rh.repository.TacheRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +25,7 @@ public class TacheService {
     private final TacheRepository tacheRepository;
     private final ProjetRepository projetRepository;
     private final EmployeRepository employeRepository;
+    private final EquipeRepository equipeRepository;
     private final NotificationService notificationService;
 
     public List<Tache> findAll() {
@@ -38,6 +43,11 @@ public class TacheService {
 
     public List<Tache> findByAssignee(Long employeId) {
         return tacheRepository.findByAssigneeId(employeId);
+    }
+
+    public List<TacheDetailDTO> findDetailByAssignee(Long employeId) {
+        List<Tache> taches = tacheRepository.findByAssigneeId(employeId);
+        return taches.stream().map(this::toDetailDTO).collect(Collectors.toList());
     }
 
     public List<Tache> findByProjetAndStatut(Long projetId, StatutTache statut) {
@@ -75,7 +85,21 @@ public class TacheService {
     public Tache changeStatut(Long tacheId, StatutTache statut) {
         Tache tache = findById(tacheId);
         tache.setStatut(statut);
-        return tacheRepository.save(tache);
+        Tache saved = tacheRepository.save(tache);
+
+        // Notify chef de projet when task is marked as DONE
+        if (statut == StatutTache.DONE && tache.getProjet() != null
+                && tache.getProjet().getChefDeProjet() != null) {
+            Employe chef = tache.getProjet().getChefDeProjet();
+            notificationService.create(
+                    chef,
+                    "Tâche terminée",
+                    "La tâche \"" + tache.getTitre() + "\" du projet \""
+                            + tache.getProjet().getNom() + "\" a été marquée comme terminée.",
+                    null);
+        }
+
+        return saved;
     }
 
     public Tache update(Long id, Tache tacheDetails) {
@@ -105,5 +129,54 @@ public class TacheService {
 
     public void delete(Long id) {
         tacheRepository.deleteById(id);
+    }
+
+    private TacheDetailDTO toDetailDTO(Tache tache) {
+        Projet projet = tache.getProjet();
+        String chefNom = null;
+        Long chefId = null;
+        if (projet != null && projet.getChefDeProjet() != null) {
+            Employe chef = projet.getChefDeProjet();
+            chefNom = chef.getPrenom() + " " + chef.getNom();
+            chefId = chef.getId();
+        }
+
+        // Load equipes for this project
+        List<TacheDetailDTO.EquipeInfoDTO> equipeInfos = List.of();
+        if (projet != null) {
+            List<Equipe> equipes = equipeRepository.findByProjetId(projet.getId());
+            equipeInfos = equipes.stream().map(eq -> {
+                List<TacheDetailDTO.MembreInfoDTO> membres = eq.getMembres().stream()
+                        .map(m -> TacheDetailDTO.MembreInfoDTO.builder()
+                                .id(m.getId())
+                                .nom(m.getNom())
+                                .prenom(m.getPrenom())
+                                .telephone(m.getTelephone())
+                                .departement(m.getDepartement())
+                                .email(m.getEmail())
+                                .build())
+                        .collect(Collectors.toList());
+                return TacheDetailDTO.EquipeInfoDTO.builder()
+                        .id(eq.getId())
+                        .nom(eq.getNom())
+                        .membres(membres)
+                        .build();
+            }).collect(Collectors.toList());
+        }
+
+        return TacheDetailDTO.builder()
+                .id(tache.getId())
+                .titre(tache.getTitre())
+                .statut(tache.getStatut())
+                .dateEcheance(tache.getDateEcheance())
+                .projetId(projet != null ? projet.getId() : null)
+                .projetNom(projet != null ? projet.getNom() : null)
+                .projetDateFin(projet != null ? projet.getDateFin() : null)
+                .chefDeProjetNom(chefNom)
+                .chefDeProjetId(chefId)
+                .projetStatut(projet != null ? projet.getStatut() : null)
+                .assigneeId(tache.getAssignee() != null ? tache.getAssignee().getId() : null)
+                .equipes(equipeInfos)
+                .build();
     }
 }

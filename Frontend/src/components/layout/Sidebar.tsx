@@ -5,7 +5,6 @@ import {
   HiOutlineUsers,
   HiOutlineDocumentText,
   HiOutlineClipboardCheck,
-  HiOutlineClock,
   HiOutlineBriefcase,
   HiOutlineUserGroup,
   HiOutlineChevronDown,
@@ -36,7 +35,17 @@ const menuGroups = [
     title: 'MENU',
     items: [
       { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} />, permission: 'VIEW_DASHBOARD' },
-      { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} />, permission: 'VIEW_EMPLOYES' },
+      {
+        key: 'employes',
+        label: 'Employés',
+        path: '/employes',
+        icon: <HiOutlineUsers size={20} />,
+        permission: 'VIEW_EMPLOYES',
+        children: [
+          { label: 'Liste des employés', path: '/employes' },
+          { label: 'Organigramme', path: '/organigramme' },
+        ],
+      },
 
       {
         key: 'mes-demandes',
@@ -48,7 +57,7 @@ const menuGroups = [
           { label: 'Mes demandes papiers', path: '/mes-demandes-papier' },
         ],
       },
-      { key: 'mes-taches', label: 'Mes Tâches', path: '/mes-taches', icon: <HiOutlineViewBoards size={20} /> },
+      { key: 'mes-taches', label: 'Mes projets', path: '/mes-taches', icon: <HiOutlineViewBoards size={20} /> },
       { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} /> },
 
     ] as NavItemDef[],
@@ -65,13 +74,12 @@ const menuGroups = [
         children: [
           { label: 'Demandes congés', path: '/demandes' },
 
-          { label: 'Demandes papier', path: 'demandes/papier' },
-          { label: 'Les Demandes papier', path: 'demandes/liste-papier' },
+          //{ label: 'Demandes papier', path: 'demandes/papier' },
+          { label: 'Demandes papier', path: 'demandes/liste-papier' },
 
 
         ],
       },
-      { key: 'pointage', label: 'Pointage', path: '/pointage', icon: <HiOutlineClock size={20} />, permission: 'VIEW_POINTAGE' },
     ] as NavItemDef[],
   },
   {
@@ -83,10 +91,10 @@ const menuGroups = [
         path: '/projets',
         icon: <HiOutlineBriefcase size={20} />,
         permission: 'VIEW_PROJETS',
-        children: [
+       /* children: [
           { label: 'Tous les projets', path: '/projets' },
-          { label: 'Tâches', path: '/taches' },
-        ],
+         { label: 'Tâches', path: '/taches' },
+        ],*/
       },
       { key: 'equipes', label: 'Équipes', path: '/equipes', icon: <HiOutlineUserGroup size={20} />, permission: 'VIEW_EQUIPES' },
     ] as NavItemDef[],
@@ -97,7 +105,7 @@ const menuGroups = [
       { key: 'comptes', label: 'Comptes', path: '/comptes', icon: <HiOutlineKey size={20} />, permission: 'VIEW_COMPTES' },
       { key: 'roles', label: 'Rôles', path: '/roles', icon: <HiOutlineShieldCheck size={20} />, permission: 'VIEW_ROLES' },
       { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} />, permission: 'VIEW_REFERENTIELS' },
-      { key: 'calendrier', label: 'Calendrier', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
+      { key: 'calendrier', label: 'Calendrier Entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
     ] as NavItemDef[],
   },
 ];

@@ -19,13 +19,17 @@ import CalendrierPage from './pages/CalendrierPage';
 import ComptesPage from './pages/ComptesPage';
 import RolesPage from './pages/RolesPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import MonProfilPage from './pages/MonProfilPage';
 import MonCalendrierPage from './pages/MonCalendrierPage';
 import MesDemandesPage from './pages/MesDemandesPage';
 
 import MesTachesPage from './pages/MesTachesPage';
+import ProjetTachesPage from './pages/ProjetTachesPage';
 
 import MesDemandesPapierPage from './pages/MesDemandesPapierPage';
+import OrganigrammePage from './pages/OrganigrammePage';
 import { NotificationProvider } from './context/NotificationContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -46,6 +50,8 @@ const App: React.FC = () => {
     <NotificationProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
         <Route
           path="/"
@@ -58,13 +64,13 @@ const App: React.FC = () => {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="employes" element={<PermissionRoute permission="VIEW_EMPLOYES"><EmployesPage /></PermissionRoute>} />
+          <Route path="organigramme" element={<PermissionRoute permission="VIEW_EMPLOYES"><OrganigrammePage /></PermissionRoute>} />
           <Route path="demandes" element={<PermissionRoute permission="VIEW_DEMANDES"><DemandesPage /></PermissionRoute>} />
           <Route path="demandes/new" element={<PermissionRoute permission="VIEW_DEMANDES"><NewDemandePage /></PermissionRoute>} />
           <Route path="demandes/edit/:id" element={<NewDemandePage />} />
           <Route path="mes-demandes" element={<MesDemandesPage />} />
           <Route path="mes-demandes/papier" element={<MesDemandesPapierPage />} />
           <Route path="validations" element={<PermissionRoute permission="VIEW_VALIDATIONS"><ValidationsPage /></PermissionRoute>} />
-          <Route path="pointage" element={<PermissionRoute permission="VIEW_POINTAGE"><PointagePage /></PermissionRoute>} />
           <Route path="projets" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetsPage /></PermissionRoute>} />
           <Route path="taches" element={<PermissionRoute permission="VIEW_PROJETS"><TachesPage /></PermissionRoute>} />
           <Route path="equipes" element={<PermissionRoute permission="VIEW_EQUIPES"><EquipesPage /></PermissionRoute>} />
@@ -78,6 +84,7 @@ const App: React.FC = () => {
           <Route path="demandes/liste-papier" element={<DemandesPapierPage />} />
           <Route path="mes-taches" element={<MesTachesPage />} />
           <Route path="mes-demandes-papier" element={<MesDemandesPapierPage />} />
+          <Route path="projets/:projetId/taches" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetTachesPage /></PermissionRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

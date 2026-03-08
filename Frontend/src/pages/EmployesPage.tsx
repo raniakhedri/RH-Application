@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HiOutlinePlus, HiOutlineSearch, HiOutlinePencil, HiOutlineTrash, HiOutlinePhotograph } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineSearch, HiOutlinePencil, HiOutlineTrash, HiOutlinePhotograph, HiOutlineEye, HiOutlineDownload, HiOutlineFilter, HiOutlineChartBar, HiOutlineX, HiOutlineAcademicCap, HiOutlineDocumentText, HiOutlineUpload } from 'react-icons/hi';
 import { employeService } from '../api/employeService';
+import { competenceService } from '../api/competenceService';
+import { documentEmployeService } from '../api/documentEmployeService';
 import { referentielService } from '../api/referentielService';
 import { roleService } from '../api/roleService';
 import { compteService } from '../api/compteService';
-import { Employe, Referentiel, RoleDTO } from '../types';
+import { Employe, Referentiel, RoleDTO, EmployeStatsDTO, CompetenceDTO, DocumentEmployeDTO } from '../types';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
@@ -16,11 +18,13 @@ const EmployesPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingEmploye, setEditingEmploye] = useState<Employe | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewingEmploye, setViewingEmploye] = useState<Employe | null>(null);
 
   // Referentiel lists
   const [departements, setDepartements] = useState<Referentiel[]>([]);
   const [postes, setPostes] = useState<Referentiel[]>([]);
   const [typesContrat, setTypesContrat] = useState<Referentiel[]>([]);
+  const [genres, setGenres] = useState<Referentiel[]>([]);
   const [roles, setRoles] = useState<RoleDTO[]>([]);
   const [managers, setManagers] = useState<Employe[]>([]);
 
@@ -43,28 +47,60 @@ const EmployesPage: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Advanced features
+  const [stats, setStats] = useState<EmployeStatsDTO | null>(null);
+  const [showStats, setShowStats] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    departement: '', typeContrat: '', genre: '', poste: '',
+    dateEmbaucheFrom: '', dateEmbaucheTo: '',
+    salaireMin: '', salaireMax: '', managerId: '',
+  });
+  const [activeTab, setActiveTab] = useState<'info' | 'competences' | 'documents'>('info');
+
+  // Competences
+  const [competences, setCompetences] = useState<CompetenceDTO[]>([]);
+  const [showCompetenceModal, setShowCompetenceModal] = useState(false);
+  const [editingCompetence, setEditingCompetence] = useState<CompetenceDTO | null>(null);
+  const [competenceForm, setCompetenceForm] = useState({ nom: '', categorie: '', niveau: 3 });
+
+  // Documents
+  const [documents, setDocuments] = useState<DocumentEmployeDTO[]>([]);
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<DocumentEmployeDTO | null>(null);
+  const [documentForm, setDocumentForm] = useState({ nom: '', type: 'CONTRAT', dateExpiration: '' });
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const docFileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     loadAll();
   }, []);
 
   const loadAll = async () => {
     try {
-      const [empRes, depRes, postRes, contratRes, rolesRes] = await Promise.all([
+      const [empRes, depRes, postRes, contratRes, genreRes, rolesRes] = await Promise.all([
         employeService.getAll(),
         referentielService.getByType('DEPARTEMENT'),
         referentielService.getByType('POSTE'),
         referentielService.getByType('TYPE_CONTRAT'),
+        referentielService.getByType('GENRE'),
         roleService.getAll(),
       ]);
       setEmployes(empRes.data.data || []);
       setDepartements((depRes.data.data || []).filter((r: Referentiel) => r.actif));
       setPostes((postRes.data.data || []).filter((r: Referentiel) => r.actif));
       setTypesContrat((contratRes.data.data || []).filter((r: Referentiel) => r.actif));
+      setGenres((genreRes.data.data || []).filter((r: Referentiel) => r.actif));
       setRoles(rolesRes.data.data || []);
       try {
         const managersRes = await employeService.getByRole('MANAGER');
         setManagers(managersRes.data.data || []);
       } catch { setManagers([]); }
+      // Load stats
+      try {
+        const statsRes = await employeService.getStats();
+        setStats(statsRes.data.data);
+      } catch { /* ignore */ }
     } catch (err) {
       console.error('Erreur chargement:', err);
     } finally {
@@ -74,6 +110,12 @@ const EmployesPage: React.FC = () => {
 
   const handleSave = async () => {
     try {
+      // Validate required fields before sending
+      if (!formData.nom.trim() || !formData.prenom.trim() || !formData.email.trim()) {
+        alert('Veuillez remplir tous les champs obligatoires (Nom, Prénom, Email)');
+        return;
+      }
+
       // Clean empty strings to null for backend
       const payload: any = { ...formData };
       if (!payload.dateEmbauche) payload.dateEmbauche = null;
@@ -205,14 +247,144 @@ const EmployesPage: React.FC = () => {
     setImagePreview(null);
   };
 
+  const hasActiveFilters = Object.values(filters).some(v => v !== '');
+
+  const clearFilters = () => {
+    setFilters({
+      departement: '', typeContrat: '', genre: '', poste: '',
+      dateEmbaucheFrom: '', dateEmbaucheTo: '',
+      salaireMin: '', salaireMax: '', managerId: '',
+    });
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      const response = await employeService.exportCsv();
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'employes.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erreur export CSV:', err);
+      alert('Erreur lors de l\'exportation');
+    }
+  };
+
+  const loadCompetences = async (employeId: number) => {
+    try {
+      const res = await competenceService.getByEmploye(employeId);
+      setCompetences(res.data.data || []);
+    } catch { setCompetences([]); }
+  };
+
+  const loadDocuments = async (employeId: number) => {
+    try {
+      const res = await documentEmployeService.getByEmploye(employeId);
+      setDocuments(res.data.data || []);
+    } catch { setDocuments([]); }
+  };
+
+  const handleViewDetails = (item: Employe) => {
+    setViewingEmploye(item);
+    setActiveTab('info');
+    loadCompetences(item.id);
+    loadDocuments(item.id);
+  };
+
+  const handleSaveCompetence = async () => {
+    if (!viewingEmploye) return;
+    try {
+      if (editingCompetence) {
+        await competenceService.update(editingCompetence.id, { ...competenceForm, employeId: viewingEmploye.id } as any);
+      } else {
+        await competenceService.create({ ...competenceForm, employeId: viewingEmploye.id } as any);
+      }
+      loadCompetences(viewingEmploye.id);
+      setShowCompetenceModal(false);
+      setEditingCompetence(null);
+      setCompetenceForm({ nom: '', categorie: '', niveau: 3 });
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Erreur');
+    }
+  };
+
+  const handleDeleteCompetence = async (id: number) => {
+    if (!viewingEmploye || !window.confirm('Supprimer cette compétence ?')) return;
+    try {
+      await competenceService.delete(id);
+      loadCompetences(viewingEmploye.id);
+    } catch { /* ignore */ }
+  };
+
+  const handleSaveDocument = async () => {
+    if (!viewingEmploye) return;
+    try {
+      let doc: DocumentEmployeDTO;
+      if (editingDocument) {
+        const res = await documentEmployeService.update(editingDocument.id, {
+          nom: documentForm.nom,
+          type: documentForm.type,
+          dateExpiration: documentForm.dateExpiration || null,
+        });
+        doc = res.data.data;
+      } else {
+        const res = await documentEmployeService.create({
+          nom: documentForm.nom,
+          type: documentForm.type,
+          dateExpiration: documentForm.dateExpiration || null,
+          employeId: viewingEmploye.id,
+        });
+        doc = res.data.data;
+      }
+      if (documentFile && doc?.id) {
+        await documentEmployeService.uploadFichier(doc.id, documentFile);
+      }
+      loadDocuments(viewingEmploye.id);
+      setShowDocumentModal(false);
+      setEditingDocument(null);
+      setDocumentForm({ nom: '', type: 'CONTRAT', dateExpiration: '' });
+      setDocumentFile(null);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Erreur');
+    }
+  };
+
+  const handleDeleteDocument = async (id: number) => {
+    if (!viewingEmploye || !window.confirm('Supprimer ce document ?')) return;
+    try {
+      await documentEmployeService.delete(id);
+      loadDocuments(viewingEmploye.id);
+    } catch { /* ignore */ }
+  };
+
+  const niveauLabels = ['', 'Débutant', 'Junior', 'Intermédiaire', 'Avancé', 'Expert'];
+  const niveauColors = ['', 'bg-gray-200', 'bg-blue-200', 'bg-yellow-200', 'bg-green-200', 'bg-purple-200'];
+  const docTypes = ['CONTRAT', 'ATTESTATION', 'CERTIFICAT', 'DIPLOME', 'AUTRE'];
+
   const filteredEmployes = employes.filter(
-    (e) =>
-      e.nom.toLowerCase().includes(search.toLowerCase()) ||
-      e.prenom.toLowerCase().includes(search.toLowerCase()) ||
-      e.matricule.toLowerCase().includes(search.toLowerCase()) ||
-      e.email.toLowerCase().includes(search.toLowerCase()) ||
-      (e.poste && e.poste.toLowerCase().includes(search.toLowerCase())) ||
-      (e.departement && e.departement.toLowerCase().includes(search.toLowerCase()))
+    (e) => {
+      const matchSearch = e.nom.toLowerCase().includes(search.toLowerCase()) ||
+        e.prenom.toLowerCase().includes(search.toLowerCase()) ||
+        e.matricule.toLowerCase().includes(search.toLowerCase()) ||
+        e.email.toLowerCase().includes(search.toLowerCase()) ||
+        (e.poste && e.poste.toLowerCase().includes(search.toLowerCase())) ||
+        (e.departement && e.departement.toLowerCase().includes(search.toLowerCase()));
+      if (!matchSearch) return false;
+
+      if (filters.departement && e.departement !== filters.departement) return false;
+      if (filters.typeContrat && e.typeContrat !== filters.typeContrat) return false;
+      if (filters.genre && e.genre !== filters.genre) return false;
+      if (filters.poste && e.poste !== filters.poste) return false;
+      if (filters.dateEmbaucheFrom && (!e.dateEmbauche || e.dateEmbauche < filters.dateEmbaucheFrom)) return false;
+      if (filters.dateEmbaucheTo && (!e.dateEmbauche || e.dateEmbauche > filters.dateEmbaucheTo)) return false;
+      if (filters.salaireMin && (e.salaire == null || e.salaire < Number(filters.salaireMin))) return false;
+      if (filters.salaireMax && (e.salaire == null || e.salaire > Number(filters.salaireMax))) return false;
+      if (filters.managerId && e.managerId !== Number(filters.managerId)) return false;
+      return true;
+    }
   );
 
   const columns = [
@@ -250,6 +422,9 @@ const EmployesPage: React.FC = () => {
       label: 'Actions',
       render: (item: Employe) => (
         <div className="flex gap-2">
+          <button onClick={() => handleViewDetails(item)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 dark:hover:bg-blue-500/10 transition-colors" title="Voir les détails">
+            <HiOutlineEye size={16} />
+          </button>
           <button onClick={() => handleEdit(item)} className="p-1.5 rounded-lg hover:bg-brand-50 text-brand-500 transition-colors">
             <HiOutlinePencil size={16} />
           </button>
@@ -289,21 +464,114 @@ const EmployesPage: React.FC = () => {
           <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Employés</h1>
           <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">Gérer les employés de l'agence</p>
         </div>
-        <Button onClick={() => { resetForm(); setEditingEmploye(null); setShowModal(true); }}>
-          <HiOutlinePlus size={18} /> Ajouter un employé
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={() => setShowStats(!showStats)} title="Statistiques">
+            <HiOutlineChartBar size={18} /> Statistiques
+          </Button>
+          <Button variant="ghost" onClick={handleExportCsv} title="Exporter CSV">
+            <HiOutlineDownload size={18} /> Exporter
+          </Button>
+          <Button onClick={() => { resetForm(); setEditingEmploye(null); setShowModal(true); }}>
+            <HiOutlinePlus size={18} /> Ajouter un employé
+          </Button>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un employé..."
-          className="h-11 w-full rounded-lg border border-gray-300 bg-transparent pl-10 pr-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
-        />
+      {/* Stats Dashboard */}
+      {showStats && stats && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <StatBox label="Total employés" value={stats.totalEmployes} color="brand" />
+            <StatBox label="Nouveaux ce mois" value={stats.nouveauxCeMois} color="green" />
+            <StatBox label="Masse salariale" value={`${(stats.masseSalariale / 1000).toFixed(1)}k`} color="blue" />
+            <StatBox label="Salaire moyen" value={`${stats.moyenneSalaire.toFixed(0)} DT`} color="purple" />
+            <StatBox label="Ancienneté moy." value={`${stats.moyenneAnciennete} ans`} color="orange" />
+            <StatBox label="Départements" value={Object.keys(stats.parDepartement).length} color="cyan" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <DistributionCard title="Par département" data={stats.parDepartement} />
+            <DistributionCard title="Par type de contrat" data={stats.parTypeContrat} />
+            <DistributionCard title="Par genre" data={stats.parGenre} />
+          </div>
+        </div>
+      )}
+
+      {/* Search + Filters */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un employé..."
+              className="h-11 w-full rounded-lg border border-gray-300 bg-transparent pl-10 pr-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
+            />
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 h-11 rounded-lg border text-theme-sm font-medium transition-colors ${hasActiveFilters ? 'border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400' : 'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+          >
+            <HiOutlineFilter size={16} />
+            Filtres {hasActiveFilters && `(${Object.values(filters).filter(v => v !== '').length})`}
+          </button>
+          {hasActiveFilters && (
+            <button onClick={clearFilters} className="flex items-center gap-1 px-3 h-11 rounded-lg text-theme-sm text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10 transition-colors">
+              <HiOutlineX size={14} /> Réinitialiser
+            </button>
+          )}
+          <span className="text-theme-sm text-gray-400">{filteredEmployes.length} résultat(s)</span>
+        </div>
+
+        {showFilters && (
+          <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Département</label>
+              <select value={filters.departement} onChange={e => setFilters({ ...filters, departement: e.target.value })} className={selectClass}>
+                <option value="">Tous</option>
+                {departements.map(d => <option key={d.id} value={d.libelle}>{d.libelle}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Type contrat</label>
+              <select value={filters.typeContrat} onChange={e => setFilters({ ...filters, typeContrat: e.target.value })} className={selectClass}>
+                <option value="">Tous</option>
+                {typesContrat.map(t => <option key={t.id} value={t.libelle}>{t.libelle}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Genre</label>
+              <select value={filters.genre} onChange={e => setFilters({ ...filters, genre: e.target.value })} className={selectClass}>
+                <option value="">Tous</option>
+                {genres.map(g => <option key={g.id} value={g.libelle}>{g.libelle}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Poste</label>
+              <select value={filters.poste} onChange={e => setFilters({ ...filters, poste: e.target.value })} className={selectClass}>
+                <option value="">Tous</option>
+                {postes.map(p => <option key={p.id} value={p.libelle}>{p.libelle}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Embauché depuis</label>
+              <input type="date" value={filters.dateEmbaucheFrom} onChange={e => setFilters({ ...filters, dateEmbaucheFrom: e.target.value })} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Embauché jusqu'à</label>
+              <input type="date" value={filters.dateEmbaucheTo} onChange={e => setFilters({ ...filters, dateEmbaucheTo: e.target.value })} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Salaire min</label>
+              <input type="number" value={filters.salaireMin} onChange={e => setFilters({ ...filters, salaireMin: e.target.value })} placeholder="Min" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Salaire max</label>
+              <input type="number" value={filters.salaireMax} onChange={e => setFilters({ ...filters, salaireMax: e.target.value })} placeholder="Max" className={inputClass} />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -377,8 +645,9 @@ const EmployesPage: React.FC = () => {
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genre</label>
             <select value={formData.genre} onChange={(e) => setFormData({ ...formData, genre: e.target.value })} className={selectClass}>
               <option value="">Sélectionner</option>
-              <option value="HOMME">Homme</option>
-              <option value="FEMME">Femme</option>
+              {genres.map((g) => (
+                <option key={g.id} value={g.libelle}>{g.libelle}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -534,6 +803,232 @@ const EmployesPage: React.FC = () => {
         </div>
       </Modal>
 
+      {/* View Details Modal */}
+      <Modal isOpen={!!viewingEmploye} onClose={() => setViewingEmploye(null)} title="Détails de l'employé" size="lg">
+        {viewingEmploye && (
+          <div className="space-y-6">
+            {/* Header with photo */}
+            <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+              {viewingEmploye.imageUrl ? (
+                <img src={`http://localhost:8080${viewingEmploye.imageUrl}`} alt="" className="w-20 h-20 rounded-2xl object-cover" />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-secondary-50 text-secondary-500 dark:bg-secondary-500/[0.12] dark:text-secondary-400 flex items-center justify-center text-2xl font-semibold">
+                  {viewingEmploye.prenom[0]}{viewingEmploye.nom[0]}
+                </div>
+              )}
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white">{viewingEmploye.prenom} {viewingEmploye.nom}</h3>
+                <p className="text-theme-sm text-gray-500 dark:text-gray-400">{viewingEmploye.matricule}</p>
+                {viewingEmploye.genre && <p className="text-theme-xs text-gray-400 mt-0.5">{viewingEmploye.genre}</p>}
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200 dark:border-gray-700">
+              <button onClick={() => setActiveTab('info')} className={`px-4 py-2 text-theme-sm font-medium border-b-2 transition-colors ${activeTab === 'info' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}>
+                Informations
+              </button>
+              <button onClick={() => setActiveTab('competences')} className={`px-4 py-2 text-theme-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'competences' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}>
+                <HiOutlineAcademicCap size={16} /> Compétences ({competences.length})
+              </button>
+              <button onClick={() => setActiveTab('documents')} className={`px-4 py-2 text-theme-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'documents' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}>
+                <HiOutlineDocumentText size={16} /> Documents ({documents.length})
+              </button>
+            </div>
+
+            {/* Tab: Info */}
+            {activeTab === 'info' && (
+              <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                <div className="col-span-2 mb-1">
+                  <h4 className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-1">Informations personnelles</h4>
+                </div>
+                <InfoRow label="CIN" value={viewingEmploye.cin} />
+                <InfoRow label="CNSS" value={viewingEmploye.cnss} />
+                <InfoRow label="Email" value={viewingEmploye.email} />
+                <InfoRow label="Téléphone" value={viewingEmploye.telephone} />
+                <InfoRow label="Téléphone professionnel" value={viewingEmploye.telephonePro} />
+                <InfoRow label="RIB Bancaire" value={viewingEmploye.ribBancaire} />
+                <div className="col-span-2 mb-1 mt-3">
+                  <h4 className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-1">Informations professionnelles</h4>
+                </div>
+                <InfoRow label="Poste" value={viewingEmploye.poste} />
+                <InfoRow label="Département" value={viewingEmploye.departement} />
+                <InfoRow label="Type de contrat" value={viewingEmploye.typeContrat} />
+                <InfoRow label="Date d'embauche" value={viewingEmploye.dateEmbauche} />
+                <InfoRow label="Salaire" value={viewingEmploye.salaire != null ? `${viewingEmploye.salaire} DT` : null} />
+                <InfoRow label="Solde congé" value={`${viewingEmploye.soldeConge} jours`} />
+                <InfoRow label="Manager" value={viewingEmploye.managerNom} />
+              </div>
+            )}
+
+            {/* Tab: Competences */}
+            {activeTab === 'competences' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300">Compétences de l'employé</h4>
+                  <Button size="sm" onClick={() => { setEditingCompetence(null); setCompetenceForm({ nom: '', categorie: '', niveau: 3 }); setShowCompetenceModal(true); }}>
+                    <HiOutlinePlus size={14} /> Ajouter
+                  </Button>
+                </div>
+                {competences.length === 0 ? (
+                  <p className="text-center text-gray-400 dark:text-gray-500 py-8">Aucune compétence enregistrée</p>
+                ) : (
+                  <div className="space-y-2">
+                    {competences.map(comp => (
+                      <div key={comp.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${niveauColors[comp.niveau]} dark:opacity-80`}>
+                            {comp.niveau}
+                          </div>
+                          <div>
+                            <p className="text-theme-sm font-medium text-gray-800 dark:text-gray-200">{comp.nom}</p>
+                            <div className="flex items-center gap-2">
+                              {comp.categorie && <span className="text-theme-xs text-gray-400">{comp.categorie}</span>}
+                              <span className="text-theme-xs text-gray-400">• {niveauLabels[comp.niveau]}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex gap-1">
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <div key={n} className={`w-2.5 h-2.5 rounded-full ${n <= comp.niveau ? 'bg-brand-500' : 'bg-gray-200 dark:bg-gray-600'}`} />
+                            ))}
+                          </div>
+                          <button onClick={() => { setEditingCompetence(comp); setCompetenceForm({ nom: comp.nom, categorie: comp.categorie || '', niveau: comp.niveau }); setShowCompetenceModal(true); }} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400">
+                            <HiOutlinePencil size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteCompetence(comp.id)} className="p-1 rounded hover:bg-error-50 dark:hover:bg-error-500/10 text-error-400">
+                            <HiOutlineTrash size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Documents */}
+            {activeTab === 'documents' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300">Documents de l'employé</h4>
+                  <Button size="sm" onClick={() => { setEditingDocument(null); setDocumentForm({ nom: '', type: 'CONTRAT', dateExpiration: '' }); setDocumentFile(null); setShowDocumentModal(true); }}>
+                    <HiOutlinePlus size={14} /> Ajouter
+                  </Button>
+                </div>
+                {documents.length === 0 ? (
+                  <p className="text-center text-gray-400 dark:text-gray-500 py-8">Aucun document enregistré</p>
+                ) : (
+                  <div className="space-y-2">
+                    {documents.map(doc => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+                            <HiOutlineDocumentText className="text-blue-500" size={16} />
+                          </div>
+                          <div>
+                            <p className="text-theme-sm font-medium text-gray-800 dark:text-gray-200">{doc.nom}</p>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="light" color="primary">{doc.type}</Badge>
+                              {doc.dateExpiration && (
+                                <span className={`text-theme-xs ${new Date(doc.dateExpiration) < new Date() ? 'text-error-500' : 'text-gray-400'}`}>
+                                  Expire: {doc.dateExpiration}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {doc.fichierUrl && (
+                            <a href={`http://localhost:8080${doc.fichierUrl}`} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-green-50 dark:hover:bg-green-500/10 text-green-500" title="Télécharger">
+                              <HiOutlineDownload size={14} />
+                            </a>
+                          )}
+                          <button onClick={() => { setEditingDocument(doc); setDocumentForm({ nom: doc.nom, type: doc.type, dateExpiration: doc.dateExpiration || '' }); setDocumentFile(null); setShowDocumentModal(true); }} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400">
+                            <HiOutlinePencil size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteDocument(doc.id)} className="p-1 rounded hover:bg-error-50 dark:hover:bg-error-500/10 text-error-400">
+                            <HiOutlineTrash size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button variant="ghost" onClick={() => setViewingEmploye(null)}>Fermer</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Competence Modal */}
+      <Modal isOpen={showCompetenceModal} onClose={() => setShowCompetenceModal(false)} title={editingCompetence ? 'Modifier la compétence' : 'Ajouter une compétence'} size="md">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom *</label>
+            <input type="text" value={competenceForm.nom} onChange={e => setCompetenceForm({ ...competenceForm, nom: e.target.value })} placeholder="Ex: Java, React, Gestion de projet" className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Catégorie</label>
+            <input type="text" value={competenceForm.categorie} onChange={e => setCompetenceForm({ ...competenceForm, categorie: e.target.value })} placeholder="Ex: Technique, Management, Langue" className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Niveau (1-5)</label>
+            <div className="flex items-center gap-4">
+              <input type="range" min={1} max={5} value={competenceForm.niveau} onChange={e => setCompetenceForm({ ...competenceForm, niveau: Number(e.target.value) })} className="flex-1" />
+              <span className="text-theme-sm font-medium text-gray-700 dark:text-gray-300 w-24">{competenceForm.niveau} - {niveauLabels[competenceForm.niveau]}</span>
+            </div>
+            <div className="flex justify-between mt-1 px-1">
+              {[1, 2, 3, 4, 5].map(n => (
+                <div key={n} className={`w-3 h-3 rounded-full cursor-pointer ${n <= competenceForm.niveau ? 'bg-brand-500' : 'bg-gray-200 dark:bg-gray-600'}`} onClick={() => setCompetenceForm({ ...competenceForm, niveau: n })} />
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="ghost" onClick={() => setShowCompetenceModal(false)}>Annuler</Button>
+            <Button onClick={handleSaveCompetence} disabled={!competenceForm.nom.trim()}>{editingCompetence ? 'Modifier' : 'Ajouter'}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Document Modal */}
+      <Modal isOpen={showDocumentModal} onClose={() => setShowDocumentModal(false)} title={editingDocument ? 'Modifier le document' : 'Ajouter un document'} size="md">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom *</label>
+            <input type="text" value={documentForm.nom} onChange={e => setDocumentForm({ ...documentForm, nom: e.target.value })} placeholder="Ex: Contrat CDI, Attestation de travail" className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+            <select value={documentForm.type} onChange={e => setDocumentForm({ ...documentForm, type: e.target.value })} className={selectClass}>
+              {docTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date d'expiration</label>
+            <input type="date" value={documentForm.dateExpiration} onChange={e => setDocumentForm({ ...documentForm, dateExpiration: e.target.value })} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fichier</label>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => docFileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-theme-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <HiOutlineUpload size={16} /> {documentFile ? documentFile.name : 'Choisir un fichier'}
+              </button>
+              <input ref={docFileInputRef} type="file" onChange={e => setDocumentFile(e.target.files?.[0] || null)} className="hidden" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="ghost" onClick={() => setShowDocumentModal(false)}>Annuler</Button>
+            <Button onClick={handleSaveDocument} disabled={!documentForm.nom.trim()}>{editingDocument ? 'Modifier' : 'Ajouter'}</Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Credentials Modal */}
       <Modal isOpen={showCredentialsModal} onClose={() => setShowCredentialsModal(false)} title="✅ Compte créé avec succès" size="md">
         {credentials && (
@@ -570,6 +1065,64 @@ const EmployesPage: React.FC = () => {
           </div>
         )}
       </Modal>
+    </div>
+  );
+};
+
+const InfoRow: React.FC<{ label: string; value: string | number | null | undefined }> = ({ label, value }) => (
+  <div>
+    <span className="text-theme-xs text-gray-400 dark:text-gray-500">{label}</span>
+    <p className="text-theme-sm font-medium text-gray-800 dark:text-gray-200">{value || '—'}</p>
+  </div>
+);
+
+const colorMap: Record<string, string> = {
+  brand: 'bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400',
+  green: 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400',
+  blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400',
+  purple: 'bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400',
+  orange: 'bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400',
+  cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-400',
+};
+
+const StatBox: React.FC<{ label: string; value: string | number; color: string }> = ({ label, value, color }) => (
+  <div className={`rounded-xl p-4 ${colorMap[color] || colorMap.brand}`}>
+    <p className="text-2xl font-bold">{value}</p>
+    <p className="text-theme-xs opacity-80 mt-1">{label}</p>
+  </div>
+);
+
+const barColors = [
+  'bg-brand-500', 'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500',
+  'bg-cyan-500', 'bg-pink-500', 'bg-yellow-500', 'bg-red-500', 'bg-indigo-500',
+];
+
+const DistributionCard: React.FC<{ title: string; data: Record<string, number> }> = ({ title, data }) => {
+  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(...entries.map(([, v]) => v), 1);
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+      <h4 className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{title}</h4>
+      {entries.length === 0 ? (
+        <p className="text-theme-xs text-gray-400">Aucune donnée</p>
+      ) : (
+        <div className="space-y-2">
+          {entries.map(([key, val], i) => (
+            <div key={key} className="space-y-1">
+              <div className="flex justify-between text-theme-xs">
+                <span className="text-gray-600 dark:text-gray-400">{key}</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">{val}</span>
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full ${barColors[i % barColors.length]}`}
+                  style={{ width: `${(val / max) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

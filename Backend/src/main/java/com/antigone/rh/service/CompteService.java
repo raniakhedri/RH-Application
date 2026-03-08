@@ -30,6 +30,7 @@ public class CompteService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%";
+    private static final int RESET_TOKEN_EXPIRY_MINUTES = 30;
 
     // ─── Login ───────────────────────────────────────────────────
     public LoginResponse login(LoginRequest request, String ipAddress) {
@@ -70,7 +71,7 @@ public class CompteService {
                 .roles(roles)
                 .permissions(permissions)
                 .mustChangePassword(compte.getMustChangePassword())
-                .genre(employe.getGenre() != null ? employe.getGenre().name() : null)
+                .genre(employe.getGenre())
                 .message("Connexion réussie")
                 .imageUrl(employe.getImageUrl())
                 .build();
@@ -166,6 +167,56 @@ public class CompteService {
         compte.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         compte.setMustChangePassword(false);
         compteRepository.save(compte);
+    }
+
+    // ─── Forgot Password ────────────────────────────────────────
+    public void forgotPassword(String email) {
+        Optional<Compte> compteOpt = compteRepository.findByEmployeEmail(email);
+        if (compteOpt.isEmpty()) {
+            // Ne pas révéler si l'email existe ou non (sécurité)
+            log.info("Tentative de réinitialisation pour un email inconnu: {}", email);
+            return;
+        }
+
+        Compte compte = compteOpt.get();
+        if (!compte.getEnabled()) {
+            log.info("Tentative de réinitialisation pour un compte désactivé: {}", email);
+            return;
+        }
+
+        String token = UUID.randomUUID().toString();
+        compte.setResetToken(token);
+        compte.setResetTokenExpiry(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRY_MINUTES));
+        compteRepository.save(compte);
+
+        String resetLink = "http://localhost:3000/reset-password?token=" + token;
+        emailService.sendPasswordReset(
+                email,
+                compte.getEmploye().getNom() + " " + compte.getEmploye().getPrenom(),
+                resetLink
+        );
+
+        log.info("Token de réinitialisation généré pour: {}", email);
+    }
+
+    public void resetPassword(String token, String newPassword) {
+        Compte compte = compteRepository.findByResetToken(token)
+                .orElseThrow(() -> new RuntimeException("Lien de réinitialisation invalide"));
+
+        if (compte.getResetTokenExpiry() == null || compte.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            compte.setResetToken(null);
+            compte.setResetTokenExpiry(null);
+            compteRepository.save(compte);
+            throw new RuntimeException("Le lien de réinitialisation a expiré. Veuillez en demander un nouveau.");
+        }
+
+        compte.setPasswordHash(passwordEncoder.encode(newPassword));
+        compte.setResetToken(null);
+        compte.setResetTokenExpiry(null);
+        compte.setMustChangePassword(false);
+        compteRepository.save(compte);
+
+        log.info("Mot de passe réinitialisé pour: {}", compte.getUsername());
     }
 
     // ─── Access Logs ─────────────────────────────────────────────
