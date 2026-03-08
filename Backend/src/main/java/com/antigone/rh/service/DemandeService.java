@@ -215,7 +215,7 @@ public class DemandeService {
             throw new RuntimeException("Un congé existe déjà pour cette période");
         }
 
-// Check solde for paid leave (use nombreJours = jours effectifs)
+        // Check solde for paid leave (use nombreJours = jours effectifs)
         if (typeConge == TypeConge.CONGE_PAYE) {
             double solde = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
             if (solde < nombreJours) {

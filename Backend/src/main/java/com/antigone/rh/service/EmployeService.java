@@ -483,7 +483,7 @@ public class EmployeService {
         // Total available = acquired this year + carry-over - consumed this year
         joursAcquis += joursReportes;
 
-// Consumed congés payés (APPROUVEE) this congé year — use nombreJours (jours effectifs)
+        // Consumed congés payés (APPROUVEE) this congé year — use nombreJours (jours effectifs)
         List<Conge> approuves = congeRepository.findByEmployeIdAndTypeCongeAndStatutAndDateDebutBetween(
                 employeId, TypeConge.CONGE_PAYE, StatutDemande.APPROUVEE,
                 debutAnneeConge, finAnneeConge);
@@ -492,6 +492,7 @@ public class EmployeService {
                 .sum();
 
 // Pending congés payés (EN_ATTENTE) this congé year — use nombreJours (jours effectifs)
+        // Pending congés payés (EN_ATTENTE) this congé year — use nombreJours (jours effectifs)
         List<Conge> enAttente = congeRepository.findByEmployeIdAndTypeCongeAndStatutAndDateDebutBetween(
                 employeId, TypeConge.CONGE_PAYE, StatutDemande.EN_ATTENTE,
                 debutAnneeConge, finAnneeConge);
