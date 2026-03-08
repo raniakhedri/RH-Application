@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,4 +23,7 @@ public interface EmployeRepository extends JpaRepository<Employe, Long> {
 
     @Query("SELECT e FROM Employe e JOIN e.compte c JOIN c.roles r WHERE UPPER(r.nom) = UPPER(:roleName)")
     List<Employe> findByRoleName(@Param("roleName") String roleName);
+
+    @Query("SELECT e FROM Employe e WHERE e.dateFinContrat IS NOT NULL AND e.dateFinContrat = :date")
+    List<Employe> findByDateFinContrat(@Param("date") LocalDate date);
 }

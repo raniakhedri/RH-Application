@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HiOutlinePlus, HiOutlineSearch, HiOutlinePencil, HiOutlineTrash, HiOutlinePhotograph, HiOutlineEye, HiOutlineDownload, HiOutlineFilter, HiOutlineChartBar, HiOutlineX, HiOutlineAcademicCap, HiOutlineDocumentText, HiOutlineUpload } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineSearch, HiOutlinePencil, HiOutlineTrash, HiOutlinePhotograph, HiOutlineEye, HiOutlineDownload, HiOutlineFilter, HiOutlineChartBar, HiOutlineX, HiOutlineAcademicCap, HiOutlineDocumentText, HiOutlineUpload, HiOutlineExternalLink, HiOutlineCheck } from 'react-icons/hi';
 import { employeService } from '../api/employeService';
 import { competenceService } from '../api/competenceService';
 import { documentEmployeService } from '../api/documentEmployeService';
@@ -24,6 +24,7 @@ const EmployesPage: React.FC = () => {
   const [departements, setDepartements] = useState<Referentiel[]>([]);
   const [postes, setPostes] = useState<Referentiel[]>([]);
   const [typesContrat, setTypesContrat] = useState<Referentiel[]>([]);
+  const [dureesCdd, setDureesCdd] = useState<Referentiel[]>([]);
   const [genres, setGenres] = useState<Referentiel[]>([]);
   const [roles, setRoles] = useState<RoleDTO[]>([]);
   const [managers, setManagers] = useState<Employe[]>([]);
@@ -31,7 +32,7 @@ const EmployesPage: React.FC = () => {
   const [formData, setFormData] = useState({
     cin: '', cnss: '', nom: '', prenom: '', email: '', telephone: '',
     telephonePro: '', salaire: '' as string | number,
-    dateEmbauche: '', soldeConge: 0, poste: '', typeContrat: '', genre: '',
+    dateEmbauche: '', soldeConge: 0, poste: '', typeContrat: '', dateFinContrat: '', genre: '',
     departement: '', ribBancaire: '', managerId: null as number | null,
     useInitialSolde: false, soldeCongeInitial: '' as string | number,
   });
@@ -72,25 +73,31 @@ const EmployesPage: React.FC = () => {
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const docFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Drive link
+  const [editingDriveLink, setEditingDriveLink] = useState(false);
+  const [driveLinkValue, setDriveLinkValue] = useState('');
+
   useEffect(() => {
     loadAll();
   }, []);
 
   const loadAll = async () => {
     try {
-      const [empRes, depRes, postRes, contratRes, genreRes, rolesRes] = await Promise.all([
+      const [empRes, depRes, postRes, contratRes, genreRes, rolesRes, dureesCddRes] = await Promise.all([
         employeService.getAll(),
         referentielService.getByType('DEPARTEMENT'),
         referentielService.getByType('POSTE'),
         referentielService.getByType('TYPE_CONTRAT'),
         referentielService.getByType('GENRE'),
         roleService.getAll(),
+        referentielService.getActiveByType('DUREE_CDD'),
       ]);
       setEmployes(empRes.data.data || []);
       setDepartements((depRes.data.data || []).filter((r: Referentiel) => r.actif));
       setPostes((postRes.data.data || []).filter((r: Referentiel) => r.actif));
       setTypesContrat((contratRes.data.data || []).filter((r: Referentiel) => r.actif));
       setGenres((genreRes.data.data || []).filter((r: Referentiel) => r.actif));
+      setDureesCdd(dureesCddRes.data.data || []);
       setRoles(rolesRes.data.data || []);
       try {
         const managersRes = await employeService.getByRole('MANAGER');
@@ -127,6 +134,8 @@ const EmployesPage: React.FC = () => {
       if (payload.salaire === '' || payload.salaire === null) payload.salaire = null; else payload.salaire = Number(payload.salaire);
       if (!payload.poste) payload.poste = null;
       if (!payload.typeContrat) payload.typeContrat = null;
+      if (!payload.typeContrat || payload.typeContrat.toUpperCase() !== 'CDD') payload.dateFinContrat = null;
+      if (!payload.dateFinContrat) payload.dateFinContrat = null;
       if (!payload.departement) payload.departement = null;
       if (!payload.ribBancaire) payload.ribBancaire = null;
 
@@ -192,7 +201,7 @@ const EmployesPage: React.FC = () => {
       salaire: employe.salaire ?? '',
       dateEmbauche: employe.dateEmbauche || '',
       soldeConge: employe.soldeConge, poste: employe.poste || '',
-      typeContrat: employe.typeContrat || '', genre: employe.genre || '',
+      typeContrat: employe.typeContrat || '', dateFinContrat: employe.dateFinContrat || '', genre: employe.genre || '',
       departement: employe.departement || '', ribBancaire: employe.ribBancaire || '',
       managerId: employe.managerId,
       useInitialSolde: employe.soldeCongeInitial != null, soldeCongeInitial: employe.soldeCongeInitial ?? '',
@@ -237,7 +246,7 @@ const EmployesPage: React.FC = () => {
     setFormData({
       cin: '', cnss: '', nom: '', prenom: '', email: '', telephone: '',
       telephonePro: '', salaire: '',
-      dateEmbauche: '', soldeConge: 0, poste: '', typeContrat: '', genre: '',
+      dateEmbauche: '', soldeConge: 0, poste: '', typeContrat: '', dateFinContrat: '', genre: '',
       departement: '', ribBancaire: '', managerId: null,
       useInitialSolde: false, soldeCongeInitial: '',
     });
@@ -290,6 +299,7 @@ const EmployesPage: React.FC = () => {
   const handleViewDetails = (item: Employe) => {
     setViewingEmploye(item);
     setActiveTab('info');
+    setEditingDriveLink(false);
     loadCompetences(item.id);
     loadDocuments(item.id);
   };
@@ -360,6 +370,19 @@ const EmployesPage: React.FC = () => {
     } catch { /* ignore */ }
   };
 
+  const handleSaveDriveLink = async () => {
+    if (!viewingEmploye) return;
+    try {
+      const newLien = driveLinkValue.trim() || null;
+      await employeService.updateLienDrive(viewingEmploye.id, newLien);
+      setViewingEmploye({ ...viewingEmploye, lienDrive: newLien });
+      setEmployes(prev => prev.map(e => e.id === viewingEmploye.id ? { ...e, lienDrive: newLien } : e));
+      setEditingDriveLink(false);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Erreur lors de la sauvegarde du lien Drive');
+    }
+  };
+
   const niveauLabels = ['', 'Débutant', 'Junior', 'Intermédiaire', 'Avancé', 'Expert'];
   const niveauColors = ['', 'bg-gray-200', 'bg-blue-200', 'bg-yellow-200', 'bg-green-200', 'bg-purple-200'];
   const docTypes = ['CONTRAT', 'ATTESTATION', 'CERTIFICAT', 'DIPLOME', 'AUTRE'];
@@ -414,7 +437,14 @@ const EmployesPage: React.FC = () => {
     {
       key: 'typeContrat',
       label: 'Contrat',
-      render: (item: Employe) => item.typeContrat ? <Badge variant="light" color="primary">{item.typeContrat}</Badge> : <span>—</span>,
+      render: (item: Employe) => item.typeContrat ? (
+        <div>
+          <Badge variant="light" color="primary">{item.typeContrat}</Badge>
+          {item.typeContrat.toUpperCase() === 'CDD' && item.dateFinContrat && (
+            <p className="text-theme-xs text-gray-400 mt-0.5">Fin: {item.dateFinContrat}</p>
+          )}
+        </div>
+      ) : <span>—</span>,
     },
     { key: 'soldeConge', label: 'Solde congé', render: (item: Employe) => <span>{item.soldeConge} jours</span> },
     {
@@ -483,7 +513,6 @@ const EmployesPage: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <StatBox label="Total employés" value={stats.totalEmployes} color="brand" />
             <StatBox label="Nouveaux ce mois" value={stats.nouveauxCeMois} color="green" />
-            <StatBox label="Masse salariale" value={`${(stats.masseSalariale / 1000).toFixed(1)}k`} color="blue" />
             <StatBox label="Salaire moyen" value={`${stats.moyenneSalaire.toFixed(0)} DT`} color="purple" />
             <StatBox label="Ancienneté moy." value={`${stats.moyenneAnciennete} ans`} color="orange" />
             <StatBox label="Départements" value={Object.keys(stats.parDepartement).length} color="cyan" />
@@ -701,6 +730,40 @@ const EmployesPage: React.FC = () => {
               ))}
             </select>
           </div>
+          {formData.typeContrat.toUpperCase() === 'CDD' && (
+            <div>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date fin de contrat *</label>
+              {dureesCdd.length > 0 && formData.dateEmbauche && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {dureesCdd.map((d) => {
+                    const embauche = new Date(formData.dateEmbauche);
+                    const months = parseInt(d.valeur || '12', 10);
+                    const dateFin = new Date(embauche);
+                    dateFin.setMonth(dateFin.getMonth() + months);
+                    const dateFinStr = dateFin.toISOString().split('T')[0];
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, dateFinContrat: dateFinStr })}
+                        className={`px-3 py-1 rounded-lg text-theme-xs font-medium border transition-colors ${
+                          formData.dateFinContrat === dateFinStr
+                            ? 'border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400'
+                            : 'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        {d.libelle}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {!formData.dateEmbauche && dureesCdd.length > 0 && (
+                <p className="text-theme-xs text-amber-500 mb-2">Saisissez d'abord la date d'embauche pour utiliser les durées prédéfinies</p>
+              )}
+              <input type="date" value={formData.dateFinContrat} onChange={(e) => setFormData({ ...formData, dateFinContrat: e.target.value })} className={inputClass} />
+            </div>
+          )}
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RIB Bancaire</label>
             <input type="text" value={formData.ribBancaire} onChange={(e) => setFormData({ ...formData, ribBancaire: onlyDigits(e.target.value).slice(0, 20) })} placeholder="20 chiffres" maxLength={20} className={formErrors.ribBancaire ? inputErrorClass : inputClass} />
@@ -854,6 +917,9 @@ const EmployesPage: React.FC = () => {
                 <InfoRow label="Poste" value={viewingEmploye.poste} />
                 <InfoRow label="Département" value={viewingEmploye.departement} />
                 <InfoRow label="Type de contrat" value={viewingEmploye.typeContrat} />
+                {viewingEmploye.typeContrat?.toUpperCase() === 'CDD' && (
+                  <InfoRow label="Date fin de contrat" value={viewingEmploye.dateFinContrat} />
+                )}
                 <InfoRow label="Date d'embauche" value={viewingEmploye.dateEmbauche} />
                 <InfoRow label="Salaire" value={viewingEmploye.salaire != null ? `${viewingEmploye.salaire} DT` : null} />
                 <InfoRow label="Solde congé" value={`${viewingEmploye.soldeConge} jours`} />
@@ -911,6 +977,65 @@ const EmployesPage: React.FC = () => {
             {/* Tab: Documents */}
             {activeTab === 'documents' && (
               <div className="space-y-4">
+                {/* Lien Drive */}
+                <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z" fill="currentColor" opacity="0.6"/>
+                        <path d="M7.71 3.5L1.5 15l3.5 6h13l3.5-6L15.29 3.5H7.71zM12 17.5L5.5 15l2.8-5.5h7.4L18.5 15 12 17.5z" fill="currentColor"/>
+                      </svg>
+                      Dossier Google Drive
+                    </h4>
+                    {!editingDriveLink && (
+                      <button
+                        onClick={() => { setDriveLinkValue(viewingEmploye.lienDrive || ''); setEditingDriveLink(true); }}
+                        className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 transition-colors"
+                        title="Modifier le lien Drive"
+                      >
+                        <HiOutlinePencil size={14} />
+                      </button>
+                    )}
+                  </div>
+                  {editingDriveLink ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        value={driveLinkValue}
+                        onChange={(e) => setDriveLinkValue(e.target.value)}
+                        placeholder="https://drive.google.com/drive/folders/..."
+                        className="h-9 flex-1 rounded-lg border border-gray-300 bg-white px-3 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                      />
+                      <button
+                        onClick={handleSaveDriveLink}
+                        className="p-1.5 rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition-colors"
+                        title="Enregistrer"
+                      >
+                        <HiOutlineCheck size={16} />
+                      </button>
+                      <button
+                        onClick={() => setEditingDriveLink(false)}
+                        className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 transition-colors"
+                        title="Annuler"
+                      >
+                        <HiOutlineX size={16} />
+                      </button>
+                    </div>
+                  ) : viewingEmploye.lienDrive ? (
+                    <a
+                      href={viewingEmploye.lienDrive}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 text-theme-sm font-medium transition-colors"
+                    >
+                      <HiOutlineExternalLink size={16} />
+                      Ouvrir le dossier Drive
+                    </a>
+                  ) : (
+                    <p className="text-theme-xs text-gray-400">Aucun lien Drive configuré. Cliquez sur le crayon pour en ajouter un.</p>
+                  )}
+                </div>
+
                 <div className="flex justify-between items-center">
                   <h4 className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300">Documents de l'employé</h4>
                   <Button size="sm" onClick={() => { setEditingDocument(null); setDocumentForm({ nom: '', type: 'CONTRAT', dateExpiration: '' }); setDocumentFile(null); setShowDocumentModal(true); }}>

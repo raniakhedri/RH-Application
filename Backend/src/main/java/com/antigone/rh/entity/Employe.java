@@ -60,6 +60,8 @@ public class Employe {
 
     private String typeContrat;
 
+    private LocalDate dateFinContrat;
+
     private String genre;
 
     private String departement;
@@ -68,6 +70,8 @@ public class Employe {
     private String ribBancaire;
 
     private String imageUrl;
+
+    private String lienDrive;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")
