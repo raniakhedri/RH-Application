@@ -4,7 +4,9 @@ import com.antigone.rh.dto.ApiResponse;
 import com.antigone.rh.dto.EmployeDTO;
 import com.antigone.rh.dto.EmployeStatsDTO;
 import com.antigone.rh.dto.SoldeCongeInfo;
+import com.antigone.rh.entity.HoraireTravail;
 import com.antigone.rh.enums.TypeReferentiel;
+import com.antigone.rh.repository.HoraireTravailRepository;
 import com.antigone.rh.repository.ReferentielRepository;
 import com.antigone.rh.service.EmployeService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class EmployeController {
 
     private final EmployeService employeService;
     private final ReferentielRepository referentielRepository;
+    private final HoraireTravailRepository horaireTravailRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<EmployeDTO>>> getAll() {
@@ -129,10 +132,18 @@ public class EmployeController {
 
     @GetMapping("/horaire-entreprise")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getHoraireEntreprise() {
+        HoraireTravail horaire = horaireTravailRepository.findAll().stream().findFirst().orElse(null);
+
         Map<String, Object> result = new HashMap<>();
-        result.put("heureDebut", getRef("HEURE_DEBUT_TRAVAIL", "08:00"));
-        result.put("heureFin", getRef("HEURE_FIN_TRAVAIL", "18:00"));
-        result.put("joursTravail", getRef("JOURS_TRAVAIL", "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI"));
+        if (horaire != null) {
+            result.put("heureDebut", horaire.getHeureDebut().toString());
+            result.put("heureFin", horaire.getHeureFin().toString());
+            result.put("joursTravail", horaire.getJoursTravail());
+        } else {
+            result.put("heureDebut", "09:00");
+            result.put("heureFin", "18:00");
+            result.put("joursTravail", "LUNDI,MARDI,MERCREDI,JEUDI,VENDREDI");
+        }
         result.put("maxAutorisationMinutes", getRef("MAX_AUTORISATION_MINUTES", "120"));
         return ResponseEntity.ok(ApiResponse.ok(result));
     }

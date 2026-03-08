@@ -1,6 +1,7 @@
 package com.antigone.rh.controller;
 
 import com.antigone.rh.dto.ApiResponse;
+import com.antigone.rh.dto.TacheDetailDTO;
 import com.antigone.rh.entity.Tache;
 import com.antigone.rh.enums.StatutTache;
 import com.antigone.rh.service.TacheService;
@@ -33,8 +34,8 @@ public class TacheController {
     }
 
     @GetMapping("/assignee/{employeId}")
-    public ResponseEntity<ApiResponse<List<Tache>>> getByAssignee(@PathVariable Long employeId) {
-        return ResponseEntity.ok(ApiResponse.ok(tacheService.findByAssignee(employeId)));
+    public ResponseEntity<ApiResponse<List<TacheDetailDTO>>> getByAssignee(@PathVariable Long employeId) {
+        return ResponseEntity.ok(ApiResponse.ok(tacheService.findDetailByAssignee(employeId)));
     }
 
     @PostMapping("/projet/{projetId}")

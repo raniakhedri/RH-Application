@@ -50,6 +50,12 @@ public class Employe {
     @Builder.Default
     private Double soldeConge = 0.0;
 
+    /**
+     * Solde congé initial saisi manuellement lors de la première utilisation de l'application.
+     * Si non null, le calcul automatique du solde est désactivé pour cet employé.
+     */
+    private Double soldeCongeInitial;
+
     private String poste;
 
     private String typeContrat;

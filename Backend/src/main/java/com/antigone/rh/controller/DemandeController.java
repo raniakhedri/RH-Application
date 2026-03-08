@@ -65,6 +65,24 @@ public class DemandeController {
         return ResponseEntity.ok(ApiResponse.ok("Demande créée", demandeService.create(request)));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<DemandeResponse>> update(
+            @PathVariable Long id, @RequestBody DemandeRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Demande modifiée", demandeService.update(id, request)));
+    }
+
+    @PutMapping(value = "/{id}/with-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<DemandeResponse>> updateWithFile(
+            @PathVariable Long id,
+            @RequestPart("demande") DemandeRequest request,
+            @RequestPart(value = "justificatif", required = false) MultipartFile justificatif) {
+        if (justificatif != null && !justificatif.isEmpty()) {
+            String storedFilename = fileStorageService.store(justificatif);
+            request.setJustificatifPath(storedFilename);
+        }
+        return ResponseEntity.ok(ApiResponse.ok("Demande modifiée", demandeService.update(id, request)));
+    }
+
     @GetMapping("/fichier/{filename}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String filename) {
         try {

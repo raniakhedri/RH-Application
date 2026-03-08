@@ -26,6 +26,7 @@ import MonCalendrierPage from './pages/MonCalendrierPage';
 import MesDemandesPage from './pages/MesDemandesPage';
 
 import MesTachesPage from './pages/MesTachesPage';
+import ProjetTachesPage from './pages/ProjetTachesPage';
 
 import MesDemandesPapierPage from './pages/MesDemandesPapierPage';
 import OrganigrammePage from './pages/OrganigrammePage';
@@ -66,6 +67,7 @@ const App: React.FC = () => {
           <Route path="organigramme" element={<PermissionRoute permission="VIEW_EMPLOYES"><OrganigrammePage /></PermissionRoute>} />
           <Route path="demandes" element={<PermissionRoute permission="VIEW_DEMANDES"><DemandesPage /></PermissionRoute>} />
           <Route path="demandes/new" element={<PermissionRoute permission="VIEW_DEMANDES"><NewDemandePage /></PermissionRoute>} />
+          <Route path="demandes/edit/:id" element={<NewDemandePage />} />
           <Route path="mes-demandes" element={<MesDemandesPage />} />
           <Route path="mes-demandes/papier" element={<MesDemandesPapierPage />} />
           <Route path="validations" element={<PermissionRoute permission="VIEW_VALIDATIONS"><ValidationsPage /></PermissionRoute>} />
@@ -82,6 +84,7 @@ const App: React.FC = () => {
           <Route path="demandes/liste-papier" element={<DemandesPapierPage />} />
           <Route path="mes-taches" element={<MesTachesPage />} />
           <Route path="mes-demandes-papier" element={<MesDemandesPapierPage />} />
+          <Route path="projets/:projetId/taches" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetTachesPage /></PermissionRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
