@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { demandeService } from '../api/demandeService';
 import { referentielService } from '../api/referentielService';
 import { calendrierService } from '../api/calendrierService';
@@ -7,7 +7,7 @@ import { employeService } from '../api/employeService';
 import { TypeDemande, Referentiel, CalendrierJour, HoraireTravail, CalculateDaysResult, SoldeCongeInfo, EmployeHoraire } from '../types';
 import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi';
+import { HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlineCheckCircle } from 'react-icons/hi';
 import { useTachesObligatoires } from '../hooks/useTachesObligatoires';
 
 // Map JS Date.getDay() (0=Sunday) to French day names used in joursTravail
@@ -228,6 +228,8 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFi
 const NewDemandePage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { id: editId } = useParams<{ id?: string }>();
+  const isEditMode = !!editId;
   const { blockedDates } = useTachesObligatoires(user?.employeId);
   const [type, setType] = useState<TypeDemande>(TypeDemande.CONGE);
   const [typeConge, setTypeConge] = useState('');
@@ -241,13 +243,51 @@ const NewDemandePage: React.FC = () => {
   const [heureDebut, setHeureDebut] = useState('');
   const [heureFin, setHeureFin] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
   const [justificatif, setJustificatif] = useState<File | null>(null);
   const [calcResult, setCalcResult] = useState<CalculateDaysResult | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
   const [soldeInfo, setSoldeInfo] = useState<SoldeCongeInfo | null>(null);
   const [employeHoraire, setEmployeHoraire] = useState<EmployeHoraire | null>(null);
   const [autorisationWarnings, setAutorisationWarnings] = useState<string[]>([]);
+
+  // Load existing demande for edit mode
+  useEffect(() => {
+    if (!editId) return;
+    const loadDemande = async () => {
+      setEditLoading(true);
+      try {
+        const res = await demandeService.getById(Number(editId));
+        const d = res.data.data;
+        if (!d) throw new Error('Demande introuvable');
+        if (d.statut !== 'EN_ATTENTE') {
+          setError('Seules les demandes en attente peuvent être modifiées');
+          return;
+        }
+        setType(d.type as TypeDemande);
+        setRaison(d.raison || '');
+        if (d.type === 'CONGE') {
+          setTypeConge(d.typeConge || '');
+          setDateDebut(d.dateDebut || '');
+          setDateFin(d.dateFin || '');
+        } else if (d.type === 'TELETRAVAIL') {
+          setDateDebut(d.dateDebut || '');
+          setDateFin(d.dateFin || '');
+        } else if (d.type === 'AUTORISATION') {
+          setDate(d.date || '');
+          setHeureDebut(d.heureDebut || '');
+          setHeureFin(d.heureFin || '');
+        }
+      } catch (err: any) {
+        setError(err.response?.data?.message || err.message || 'Erreur lors du chargement de la demande');
+      } finally {
+        setEditLoading(false);
+      }
+    };
+    loadDemande();
+  }, [editId]);
 
   // Types requiring mandatory justificatif
   const TYPES_REQUIRING_JUSTIFICATIF = [
@@ -489,14 +529,36 @@ const NewDemandePage: React.FC = () => {
         data.heureFin = heureFin;
       }
 
-      if (justificatif) {
-        await demandeService.createWithFile(data as any, justificatif);
+      if (isEditMode) {
+        // Update existing demande
+        if (justificatif) {
+          await demandeService.updateWithFile(Number(editId), data as any, justificatif);
+        } else {
+          await demandeService.update(Number(editId), data as any);
+        }
+        setSuccess('Demande modifiée avec succès');
       } else {
-        await demandeService.create(data as any);
+        // Create new demande
+        if (justificatif) {
+          await demandeService.createWithFile(data as any, justificatif);
+        } else {
+          await demandeService.create(data as any);
+        }
+        setSuccess('Demande créée avec succès');
+        // Reset form for new creation
+        setRaison('');
+        setDateDebut('');
+        setDateFin('');
+        setDate('');
+        setHeureDebut('');
+        setHeureFin('');
+        setJustificatif(null);
+        setCalcResult(null);
       }
-      navigate('/demandes');
+      setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erreur lors de la création');
+      setSuccess('');
+      setError(err.response?.data?.message || (isEditMode ? 'Erreur lors de la modification' : 'Erreur lors de la création'));
     } finally {
       setLoading(false);
     }
@@ -508,11 +570,31 @@ const NewDemandePage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Nouvelle demande</h1>
+        <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">
+          {isEditMode ? 'Modifier la demande' : 'Nouvelle demande'}
+        </h1>
         <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
-          Créer une nouvelle demande de congé, autorisation ou télétravail
+          {isEditMode ? 'Modifier votre demande en attente' : 'Créer une nouvelle demande de congé, autorisation ou télétravail'}
         </p>
       </div>
+
+      {/* Success message */}
+      {success && (
+        <div className="flex items-center gap-3 rounded-lg border border-success-200 bg-success-50 px-4 py-3 dark:border-success-500/30 dark:bg-success-500/10">
+          <HiOutlineCheckCircle className="text-success-500 shrink-0" size={20} />
+          <p className="text-theme-sm text-success-700 dark:text-success-400">{success}</p>
+          <button
+            onClick={() => navigate('/mes-demandes')}
+            className="ml-auto text-theme-sm font-medium text-brand-500 hover:text-brand-600"
+          >
+            Voir mes demandes →
+          </button>
+        </div>
+      )}
+
+      {editLoading ? (
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Chargement de la demande...</div>
+      ) : (
 
       <div className={type === TypeDemande.CONGE ? 'flex gap-6' : ''}>
         {/* Form */}
@@ -533,6 +615,7 @@ const NewDemandePage: React.FC = () => {
                 value={type}
                 onChange={(e) => setType(e.target.value as TypeDemande)}
                 className={inputClass}
+                disabled={isEditMode}
               >
                 <option value={TypeDemande.CONGE}>Congé</option>
                 <option value={TypeDemande.AUTORISATION}>Autorisation</option>
@@ -835,8 +918,8 @@ const NewDemandePage: React.FC = () => {
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-2">
-              <Button variant="outline" type="button" onClick={() => navigate('/demandes')}>
-                Annuler
+              <Button variant="outline" type="button" onClick={() => navigate('/mes-demandes')}>
+                {isEditMode ? 'Retour' : 'Annuler'}
               </Button>
               {/* Solde insuffisant warning */}
               {type === TypeDemande.CONGE && typeConge === 'CONGE_PAYE' && soldeInfo && calcResult && calcResult.joursOuvrables > soldeInfo.soldeDisponible && (
@@ -845,7 +928,7 @@ const NewDemandePage: React.FC = () => {
                 </div>
               )}
               <Button type="submit" disabled={loading || !!rule4xWarning || (typeConge === 'CONGE_MALADIE' && !!calcResult && calcResult.joursOuvrables > 2) || (typeConge === 'CONGE_REGLES' && !!calcResult && calcResult.joursOuvrables > 1) || (typeConge === 'CONGE_PAYE' && !!soldeInfo && !!calcResult && calcResult.joursOuvrables > soldeInfo.soldeDisponible) || (type === TypeDemande.AUTORISATION && autorisationWarnings.length > 0)}>
-                {loading ? 'Création...' : 'Soumettre la demande'}
+                {loading ? (isEditMode ? 'Modification...' : 'Création...') : (isEditMode ? 'Modifier la demande' : 'Soumettre la demande')}
               </Button>
             </div>
           </form>
@@ -859,6 +942,7 @@ const NewDemandePage: React.FC = () => {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };

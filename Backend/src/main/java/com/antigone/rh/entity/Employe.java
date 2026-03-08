@@ -1,6 +1,5 @@
 package com.antigone.rh.entity;
 
-import com.antigone.rh.enums.Genre;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -51,12 +50,17 @@ public class Employe {
     @Builder.Default
     private Double soldeConge = 0.0;
 
+    /**
+     * Solde congé initial saisi manuellement lors de la première utilisation de l'application.
+     * Si non null, le calcul automatique du solde est désactivé pour cet employé.
+     */
+    private Double soldeCongeInitial;
+
     private String poste;
 
     private String typeContrat;
 
-    @Enumerated(EnumType.STRING)
-    private Genre genre;
+    private String genre;
 
     private String departement;
 
@@ -93,4 +97,16 @@ public class Employe {
     @EqualsAndHashCode.Exclude
     @Builder.Default
     private List<Equipe> equipes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "employe", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Competence> competences = new ArrayList<>();
+
+    @OneToMany(mappedBy = "employe", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<DocumentEmploye> documents = new ArrayList<>();
 }

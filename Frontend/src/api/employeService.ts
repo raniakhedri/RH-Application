@@ -1,5 +1,5 @@
 import api from './axios';
-import { ApiResponse, Employe, EmployeHoraire, SoldeCongeInfo } from '../types';
+import { ApiResponse, Employe, EmployeHoraire, EmployeStatsDTO, OrgNode, SoldeCongeInfo } from '../types';
 
 export const employeService = {
   getAll: () => api.get<ApiResponse<Employe[]>>('/employes'),
@@ -20,4 +20,16 @@ export const employeService = {
   },
   getSoldeInfo: (id: number) => api.get<ApiResponse<SoldeCongeInfo>>(`/employes/${id}/solde-info`),
   getHoraireEntreprise: () => api.get<ApiResponse<EmployeHoraire>>('/employes/horaire-entreprise'),
+
+  // Métiers avancés
+  getStats: () => api.get<ApiResponse<EmployeStatsDTO>>('/employes/stats'),
+  advancedSearch: (params: Record<string, string | number | undefined>) => {
+    const query = Object.entries(params)
+      .filter(([, v]) => v !== undefined && v !== '' && v !== null)
+      .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
+      .join('&');
+    return api.get<ApiResponse<Employe[]>>(`/employes/search?${query}`);
+  },
+  exportCsv: () => api.get('/employes/export/csv', { responseType: 'blob' }),
+  getOrganigramme: () => api.get<ApiResponse<OrgNode[]>>('/employes/organigramme'),
 };

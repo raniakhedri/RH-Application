@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  HiOutlineSearch, HiOutlineEye, HiOutlineXCircle, HiOutlinePlus,
+  HiOutlineSearch, HiOutlineEye, HiOutlineXCircle, HiOutlinePlus, HiOutlinePencil,
   HiOutlineClock, HiOutlineCheckCircle, HiOutlineX, HiOutlineChartBar,
 } from 'react-icons/hi';
 import { demandeService } from '../api/demandeService';
@@ -305,13 +305,22 @@ const MesDemandesPage: React.FC = () => {
             <HiOutlineEye size={16} />
           </button>
           {item.statut === 'EN_ATTENTE' && (
-            <button
-              onClick={() => handleCancel(item.id)}
-              className="p-1.5 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/10 text-error-500"
-              title="Annuler"
-            >
-              <HiOutlineXCircle size={16} />
-            </button>
+            <>
+              <button
+                onClick={() => navigate(`/demandes/edit/${item.id}`)}
+                className="p-1.5 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-500/10 text-brand-500"
+                title="Modifier"
+              >
+                <HiOutlinePencil size={16} />
+              </button>
+              <button
+                onClick={() => handleCancel(item.id)}
+                className="p-1.5 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/10 text-error-500"
+                title="Annuler"
+              >
+                <HiOutlineXCircle size={16} />
+              </button>
+            </>
           )}
         </div>
       ),
@@ -326,7 +335,7 @@ const MesDemandesPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Mes demandes</h1>
+          <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Mes demandes de congés</h1>
           <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
             Suivez l'état de vos demandes de congé, autorisation et télétravail
           </p>
@@ -465,9 +474,15 @@ const MesDemandesPage: React.FC = () => {
               </div>
             )}
 
-            {/* Cancel action */}
+            {/* Actions */}
             {selectedDemande.statut === 'EN_ATTENTE' && (
-              <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/demandes/edit/${selectedDemande.id}`)}
+                >
+                  Modifier la demande
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => handleCancel(selectedDemande.id)}

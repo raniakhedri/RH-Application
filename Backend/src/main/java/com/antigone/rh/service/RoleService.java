@@ -27,12 +27,11 @@ public class RoleService {
             Map.entry("VIEW_EMPLOYES", "Employés"),
             Map.entry("VIEW_DEMANDES", "Demandes"),
             Map.entry("VIEW_VALIDATIONS", "Validations"),
-            Map.entry("VIEW_POINTAGE", "Pointage"),
             Map.entry("VIEW_PROJETS", "Projets"),
             Map.entry("VIEW_EQUIPES", "Équipes"),
             Map.entry("VIEW_TACHES", "Tâches"),
             Map.entry("VIEW_REFERENTIELS", "Référentiels"),
-            Map.entry("VIEW_CALENDRIER", "Calendrier"),
+            Map.entry("VIEW_CALENDRIER", "Calendrier Entreprise"),
             Map.entry("VIEW_COMPTES", "Comptes"),
             Map.entry("VIEW_ROLES", "Rôles")
     );

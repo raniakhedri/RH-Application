@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlineBell, HiOutlineLogout, HiOutlineMenu, HiOutlineLockClosed, HiOutlineUser, HiOutlineCheckCircle, HiOutlineXCircle } from 'react-icons/hi';
+import { HiOutlineBell, HiOutlineLogout, HiOutlineMenu, HiOutlineLockClosed, HiOutlineUser, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineUserAdd, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineDocumentText, HiOutlineStar, HiOutlinePhotograph, HiOutlineCalendar, HiOutlineInformationCircle } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../hooks/useTheme';
 import { useSidebar } from '../../hooks/useSidebar';
@@ -84,8 +84,38 @@ const Header: React.FC = () => {
     if (!notif.lu) handleMarkAsRead(notif.id);
     if (notif.demandeId) {
       navigate('/mes-demandes');
-      setShowNotifications(false);
+    } else if (notif.titre.includes('employé') || notif.titre.includes('subordonné') || notif.titre.includes('Profil')) {
+      navigate('/employes');
+    } else if (notif.titre.includes('compétence') || notif.titre.includes('Compétence')) {
+      navigate('/employes');
+    } else if (notif.titre.includes('document') || notif.titre.includes('Document')) {
+      navigate('/employes');
     }
+    setShowNotifications(false);
+  };
+
+  const getNotifIcon = (titre: string) => {
+    if (titre.includes('Nouvel employé') || titre.includes('Nouveau subordonné'))
+      return { icon: HiOutlineUserAdd, bg: 'bg-brand-50 dark:bg-brand-500/10', color: 'text-brand-500' };
+    if (titre.includes('modifié') || titre.includes('mis à jour') || titre.includes('mise à jour'))
+      return { icon: HiOutlinePencilAlt, bg: 'bg-warning-50 dark:bg-warning-500/10', color: 'text-warning-500' };
+    if (titre.includes('supprimé') || titre.includes('retir') || titre.includes('réaffecté'))
+      return { icon: HiOutlineTrash, bg: 'bg-error-50 dark:bg-error-500/10', color: 'text-error-500' };
+    if (titre.includes('document') || titre.includes('Document'))
+      return { icon: HiOutlineDocumentText, bg: 'bg-info-50 dark:bg-blue-500/10', color: 'text-blue-500' };
+    if (titre.includes('compétence') || titre.includes('Compétence'))
+      return { icon: HiOutlineStar, bg: 'bg-purple-50 dark:bg-purple-500/10', color: 'text-purple-500' };
+    if (titre.includes('Photo'))
+      return { icon: HiOutlinePhotograph, bg: 'bg-cyan-50 dark:bg-cyan-500/10', color: 'text-cyan-500' };
+    if (titre.includes('Solde') || titre.includes('congé'))
+      return { icon: HiOutlineCalendar, bg: 'bg-teal-50 dark:bg-teal-500/10', color: 'text-teal-500' };
+    if (titre.includes('refusée'))
+      return { icon: HiOutlineXCircle, bg: 'bg-error-50 dark:bg-error-500/10', color: 'text-error-500' };
+    if (titre.includes('approuvée') || titre.includes('acceptée'))
+      return { icon: HiOutlineCheckCircle, bg: 'bg-success-50 dark:bg-success-500/10', color: 'text-success-500' };
+    if (titre.includes('expiré') || titre.includes('bientôt'))
+      return { icon: HiOutlineInformationCircle, bg: 'bg-orange-50 dark:bg-orange-500/10', color: 'text-orange-500' };
+    return { icon: HiOutlineInformationCircle, bg: 'bg-gray-50 dark:bg-gray-500/10', color: 'text-gray-500' };
   };
 
   const formatTimeAgo = (dateStr: string) => {
@@ -185,17 +215,14 @@ const Header: React.FC = () => {
                           !notif.lu ? 'bg-brand-50/50 dark:bg-brand-500/5' : ''
                         }`}
                       >
-                        <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                          notif.titre.includes('refusée')
-                            ? 'bg-error-50 dark:bg-error-500/10'
-                            : 'bg-success-50 dark:bg-success-500/10'
-                        }`}>
-                          {notif.titre.includes('refusée') ? (
-                            <HiOutlineXCircle className="text-error-500" size={16} />
-                          ) : (
-                            <HiOutlineCheckCircle className="text-success-500" size={16} />
-                          )}
-                        </div>
+                        {(() => {
+                          const { icon: Icon, bg, color } = getNotifIcon(notif.titre);
+                          return (
+                            <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${bg}`}>
+                              <Icon className={color} size={16} />
+                            </div>
+                          );
+                        })()}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className={`text-theme-sm ${!notif.lu ? 'font-semibold text-gray-800 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>

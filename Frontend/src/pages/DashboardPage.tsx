@@ -29,7 +29,6 @@ const demandeTypeData = [
 
 const recentActivities = [
   { id: 1, text: 'Ahmed Benali a soumis une demande de congé', time: 'Il y a 2h', type: 'demande' },
-  { id: 2, text: 'Fatima Zahra a pointé à 08:45', time: 'Il y a 3h', type: 'pointage' },
   { id: 3, text: 'Projet "Campagne Été" passé en cours', time: 'Il y a 5h', type: 'projet' },
   { id: 4, text: 'Validation approuvée par Karim El Idrissi', time: 'Hier', type: 'validation' },
   { id: 5, text: 'Nouvelle tâche assignée à Sara Alaoui', time: 'Hier', type: 'tache' },
@@ -135,7 +134,6 @@ const DashboardPage: React.FC = () => {
             <div key={activity.id} className="flex items-center gap-3 py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
               <div className={`w-2 h-2 rounded-full ${
                 activity.type === 'demande' ? 'bg-brand-500' :
-                activity.type === 'pointage' ? 'bg-success-500' :
                 activity.type === 'projet' ? 'bg-brand-400' :
                 activity.type === 'validation' ? 'bg-secondary-500' :
                 'bg-warning-500'
