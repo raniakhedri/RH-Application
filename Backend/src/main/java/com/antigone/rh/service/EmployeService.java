@@ -235,10 +235,12 @@ public class EmployeService {
         employe.setSoldeConge(dto.getSoldeConge());
         employe.setPoste(dto.getPoste());
         employe.setTypeContrat(dto.getTypeContrat());
+        employe.setDateFinContrat(dto.getDateFinContrat());
         employe.setGenre(dto.getGenre());
         employe.setDepartement(dto.getDepartement());
         employe.setRibBancaire(dto.getRibBancaire());
         employe.setImageUrl(dto.getImageUrl());
+        employe.setLienDrive(dto.getLienDrive());
         Employe ancienManager = employe.getManager();
         if (dto.getManagerId() != null) {
             Employe manager = employeRepository.findById(dto.getManagerId())
@@ -385,6 +387,13 @@ public class EmployeService {
                 + (ancienSolde != null ? " Ancien solde : " + ancienSolde + " jours." : "")
                 + " Nouveau solde : " + solde + " jours.",
                 null);
+    }
+
+    public EmployeDTO updateLienDrive(Long id, String lienDrive) {
+        Employe employe = employeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employé non trouvé"));
+        employe.setLienDrive(lienDrive != null && !lienDrive.trim().isEmpty() ? lienDrive.trim() : null);
+        return toDTO(employeRepository.save(employe));
     }
 
     public EmployeDTO updateImage(Long id, String imageUrl) {
@@ -861,12 +870,14 @@ public class EmployeService {
                 .soldeCongeInitial(employe.getSoldeCongeInitial())
                 .poste(employe.getPoste())
                 .typeContrat(employe.getTypeContrat())
+                .dateFinContrat(employe.getDateFinContrat())
                 .genre(employe.getGenre())
                 .departement(employe.getDepartement())
                 .ribBancaire(employe.getRibBancaire())
                 .managerId(employe.getManager() != null ? employe.getManager().getId() : null)
                 .managerNom(employe.getManager() != null ? employe.getManager().getNom() + " " + employe.getManager().getPrenom() : null)
                 .imageUrl(employe.getImageUrl())
+                .lienDrive(employe.getLienDrive())
                 .build();
     }
 
@@ -886,10 +897,12 @@ public class EmployeService {
                 .soldeCongeInitial(dto.getSoldeCongeInitial())
                 .poste(dto.getPoste())
                 .typeContrat(dto.getTypeContrat())
+                .dateFinContrat(dto.getDateFinContrat())
                 .genre(dto.getGenre())
                 .departement(dto.getDepartement())
                 .ribBancaire(dto.getRibBancaire())
                 .imageUrl(dto.getImageUrl())
+                .lienDrive(dto.getLienDrive())
                 .build();
     }
 }

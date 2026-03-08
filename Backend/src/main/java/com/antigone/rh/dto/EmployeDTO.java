@@ -30,6 +30,7 @@ public class EmployeDTO {
     private Boolean useInitialSolde;
     private String poste;
     private String typeContrat;
+    private LocalDate dateFinContrat;
     private String genre;
     private String departement;
     @jakarta.validation.constraints.Pattern(regexp = "^[0-9]{20}$", message = "Le RIB doit contenir exactement 20 chiffres")
@@ -37,4 +38,5 @@ public class EmployeDTO {
     private Long managerId;
     private String managerNom;
     private String imageUrl;
+    private String lienDrive;
 }
