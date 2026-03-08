@@ -109,6 +109,7 @@ public class EmployeService {
         if (dto.getCnss() != null && dto.getCnss().trim().isEmpty()) dto.setCnss(null);
         if (dto.getRibBancaire() != null && dto.getRibBancaire().trim().isEmpty()) dto.setRibBancaire(null);
         if (dto.getGenre() != null && dto.getGenre().trim().isEmpty()) dto.setGenre(null);
+        if (dto.getGenre() != null) dto.setGenre(dto.getGenre().trim().toUpperCase());
         if (dto.getPoste() != null && dto.getPoste().trim().isEmpty()) dto.setPoste(null);
         if (dto.getTypeContrat() != null && dto.getTypeContrat().trim().isEmpty()) dto.setTypeContrat(null);
         if (dto.getDepartement() != null && dto.getDepartement().trim().isEmpty()) dto.setDepartement(null);
@@ -552,7 +553,7 @@ public class EmployeService {
                     employeId, TypeConge.CONGE_PAYE, StatutDemande.APPROUVEE,
                     debutAnneePrecedente, finAnneePrecedente);
             double prevConsommes = prevApprouves.stream()
-                    .mapToDouble(c -> c.getJoursOuvrables() != null ? c.getJoursOuvrables() : (c.getNombreJours() != null ? c.getNombreJours() : 0))
+                    .mapToDouble(c -> c.getNombreJours() != null ? c.getNombreJours() : 0)
                     .sum();
 
             double reliquat = Math.max(0, prevAcquis - prevConsommes);
@@ -562,7 +563,7 @@ public class EmployeService {
         // Total available = acquired this year + carry-over - consumed this year
         joursAcquis += joursReportes;
 
-        // Consumed congés payés (APPROUVEE) this congé year — use joursOuvrables for consistency
+        // Consumed congés payés (APPROUVEE) this congé year — use nombreJours (jours effectifs)
         List<Conge> approuves = congeRepository.findByEmployeIdAndTypeCongeAndStatutAndDateDebutBetween(
                 employeId, TypeConge.CONGE_PAYE, StatutDemande.APPROUVEE,
                 debutAnneeConge, finAnneeConge);
@@ -572,7 +573,8 @@ public class EmployeService {
                         : (c.getNombreJours() != null ? c.getNombreJours() : 0))
                 .sum();
 
-        // Pending congés payés (EN_ATTENTE) this congé year — use joursOuvrables for consistency
+// Pending congés payés (EN_ATTENTE) this congé year — use nombreJours (jours effectifs)
+        // Pending congés payés (EN_ATTENTE) this congé year — use nombreJours (jours effectifs)
         List<Conge> enAttente = congeRepository.findByEmployeIdAndTypeCongeAndStatutAndDateDebutBetween(
                 employeId, TypeConge.CONGE_PAYE, StatutDemande.EN_ATTENTE,
                 debutAnneeConge, finAnneeConge);
@@ -759,7 +761,7 @@ public class EmployeService {
         return all.stream()
                 .filter(e -> departement == null || departement.isEmpty() || departement.equals(e.getDepartement()))
                 .filter(e -> typeContrat == null || typeContrat.isEmpty() || typeContrat.equals(e.getTypeContrat()))
-                .filter(e -> genre == null || genre.isEmpty() || genre.equals(e.getGenre()))
+                .filter(e -> genre == null || genre.isEmpty() || genre.equalsIgnoreCase(e.getGenre()))
                 .filter(e -> poste == null || poste.isEmpty() || poste.equals(e.getPoste()))
                 .filter(e -> {
                     if (dateEmbaucheFrom == null || dateEmbaucheFrom.isEmpty()) return true;
