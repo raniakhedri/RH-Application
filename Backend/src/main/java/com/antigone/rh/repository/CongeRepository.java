@@ -28,4 +28,13 @@ public interface CongeRepository extends JpaRepository<Conge, Long> {
             @Param("statut") StatutDemande statut,
             @Param("debut") LocalDate debut,
             @Param("fin") LocalDate fin);
+
+    @Query("SELECT c FROM Conge c WHERE c.employe.id = :employeId AND c.typeConge = :typeConge AND c.statut = :statut AND " +
+           "((c.dateDebut BETWEEN :debut AND :fin) OR (c.dateFin BETWEEN :debut AND :fin))")
+    List<Conge> findOverlappingByTypeCongeAndStatut(
+            @Param("employeId") Long employeId,
+            @Param("typeConge") TypeConge typeConge,
+            @Param("statut") StatutDemande statut,
+            @Param("debut") LocalDate debut,
+            @Param("fin") LocalDate fin);
 }
