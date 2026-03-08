@@ -65,9 +65,10 @@ interface MiniCalendarProps {
   dateFin: string;
   horaires: HoraireTravail[];
   blockedDates?: Set<string>;
+  onDateClick?: (dateStr: string) => void;
 }
 
-const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFin, horaires, blockedDates = new Set() }) => {
+const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFin, horaires, blockedDates = new Set(), onDateClick }) => {
   const [viewDate, setViewDate] = useState(() => {
     if (dateDebut) return new Date(dateDebut + 'T00:00:00');
     return new Date();
@@ -170,11 +171,17 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({ holidays, dateDebut, dateFi
             bg += ' ring-2 ring-brand-400';
           }
 
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isPast = dt < today;
+          const clickable = onDateClick && !isPast;
+
           return (
             <div
               key={dateStr}
               title={title}
-              className={`w-8 h-8 mx-auto flex items-center justify-center rounded-md text-theme-xs cursor-default ${bg} ${textColor}`}
+              onClick={() => clickable && onDateClick(dateStr)}
+              className={`w-8 h-8 mx-auto flex items-center justify-center rounded-md text-theme-xs ${clickable ? 'cursor-pointer hover:ring-2 hover:ring-brand-300' : 'cursor-default'} ${isPast ? 'opacity-40' : ''} ${bg} ${textColor}`}
             >
               {day}
             </div>
@@ -349,8 +356,7 @@ const NewDemandePage: React.FC = () => {
   const delaiMinJours = effectiveNombreJours * 4;
   const rule4xWarning = useMemo(() => {
     if (effectiveNombreJours <= 0 || !dateDebut) return null;
-    const EXEMPT_TYPES = ['CONGE_MALADIE', 'CONGE_DECES_PROCHE', 'CONGE_DECES_FAMILLE', 'CONGE_EXCEPTIONNEL'];
-    if (EXEMPT_TYPES.includes(typeConge)) return null;
+    if (typeConge !== 'CONGE_PAYE') return null;
     const today = new Date();
     const limit = new Date();
     limit.setDate(limit.getDate() + delaiMinJours);
@@ -537,25 +543,14 @@ const NewDemandePage: React.FC = () => {
           await demandeService.update(Number(editId), data as any);
         }
         setSuccess('Demande modifiée avec succès');
+        setTimeout(() => navigate('/mes-demandes'), 1200);
+      } else if (justificatif) {
+        await demandeService.createWithFile(data as any, justificatif);
+        navigate('/mes-demandes');
       } else {
-        // Create new demande
-        if (justificatif) {
-          await demandeService.createWithFile(data as any, justificatif);
-        } else {
-          await demandeService.create(data as any);
-        }
-        setSuccess('Demande créée avec succès');
-        // Reset form for new creation
-        setRaison('');
-        setDateDebut('');
-        setDateFin('');
-        setDate('');
-        setHeureDebut('');
-        setHeureFin('');
-        setJustificatif(null);
-        setCalcResult(null);
+        await demandeService.create(data as any);
+        navigate('/mes-demandes');
       }
-      setError('');
     } catch (err: any) {
       setSuccess('');
       setError(err.response?.data?.message || (isEditMode ? 'Erreur lors de la modification' : 'Erreur lors de la création'));
@@ -772,6 +767,7 @@ const NewDemandePage: React.FC = () => {
                     type="date"
                     value={dateDebut}
                     onChange={(e) => setDateDebut(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
                     className={inputClass}
                     required
                   />
@@ -784,6 +780,7 @@ const NewDemandePage: React.FC = () => {
                     type="date"
                     value={dateFin}
                     onChange={(e) => setDateFin(e.target.value)}
+                    min={dateDebut || new Date().toISOString().split('T')[0]}
                     className={inputClass}
                     required
                   />
@@ -802,6 +799,7 @@ const NewDemandePage: React.FC = () => {
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
                     className={inputClass}
                     required
                   />
@@ -922,12 +920,12 @@ const NewDemandePage: React.FC = () => {
                 {isEditMode ? 'Retour' : 'Annuler'}
               </Button>
               {/* Solde insuffisant warning */}
-              {type === TypeDemande.CONGE && typeConge === 'CONGE_PAYE' && soldeInfo && calcResult && calcResult.joursOuvrables > soldeInfo.soldeDisponible && (
+              {type === TypeDemande.CONGE && typeConge === 'CONGE_PAYE' && soldeInfo && calcResult && calcResult.nombreJours > soldeInfo.soldeDisponible && (
                 <div className="flex-1 rounded-lg border border-error-300 bg-error-50 px-4 py-2 text-theme-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
-                  Solde congé insuffisant. Disponible : {soldeInfo.soldeDisponible}j, Demandé : {calcResult.joursOuvrables}j ouvrable(s)
+                  Solde congé insuffisant. Disponible : {soldeInfo.soldeDisponible}j, Demandé : {calcResult.nombreJours}j effectif(s)
                 </div>
               )}
-              <Button type="submit" disabled={loading || !!rule4xWarning || (typeConge === 'CONGE_MALADIE' && !!calcResult && calcResult.joursOuvrables > 2) || (typeConge === 'CONGE_REGLES' && !!calcResult && calcResult.joursOuvrables > 1) || (typeConge === 'CONGE_PAYE' && !!soldeInfo && !!calcResult && calcResult.joursOuvrables > soldeInfo.soldeDisponible) || (type === TypeDemande.AUTORISATION && autorisationWarnings.length > 0)}>
+              <Button type="submit" disabled={loading || !!rule4xWarning || (typeConge === 'CONGE_MALADIE' && !!calcResult && calcResult.joursOuvrables > 2) || (typeConge === 'CONGE_REGLES' && !!calcResult && calcResult.joursOuvrables > 1) || (typeConge === 'CONGE_PAYE' && !!soldeInfo && !!calcResult && calcResult.nombreJours > soldeInfo.soldeDisponible) || (type === TypeDemande.AUTORISATION && autorisationWarnings.length > 0)}>
                 {loading ? (isEditMode ? 'Modification...' : 'Création...') : (isEditMode ? 'Modifier la demande' : 'Soumettre la demande')}
               </Button>
             </div>
@@ -938,7 +936,28 @@ const NewDemandePage: React.FC = () => {
         {type === TypeDemande.CONGE && (
           <div className="w-72 shrink-0 space-y-4">
             <h3 className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300">Calendrier entreprise</h3>
-            <MiniCalendar holidays={holidays} dateDebut={dateDebut} dateFin={dateFin} horaires={allHoraires} blockedDates={blockedDates} />
+            <MiniCalendar
+              holidays={holidays}
+              dateDebut={dateDebut}
+              dateFin={dateFin}
+              horaires={allHoraires}
+              blockedDates={blockedDates}
+              onDateClick={(dateStr) => {
+                if (!dateDebut || (dateDebut && dateFin && dateDebut !== dateFin)) {
+                  // No start yet, or range already complete → start new selection
+                  setDateDebut(dateStr);
+                  setDateFin(dateStr);
+                } else {
+                  // First click was done (dateDebut === dateFin) → set end date
+                  if (dateStr < dateDebut) {
+                    setDateFin(dateDebut);
+                    setDateDebut(dateStr);
+                  } else {
+                    setDateFin(dateStr);
+                  }
+                }
+              }}
+            />
           </div>
         )}
       </div>
