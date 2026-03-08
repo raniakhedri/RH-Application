@@ -224,9 +224,9 @@ const SidebarItem: React.FC<{
       <li>
         <button
           onClick={() => setOpenSubmenu(item.key)}
-          className={`menu-item group ${active ? 'menu-item-active' : 'menu-item-inactive'}`}
+          className="menu-item group menu-item-inactive"
         >
-          <span className={active ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}>
+          <span className="menu-item-icon-inactive">
             {item.icon}
           </span>
           {showText && (

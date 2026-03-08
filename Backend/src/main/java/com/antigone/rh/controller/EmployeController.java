@@ -81,6 +81,11 @@ public class EmployeController {
         return ResponseEntity.ok(ApiResponse.ok("Solde congé mis à jour", null));
     }
 
+    @PatchMapping("/{id}/lien-drive")
+    public ResponseEntity<ApiResponse<EmployeDTO>> updateLienDrive(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(ApiResponse.ok("Lien Drive mis à jour", employeService.updateLienDrive(id, body.get("lienDrive"))));
+    }
+
     @PostMapping("/{id}/image")
     public ResponseEntity<ApiResponse<EmployeDTO>> uploadImage(
             @PathVariable Long id,

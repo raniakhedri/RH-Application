@@ -118,7 +118,7 @@ const ReferentielsPage: React.FC = () => {
       ),
     },
     { key: 'description', label: 'Description' },
-    ...(selectedType === TypeReferentiel.PARAMETRE_SYSTEME
+    ...(selectedType === TypeReferentiel.PARAMETRE_SYSTEME || selectedType === TypeReferentiel.DUREE_CDD
       ? [
           {
             key: 'valeur',
@@ -127,7 +127,8 @@ const ReferentielsPage: React.FC = () => {
               if (!item.valeur) return <span className="text-gray-400">—</span>;
               const lib = item.libelle.toUpperCase();
               let unit = '';
-              if (lib.includes('MINUTE')) unit = 'minutes';
+              if (selectedType === TypeReferentiel.DUREE_CDD) unit = 'mois';
+              else if (lib.includes('MINUTE')) unit = 'minutes';
               else if (lib.includes('HEURE')) unit = 'heures';
               else if (lib.includes('CONGE') || lib.includes('JOUR') || lib.includes('SOLDE')) unit = 'jours';
               return (
@@ -294,14 +295,16 @@ const ReferentielsPage: React.FC = () => {
               className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
             />
           </div>
-          {refForm.typeReferentiel === TypeReferentiel.PARAMETRE_SYSTEME && (
+          {(refForm.typeReferentiel === TypeReferentiel.PARAMETRE_SYSTEME || refForm.typeReferentiel === TypeReferentiel.DUREE_CDD) && (
             <div>
-              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valeur *</label>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {refForm.typeReferentiel === TypeReferentiel.DUREE_CDD ? 'Durée en mois *' : 'Valeur *'}
+              </label>
               <input
                 type="text"
                 value={refForm.valeur}
                 onChange={(e) => setRefForm({ ...refForm, valeur: e.target.value })}
-                placeholder="Ex: 120, 30..."
+                placeholder={refForm.typeReferentiel === TypeReferentiel.DUREE_CDD ? 'Ex: 12, 24...' : 'Ex: 120, 30...'}
                 className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
               />
             </div>
