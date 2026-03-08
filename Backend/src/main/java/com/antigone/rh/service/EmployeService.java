@@ -568,20 +568,15 @@ public class EmployeService {
                 employeId, TypeConge.CONGE_PAYE, StatutDemande.APPROUVEE,
                 debutAnneeConge, finAnneeConge);
         double joursConsommes = approuves.stream()
-                .mapToDouble(c -> c.getJoursOuvrables() != null && c.getJoursOuvrables() > 0
-                        ? c.getJoursOuvrables()
-                        : (c.getNombreJours() != null ? c.getNombreJours() : 0))
+                .mapToDouble(c -> c.getNombreJours() != null ? c.getNombreJours() : 0)
                 .sum();
 
-// Pending congés payés (EN_ATTENTE) this congé year — use nombreJours (jours effectifs)
         // Pending congés payés (EN_ATTENTE) this congé year — use nombreJours (jours effectifs)
         List<Conge> enAttente = congeRepository.findByEmployeIdAndTypeCongeAndStatutAndDateDebutBetween(
                 employeId, TypeConge.CONGE_PAYE, StatutDemande.EN_ATTENTE,
                 debutAnneeConge, finAnneeConge);
         double joursEnAttente = enAttente.stream()
-                .mapToDouble(c -> c.getJoursOuvrables() != null && c.getJoursOuvrables() > 0
-                        ? c.getJoursOuvrables()
-                        : (c.getNombreJours() != null ? c.getNombreJours() : 0))
+                .mapToDouble(c -> c.getNombreJours() != null ? c.getNombreJours() : 0)
                 .sum();
 
         double soldeDisponible;
