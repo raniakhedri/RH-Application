@@ -356,8 +356,7 @@ const NewDemandePage: React.FC = () => {
   const delaiMinJours = effectiveNombreJours * 4;
   const rule4xWarning = useMemo(() => {
     if (effectiveNombreJours <= 0 || !dateDebut) return null;
-    const EXEMPT_TYPES = ['CONGE_MALADIE', 'CONGE_DECES_PROCHE', 'CONGE_DECES_FAMILLE', 'CONGE_EXCEPTIONNEL'];
-    if (EXEMPT_TYPES.includes(typeConge)) return null;
+    if (typeConge !== 'CONGE_PAYE') return null;
     const today = new Date();
     const limit = new Date();
     limit.setDate(limit.getDate() + delaiMinJours);
@@ -547,10 +546,10 @@ const NewDemandePage: React.FC = () => {
         setTimeout(() => navigate('/mes-demandes'), 1200);
       } else if (justificatif) {
         await demandeService.createWithFile(data as any, justificatif);
-        navigate('/demandes');
+        navigate('/mes-demandes');
       } else {
         await demandeService.create(data as any);
-        navigate('/demandes');
+        navigate('/mes-demandes');
       }
     } catch (err: any) {
       setSuccess('');
@@ -768,6 +767,7 @@ const NewDemandePage: React.FC = () => {
                     type="date"
                     value={dateDebut}
                     onChange={(e) => setDateDebut(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
                     className={inputClass}
                     required
                   />
@@ -780,6 +780,7 @@ const NewDemandePage: React.FC = () => {
                     type="date"
                     value={dateFin}
                     onChange={(e) => setDateFin(e.target.value)}
+                    min={dateDebut || new Date().toISOString().split('T')[0]}
                     className={inputClass}
                     required
                   />
@@ -798,6 +799,7 @@ const NewDemandePage: React.FC = () => {
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
                     className={inputClass}
                     required
                   />
