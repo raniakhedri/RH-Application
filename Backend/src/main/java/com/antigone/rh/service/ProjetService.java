@@ -49,6 +49,13 @@ public class ProjetService {
                 .collect(Collectors.toList());
     }
 
+    public List<ProjetDTO> findByEmploye(Long employeId) {
+        // Only projects this user created
+        return projetRepository.findByCreateurId(employeId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
     public ProjetDTO create(ProjetRequest request) {
         validateDates(request.getDateDebut(), request.getDateFin(), true);
 
@@ -64,6 +71,14 @@ public class ProjetService {
                     .orElseThrow(() -> new RuntimeException(
                             "Chef de projet non trouvé avec l'id: " + request.getChefDeProjetId()));
             projet.setChefDeProjet(chef);
+        }
+
+        // Createur (the employee who created this project)
+        if (request.getCreateurId() != null) {
+            Employe createur = employeRepository.findById(request.getCreateurId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Créateur non trouvé avec l'id: " + request.getCreateurId()));
+            projet.setCreateur(createur);
         }
 
         Projet savedProjet = projetRepository.save(projet);
@@ -173,6 +188,10 @@ public class ProjetService {
                 .dateDebut(projet.getDateDebut())
                 .dateFin(projet.getDateFin())
                 .chefDeProjet(projet.getChefDeProjet() != null ? employeService.toDTO(projet.getChefDeProjet()) : null)
+                .createurId(projet.getCreateur() != null ? projet.getCreateur().getId() : null)
+                .createurNom(projet.getCreateur() != null
+                        ? projet.getCreateur().getPrenom() + " " + projet.getCreateur().getNom()
+                        : null)
                 .equipeId(equipes != null && !equipes.isEmpty() ? equipes.get(0).getId() : null)
                 .equipeIds(equipeIds)
                 .equipeNoms(equipes != null
