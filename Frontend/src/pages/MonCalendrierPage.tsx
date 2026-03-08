@@ -193,7 +193,7 @@ const MonCalendrierPage: React.FC = () => {
     const approved = demandes.filter((d) => d.statut === StatutDemande.APPROUVEE);
     const congesDays = approved
       .filter((d) => d.type === TypeDemande.CONGE)
-      .reduce((acc, d) => acc + (d.joursOuvrables || d.nombreJours || 0), 0);
+      .reduce((acc, d) => acc + (d.nombreJours || 0), 0);
     const teletravailDays = approved
       .filter((d) => d.type === TypeDemande.TELETRAVAIL && d.dateDebut && d.dateFin && d.dateDebut.startsWith(String(year)))
       .reduce((acc, d) => acc + eachDayBetween(d.dateDebut!, d.dateFin!).length, 0);

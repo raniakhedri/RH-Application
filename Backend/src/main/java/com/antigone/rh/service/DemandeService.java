@@ -136,9 +136,18 @@ public class DemandeService {
             }
         }
 
+        // Check if this type congé is active in referentiels
+        final TypeConge finalTypeConge = typeConge;
+        referentielRepository.findByLibelleAndTypeReferentiel(typeConge.name(), TypeReferentiel.TYPE_CONGE)
+                .ifPresent(ref -> {
+                    if (!ref.getActif()) {
+                        throw new RuntimeException("Le type de congé « " + finalTypeConge.getLabel() + " » est actuellement désactivé");
+                    }
+                });
+
         // ── Validation du genre pour congé maternité et congé règles (réservés aux femmes) ──
         if ((typeConge == TypeConge.CONGE_MATERNITE || typeConge == TypeConge.CONGE_REGLES)
-                && employe.getGenre() != null && employe.getGenre() != com.antigone.rh.enums.Genre.FEMME) {
+                && employe.getGenre() != null && !"FEMME".equalsIgnoreCase(employe.getGenre())) {
             String label = typeConge == TypeConge.CONGE_MATERNITE ? "maternité" : "règles";
             throw new RuntimeException("Le congé " + label + " est réservé aux salariées de genre féminin.");
         }
@@ -198,12 +207,8 @@ public class DemandeService {
         }
 
         // Règle des 4× : la demande doit être faite 4 × nombre_de_jours à l'avance
-        // Exemptés : maladie, décès, exceptionnel (cas urgents)
-        boolean exemptDelai = typeConge == TypeConge.CONGE_MALADIE
-                || typeConge == TypeConge.CONGE_DECES_PROCHE
-                || typeConge == TypeConge.CONGE_DECES_FAMILLE
-                || typeConge == TypeConge.CONGE_EXCEPTIONNEL;
-        if (!exemptDelai) {
+        // S'applique uniquement au congé payé
+        if (typeConge == TypeConge.CONGE_PAYE) {
             int delaiMinJours = nombreJours * 4;
             LocalDate dateLimite = LocalDate.now().plusDays(delaiMinJours);
             if (request.getDateDebut().isBefore(dateLimite)) {
@@ -229,9 +234,9 @@ public class DemandeService {
         // calendar span)
         if (typeConge == TypeConge.CONGE_PAYE) {
             double solde = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
-            if (solde < joursOuvrables) {
+            if (solde < nombreJours) {
                 throw new RuntimeException("Solde congé insuffisant. Solde actuel: "
-                        + solde + " jours, Demandé: " + joursOuvrables + " jour(s) ouvrable(s)");
+                        + solde + " jours, Demandé: " + nombreJours + " jour(s) effectif(s)");
             }
         }
 
@@ -395,12 +400,12 @@ public class DemandeService {
             throw new RuntimeException("La période sélectionnée ne contient aucun jour ouvrable");
         }
 
-        // Check solde for paid leave
+        // Check solde for paid leave (use nombreJours = jours effectifs)
         if (typeConge == TypeConge.CONGE_PAYE) {
             double solde = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
-            if (solde < joursOuvrables) {
+            if (solde < nombreJours) {
                 throw new RuntimeException("Solde congé insuffisant. Solde actuel: "
-                        + solde + " jours, Demandé: " + joursOuvrables + " jour(s) ouvrable(s)");
+                        + solde + " jours, Demandé: " + nombreJours + " jour(s) effectif(s)");
             }
         }
 
@@ -460,11 +465,11 @@ public class DemandeService {
         demande.setStatut(StatutDemande.APPROUVEE);
         demandeRepository.save(demande);
 
-        // Deduct solde for paid leave (use joursOuvrables, not full calendar span)
+        // Deduct solde for paid leave (use nombreJours = jours effectifs)
         if (demande instanceof Conge conge && conge.getTypeConge() == TypeConge.CONGE_PAYE) {
             Employe employe = demande.getEmploye();
             double solde = employe.getSoldeConge() != null ? employe.getSoldeConge() : 0;
-            int toDeduct = conge.getJoursOuvrables() != null ? conge.getJoursOuvrables() : conge.getNombreJours();
+            int toDeduct = conge.getNombreJours() != null ? conge.getNombreJours() : 0;
             employe.setSoldeConge(solde - toDeduct);
             employeRepository.save(employe);
         }

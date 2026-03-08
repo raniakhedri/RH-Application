@@ -2,9 +2,11 @@ package com.antigone.rh.service;
 
 import com.antigone.rh.dto.*;
 import com.antigone.rh.entity.Referentiel;
+import com.antigone.rh.enums.TypeConge;
 import com.antigone.rh.enums.TypeReferentiel;
 import com.antigone.rh.exception.ResourceNotFoundException;
 import com.antigone.rh.repository.ReferentielRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,21 @@ import java.util.stream.Collectors;
 public class ReferentielService {
 
     private final ReferentielRepository referentielRepository;
+
+    @PostConstruct
+    public void seedTypeConge() {
+        for (TypeConge tc : TypeConge.values()) {
+            if (!referentielRepository.existsByLibelleAndTypeReferentiel(tc.name(), TypeReferentiel.TYPE_CONGE)) {
+                Referentiel ref = Referentiel.builder()
+                        .libelle(tc.name())
+                        .description(tc.getLabel())
+                        .actif(true)
+                        .typeReferentiel(TypeReferentiel.TYPE_CONGE)
+                        .build();
+                referentielRepository.save(ref);
+            }
+        }
+    }
 
     // =============================================
     // TYPE REFERENTIEL (ENUM) OPERATIONS
@@ -63,6 +80,10 @@ public class ReferentielService {
 
     public ReferentielDTO createReferentiel(ReferentielRequest request) {
         TypeReferentiel typeRef = TypeReferentiel.valueOf(request.getTypeReferentiel());
+
+        if (typeRef == TypeReferentiel.TYPE_CONGE) {
+            throw new RuntimeException("Les types de congé ne peuvent pas être ajoutés manuellement");
+        }
 
         if (referentielRepository.existsByLibelleAndTypeReferentiel(request.getLibelle(), typeRef)) {
             throw new RuntimeException("Un référentiel avec le libellé '" + request.getLibelle()
@@ -110,8 +131,10 @@ public class ReferentielService {
     }
 
     public void deleteReferentiel(Long id) {
-        if (!referentielRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Referentiel", id);
+        Referentiel ref = referentielRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Referentiel", id));
+        if (ref.getTypeReferentiel() == TypeReferentiel.TYPE_CONGE) {
+            throw new RuntimeException("Les types de congé ne peuvent pas être supprimés");
         }
         referentielRepository.deleteById(id);
     }
