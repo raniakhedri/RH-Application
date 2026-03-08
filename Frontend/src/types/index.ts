@@ -261,6 +261,8 @@ export interface Projet {
   dateDebut: string;
   dateFin: string;
   chefDeProjet?: Employe | null;
+  createurId?: number;
+  createurNom?: string;
   equipeId?: number | null;
   equipeIds?: number[];
   equipeNoms?: string[];

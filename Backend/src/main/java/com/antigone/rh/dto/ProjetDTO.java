@@ -20,6 +20,8 @@ public class ProjetDTO {
     private LocalDate dateDebut;
     private LocalDate dateFin;
     private EmployeDTO chefDeProjet;
+    private Long createurId;
+    private String createurNom; // prenom + nom of the creator
     private Long equipeId; // kept for backward compat (first equipe)
     private List<Long> equipeIds; // all equipe IDs
     private List<String> equipeNoms;
