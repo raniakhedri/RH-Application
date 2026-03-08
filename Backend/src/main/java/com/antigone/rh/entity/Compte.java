@@ -35,6 +35,10 @@ public class Compte {
 
     private LocalDateTime createdAt;
 
+    private String resetToken;
+
+    private LocalDateTime resetTokenExpiry;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employe_id", unique = true, nullable = false)
     @ToString.Exclude

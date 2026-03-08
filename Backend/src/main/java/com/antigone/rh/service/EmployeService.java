@@ -1,6 +1,7 @@
 package com.antigone.rh.service;
 
 import com.antigone.rh.dto.EmployeDTO;
+import com.antigone.rh.dto.EmployeStatsDTO;
 import com.antigone.rh.dto.SoldeCongeInfo;
 import com.antigone.rh.entity.Conge;
 import com.antigone.rh.entity.Employe;
@@ -13,10 +14,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.Period;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,7 +31,6 @@ public class EmployeService {
     private final EmployeRepository employeRepository;
     private final ReferentielRepository referentielRepository;
     private final CongeRepository congeRepository;
-    private final PointageRepository pointageRepository;
     private final NotificationRepository notificationRepository;
     private final ValidationRepository validationRepository;
     private final TacheRepository tacheRepository;
@@ -39,6 +42,7 @@ public class EmployeService {
     private final HistoriqueStatutRepository historiqueStatutRepository;
     private final AccessLogRepository accessLogRepository;
     private final PeriodeBloqueeRepository periodeBloqueeRepository;
+    private final NotificationService notificationService;
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -78,8 +82,31 @@ public class EmployeService {
                 .collect(Collectors.toList());
     }
 
+    private void normalizeEmptyStrings(EmployeDTO dto) {
+        if (dto.getCin() != null && dto.getCin().trim().isEmpty()) dto.setCin(null);
+        if (dto.getCnss() != null && dto.getCnss().trim().isEmpty()) dto.setCnss(null);
+        if (dto.getRibBancaire() != null && dto.getRibBancaire().trim().isEmpty()) dto.setRibBancaire(null);
+        if (dto.getGenre() != null && dto.getGenre().trim().isEmpty()) dto.setGenre(null);
+        if (dto.getPoste() != null && dto.getPoste().trim().isEmpty()) dto.setPoste(null);
+        if (dto.getTypeContrat() != null && dto.getTypeContrat().trim().isEmpty()) dto.setTypeContrat(null);
+        if (dto.getDepartement() != null && dto.getDepartement().trim().isEmpty()) dto.setDepartement(null);
+        if (dto.getTelephone() != null && dto.getTelephone().trim().isEmpty()) dto.setTelephone(null);
+        if (dto.getTelephonePro() != null && dto.getTelephonePro().trim().isEmpty()) dto.setTelephonePro(null);
+    }
+
     public EmployeDTO create(EmployeDTO dto) {
+        normalizeEmptyStrings(dto);
+
         validateFields(dto);
+
+        // Check for duplicates before saving
+        if (dto.getEmail() != null && employeRepository.existsByEmail(dto.getEmail())) {
+            throw new RuntimeException("Cette adresse email existe déjà");
+        }
+        if (dto.getCin() != null && employeRepository.existsByCin(dto.getCin())) {
+            throw new RuntimeException("Ce numéro CIN existe déjà");
+        }
+
         Employe employe = toEntity(dto);
         // Auto-generate matricule from département (3 first letters + 4 random digits)
         employe.setMatricule(generateMatricule(dto.getDepartement()));
@@ -95,6 +122,25 @@ public class EmployeService {
             SoldeCongeInfo info = getSoldeCongeInfo(saved.getId());
             saved.setSoldeConge(info.getSoldeDisponible());
             employeRepository.save(saved);
+        }
+
+        // --- Notifications ---
+        // Notify all ADMIN/RH users about new employee
+        String nomComplet = saved.getNom() + " " + saved.getPrenom();
+        notifyAdmins("Nouvel employé",
+                "Un nouvel employé a été ajouté : " + nomComplet
+                + " (" + saved.getMatricule() + ")"
+                + (saved.getDepartement() != null ? " - Département : " + saved.getDepartement() : "")
+                + (saved.getPoste() != null ? " - Poste : " + saved.getPoste() : ""));
+
+        // Notify the manager if assigned
+        if (saved.getManager() != null) {
+            notificationService.create(saved.getManager(),
+                    "Nouveau subordonné",
+                    "Un nouvel employé vous a été affecté : " + nomComplet
+                    + " (" + saved.getMatricule() + ")"
+                    + (saved.getPoste() != null ? " - Poste : " + saved.getPoste() : ""),
+                    null);
         }
 
         return toDTO(saved);
@@ -142,6 +188,7 @@ public class EmployeService {
     }
 
     public EmployeDTO update(Long id, EmployeDTO dto) {
+        normalizeEmptyStrings(dto);
         validateFields(dto);
         Employe employe = employeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé avec l'id: " + id));
@@ -158,10 +205,11 @@ public class EmployeService {
         employe.setSoldeConge(dto.getSoldeConge());
         employe.setPoste(dto.getPoste());
         employe.setTypeContrat(dto.getTypeContrat());
-        employe.setGenre(dto.getGenre() != null ? com.antigone.rh.enums.Genre.valueOf(dto.getGenre()) : null);
+        employe.setGenre(dto.getGenre());
         employe.setDepartement(dto.getDepartement());
         employe.setRibBancaire(dto.getRibBancaire());
         employe.setImageUrl(dto.getImageUrl());
+        Employe ancienManager = employe.getManager();
         if (dto.getManagerId() != null) {
             Employe manager = employeRepository.findById(dto.getManagerId())
                     .orElseThrow(() -> new RuntimeException("Manager non trouvé"));
@@ -178,12 +226,59 @@ public class EmployeService {
             employeRepository.save(saved);
         }
 
+        // --- Notifications ---
+        String nomComplet = saved.getNom() + " " + saved.getPrenom();
+
+        // Notify the employee about profile update
+        notificationService.create(saved,
+                "Profil mis à jour",
+                "Votre profil a été modifié. Veuillez vérifier les informations mises à jour.",
+                null);
+
+        // Notify admins about the update
+        notifyAdmins("Employé modifié",
+                "Le profil de l'employé " + nomComplet + " (" + saved.getMatricule() + ") a été modifié.");
+
+        // Notify new manager if manager changed
+        Employe nouveauManager = saved.getManager();
+        if (nouveauManager != null && (ancienManager == null || !ancienManager.getId().equals(nouveauManager.getId()))) {
+            notificationService.create(nouveauManager,
+                    "Nouveau subordonné",
+                    "L'employé " + nomComplet + " (" + saved.getMatricule() + ") vous a été affecté.",
+                    null);
+        }
+        // Notify old manager if they lost a subordinate
+        if (ancienManager != null && (nouveauManager == null || !ancienManager.getId().equals(nouveauManager.getId()))) {
+            notificationService.create(ancienManager,
+                    "Subordonné réaffecté",
+                    "L'employé " + nomComplet + " (" + saved.getMatricule() + ") ne fait plus partie de votre équipe.",
+                    null);
+        }
+
         return toDTO(saved);
     }
 
     public void delete(Long id) {
         Employe employe = employeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé avec l'id: " + id));
+
+        String nomComplet = employe.getNom() + " " + employe.getPrenom();
+        String matricule = employe.getMatricule();
+        Employe manager = employe.getManager();
+
+        // Notify admins about deletion
+        notifyAdmins("Employé supprimé",
+                "L'employé " + nomComplet + " (" + matricule + ")"
+                + (employe.getDepartement() != null ? " - " + employe.getDepartement() : "")
+                + " a été supprimé du système.");
+
+        // Notify the manager about subordinate removal
+        if (manager != null) {
+            notificationService.create(manager,
+                    "Subordonné supprimé",
+                    "L'employé " + nomComplet + " (" + matricule + ") a été supprimé du système.",
+                    null);
+        }
 
         // Détacher l'employé des équipes
         for (var equipe : employe.getEquipes()) {
@@ -200,9 +295,6 @@ public class EmployeService {
         projetRepository.findAll().stream()
                 .filter(p -> employe.equals(p.getChefDeProjet()))
                 .forEach(p -> p.setChefDeProjet(null));
-
-        // Supprimer les pointages
-        pointageRepository.deleteAll(pointageRepository.findByEmployeId(employe.getId()));
 
         // Détacher les tâches assignées
         tacheRepository.findAll().stream()
@@ -242,15 +334,51 @@ public class EmployeService {
     public void updateSoldeConge(Long id, Double solde) {
         Employe employe = employeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé"));
+        Double ancienSolde = employe.getSoldeConge();
         employe.setSoldeConge(solde);
         employeRepository.save(employe);
+
+        // Notify employee about leave balance change
+        notificationService.create(employe,
+                "Solde congé modifié",
+                "Votre solde de congé a été mis à jour."
+                + (ancienSolde != null ? " Ancien solde : " + ancienSolde + " jours." : "")
+                + " Nouveau solde : " + solde + " jours.",
+                null);
     }
 
     public EmployeDTO updateImage(Long id, String imageUrl) {
         Employe employe = employeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé"));
         employe.setImageUrl(imageUrl);
-        return toDTO(employeRepository.save(employe));
+        Employe saved = employeRepository.save(employe);
+
+        // Notify employee about photo change
+        notificationService.create(saved,
+                "Photo de profil modifiée",
+                "Votre photo de profil a été mise à jour.",
+                null);
+
+        return toDTO(saved);
+    }
+
+    /**
+     * Notify all ADMIN and RH users.
+     */
+    private void notifyAdmins(String titre, String message) {
+        List<Employe> admins = employeRepository.findByRoleName("ADMIN");
+        List<Employe> rhs = employeRepository.findByRoleName("RH");
+        Set<Long> notifiedIds = new HashSet<>();
+        for (Employe admin : admins) {
+            if (notifiedIds.add(admin.getId())) {
+                notificationService.create(admin, titre, message, null);
+            }
+        }
+        for (Employe rh : rhs) {
+            if (notifiedIds.add(rh.getId())) {
+                notificationService.create(rh, titre, message, null);
+            }
+        }
     }
 
     // =========================================
@@ -413,6 +541,178 @@ public class EmployeService {
                 .orElse(defaultValue);
     }
 
+    // =========================================
+    // MÉTIERS AVANCÉS
+    // =========================================
+
+    public EmployeStatsDTO getStatistics() {
+        List<Employe> all = employeRepository.findAll();
+        LocalDate now = LocalDate.now();
+
+        long total = all.size();
+        long nouveauxCeMois = all.stream()
+                .filter(e -> e.getDateEmbauche() != null
+                        && e.getDateEmbauche().getMonth() == now.getMonth()
+                        && e.getDateEmbauche().getYear() == now.getYear())
+                .count();
+
+        double masseSalariale = all.stream()
+                .filter(e -> e.getSalaire() != null)
+                .mapToDouble(Employe::getSalaire)
+                .sum();
+
+        double moyenneSalaire = all.stream()
+                .filter(e -> e.getSalaire() != null)
+                .mapToDouble(Employe::getSalaire)
+                .average()
+                .orElse(0);
+
+        double moyenneAnciennete = all.stream()
+                .filter(e -> e.getDateEmbauche() != null)
+                .mapToLong(e -> ChronoUnit.MONTHS.between(e.getDateEmbauche(), now))
+                .average()
+                .orElse(0) / 12.0;
+
+        Map<String, Long> parDepartement = all.stream()
+                .filter(e -> e.getDepartement() != null && !e.getDepartement().isEmpty())
+                .collect(Collectors.groupingBy(Employe::getDepartement, Collectors.counting()));
+
+        Map<String, Long> parTypeContrat = all.stream()
+                .filter(e -> e.getTypeContrat() != null && !e.getTypeContrat().isEmpty())
+                .collect(Collectors.groupingBy(Employe::getTypeContrat, Collectors.counting()));
+
+        Map<String, Long> parGenre = all.stream()
+                .filter(e -> e.getGenre() != null && !e.getGenre().isEmpty())
+                .collect(Collectors.groupingBy(Employe::getGenre, Collectors.counting()));
+
+        Map<String, Long> parPoste = all.stream()
+                .filter(e -> e.getPoste() != null && !e.getPoste().isEmpty())
+                .collect(Collectors.groupingBy(Employe::getPoste, Collectors.counting()));
+
+        // Embauches par mois (12 derniers mois)
+        Map<String, Long> embaucheParMois = new LinkedHashMap<>();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM");
+        for (int i = 11; i >= 0; i--) {
+            LocalDate month = now.minusMonths(i).withDayOfMonth(1);
+            String key = month.format(fmt);
+            long count = all.stream()
+                    .filter(e -> e.getDateEmbauche() != null
+                            && e.getDateEmbauche().getMonth() == month.getMonth()
+                            && e.getDateEmbauche().getYear() == month.getYear())
+                    .count();
+            embaucheParMois.put(key, count);
+        }
+
+        return EmployeStatsDTO.builder()
+                .totalEmployes(total)
+                .employesActifs(total)
+                .nouveauxCeMois(nouveauxCeMois)
+                .masseSalariale(masseSalariale)
+                .moyenneSalaire(Math.round(moyenneSalaire * 100.0) / 100.0)
+                .moyenneAnciennete(Math.round(moyenneAnciennete * 10.0) / 10.0)
+                .parDepartement(parDepartement)
+                .parTypeContrat(parTypeContrat)
+                .parGenre(parGenre)
+                .parPoste(parPoste)
+                .embaucheParMois(embaucheParMois)
+                .build();
+    }
+
+    public List<EmployeDTO> advancedSearch(String departement, String typeContrat, String genre,
+                                            String poste, String dateEmbaucheFrom, String dateEmbaucheTo,
+                                            Double salaireMin, Double salaireMax, Long managerId, String q) {
+        List<Employe> all = employeRepository.findAll();
+        return all.stream()
+                .filter(e -> departement == null || departement.isEmpty() || departement.equals(e.getDepartement()))
+                .filter(e -> typeContrat == null || typeContrat.isEmpty() || typeContrat.equals(e.getTypeContrat()))
+                .filter(e -> genre == null || genre.isEmpty() || genre.equals(e.getGenre()))
+                .filter(e -> poste == null || poste.isEmpty() || poste.equals(e.getPoste()))
+                .filter(e -> {
+                    if (dateEmbaucheFrom == null || dateEmbaucheFrom.isEmpty()) return true;
+                    if (e.getDateEmbauche() == null) return false;
+                    return !e.getDateEmbauche().isBefore(LocalDate.parse(dateEmbaucheFrom));
+                })
+                .filter(e -> {
+                    if (dateEmbaucheTo == null || dateEmbaucheTo.isEmpty()) return true;
+                    if (e.getDateEmbauche() == null) return false;
+                    return !e.getDateEmbauche().isAfter(LocalDate.parse(dateEmbaucheTo));
+                })
+                .filter(e -> salaireMin == null || (e.getSalaire() != null && e.getSalaire() >= salaireMin))
+                .filter(e -> salaireMax == null || (e.getSalaire() != null && e.getSalaire() <= salaireMax))
+                .filter(e -> managerId == null || (e.getManager() != null && e.getManager().getId().equals(managerId)))
+                .filter(e -> {
+                    if (q == null || q.isEmpty()) return true;
+                    String lower = q.toLowerCase();
+                    return (e.getNom() != null && e.getNom().toLowerCase().contains(lower))
+                            || (e.getPrenom() != null && e.getPrenom().toLowerCase().contains(lower))
+                            || (e.getMatricule() != null && e.getMatricule().toLowerCase().contains(lower))
+                            || (e.getEmail() != null && e.getEmail().toLowerCase().contains(lower));
+                })
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public byte[] exportToCsv() {
+        List<Employe> all = employeRepository.findAll();
+        StringBuilder sb = new StringBuilder();
+        // BOM for Excel UTF-8
+        sb.append('\uFEFF');
+        sb.append("Matricule;Nom;Prénom;Email;Genre;CIN;CNSS;Téléphone;Téléphone Pro;Poste;Département;Type Contrat;Date Embauche;Salaire;Solde Congé;Manager;RIB\n");
+        for (Employe e : all) {
+            sb.append(csvField(e.getMatricule())).append(';');
+            sb.append(csvField(e.getNom())).append(';');
+            sb.append(csvField(e.getPrenom())).append(';');
+            sb.append(csvField(e.getEmail())).append(';');
+            sb.append(csvField(e.getGenre())).append(';');
+            sb.append(csvField(e.getCin())).append(';');
+            sb.append(csvField(e.getCnss())).append(';');
+            sb.append(csvField(e.getTelephone())).append(';');
+            sb.append(csvField(e.getTelephonePro())).append(';');
+            sb.append(csvField(e.getPoste())).append(';');
+            sb.append(csvField(e.getDepartement())).append(';');
+            sb.append(csvField(e.getTypeContrat())).append(';');
+            sb.append(e.getDateEmbauche() != null ? e.getDateEmbauche().toString() : "").append(';');
+            sb.append(e.getSalaire() != null ? e.getSalaire().toString() : "").append(';');
+            sb.append(e.getSoldeConge() != null ? e.getSoldeConge().toString() : "").append(';');
+            sb.append(e.getManager() != null ? e.getManager().getNom() + " " + e.getManager().getPrenom() : "").append(';');
+            sb.append(csvField(e.getRibBancaire()));
+            sb.append('\n');
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String csvField(String value) {
+        if (value == null) return "";
+        if (value.contains(";") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
+    public List<Map<String, Object>> getOrganigramme() {
+        // Build tree from root employees (no manager)
+        List<Employe> roots = employeRepository.findByManagerIsNull();
+        return roots.stream()
+                .map(this::buildOrgNode)
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, Object> buildOrgNode(Employe employe) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", employe.getId());
+        node.put("nom", employe.getNom() + " " + employe.getPrenom());
+        node.put("matricule", employe.getMatricule());
+        node.put("poste", employe.getPoste());
+        node.put("departement", employe.getDepartement());
+        node.put("imageUrl", employe.getImageUrl());
+        node.put("email", employe.getEmail());
+        List<Map<String, Object>> children = employe.getSubordonnes().stream()
+                .map(this::buildOrgNode)
+                .collect(Collectors.toList());
+        node.put("children", children);
+        return node;
+    }
+
     public EmployeDTO toDTO(Employe employe) {
         return EmployeDTO.builder()
                 .id(employe.getId())
@@ -429,7 +729,7 @@ public class EmployeService {
                 .soldeConge(employe.getSoldeConge())
                 .poste(employe.getPoste())
                 .typeContrat(employe.getTypeContrat())
-                .genre(employe.getGenre() != null ? employe.getGenre().name() : null)
+                .genre(employe.getGenre())
                 .departement(employe.getDepartement())
                 .ribBancaire(employe.getRibBancaire())
                 .managerId(employe.getManager() != null ? employe.getManager().getId() : null)
@@ -453,7 +753,7 @@ public class EmployeService {
                 .soldeConge(dto.getSoldeConge() != null ? dto.getSoldeConge() : 0.0)
                 .poste(dto.getPoste())
                 .typeContrat(dto.getTypeContrat())
-                .genre(dto.getGenre() != null ? com.antigone.rh.enums.Genre.valueOf(dto.getGenre()) : null)
+                .genre(dto.getGenre())
                 .departement(dto.getDepartement())
                 .ribBancaire(dto.getRibBancaire())
                 .imageUrl(dto.getImageUrl())

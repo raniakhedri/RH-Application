@@ -5,7 +5,6 @@ import {
   HiOutlineUsers,
   HiOutlineDocumentText,
   HiOutlineClipboardCheck,
-  HiOutlineClock,
   HiOutlineBriefcase,
   HiOutlineUserGroup,
   HiOutlineChevronDown,
@@ -36,7 +35,17 @@ const menuGroups = [
     title: 'MENU',
     items: [
       { key: 'dashboard', label: 'Tableau de bord', path: '/dashboard', icon: <HiOutlineHome size={20} />, permission: 'VIEW_DASHBOARD' },
-      { key: 'employes', label: 'Employés', path: '/employes', icon: <HiOutlineUsers size={20} />, permission: 'VIEW_EMPLOYES' },
+      {
+        key: 'employes',
+        label: 'Employés',
+        path: '/employes',
+        icon: <HiOutlineUsers size={20} />,
+        permission: 'VIEW_EMPLOYES',
+        children: [
+          { label: 'Liste des employés', path: '/employes' },
+          { label: 'Organigramme', path: '/organigramme' },
+        ],
+      },
 
       {
         key: 'mes-demandes',
@@ -71,7 +80,6 @@ const menuGroups = [
 
         ],
       },
-      { key: 'pointage', label: 'Pointage', path: '/pointage', icon: <HiOutlineClock size={20} />, permission: 'VIEW_POINTAGE' },
     ] as NavItemDef[],
   },
   {
@@ -97,7 +105,7 @@ const menuGroups = [
       { key: 'comptes', label: 'Comptes', path: '/comptes', icon: <HiOutlineKey size={20} />, permission: 'VIEW_COMPTES' },
       { key: 'roles', label: 'Rôles', path: '/roles', icon: <HiOutlineShieldCheck size={20} />, permission: 'VIEW_ROLES' },
       { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} />, permission: 'VIEW_REFERENTIELS' },
-      { key: 'calendrier', label: 'Calendrier', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
+      { key: 'calendrier', label: 'Calendrier Entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
     ] as NavItemDef[],
   },
 ];
