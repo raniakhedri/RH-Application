@@ -207,12 +207,8 @@ public class DemandeService {
         }
 
         // Règle des 4× : la demande doit être faite 4 × nombre_de_jours à l'avance
-        // Exemptés : maladie, décès, exceptionnel (cas urgents)
-        boolean exemptDelai = typeConge == TypeConge.CONGE_MALADIE
-                || typeConge == TypeConge.CONGE_DECES_PROCHE
-                || typeConge == TypeConge.CONGE_DECES_FAMILLE
-                || typeConge == TypeConge.CONGE_EXCEPTIONNEL;
-        if (!exemptDelai) {
+        // S'applique uniquement au congé payé
+        if (typeConge == TypeConge.CONGE_PAYE) {
             int delaiMinJours = nombreJours * 4;
             LocalDate dateLimite = LocalDate.now().plusDays(delaiMinJours);
             if (request.getDateDebut().isBefore(dateLimite)) {
