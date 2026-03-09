@@ -34,3 +34,5 @@ Thumbs.db
 *.log
 Frontend/package-lock.json
 Backend/mvnw.cmd
+AgentDesktop/node_modules/
+Backend/target/
