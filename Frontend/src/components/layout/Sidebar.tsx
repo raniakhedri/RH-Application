@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { API_BASE } from '../../api/axios';
 import {
   HiOutlineHome,
   HiOutlineUsers,
@@ -241,7 +242,7 @@ const Sidebar: React.FC = () => {
         {!agentActive && (
           <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-3">
             <a
-              href="/api/agent/download"
+              href={`${API_BASE}/api/agent/download`}
               download
               className="flex items-center gap-3 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600"
             >
