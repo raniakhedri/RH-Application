@@ -10,7 +10,6 @@ import NewDemandePage from './pages/NewDemandePage';
 import ValidationsPage from './pages/ValidationsPage';
 import NewDemandePapierPage from './pages/NewDemandePapierPage';
 import DemandesPapierPage from './pages/DemandesPapierPage';
-import PointagePage from './pages/PointagePage';
 import ProjetsPage from './pages/ProjetsPage';
 import TachesPage from './pages/TachesPage';
 import EquipesPage from './pages/EquipesPage';
