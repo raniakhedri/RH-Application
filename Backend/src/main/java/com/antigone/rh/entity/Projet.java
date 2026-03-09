@@ -38,6 +38,12 @@ public class Projet {
     @EqualsAndHashCode.Exclude
     private Employe chefDeProjet;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "createur_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Employe createur;
+
     @OneToMany(mappedBy = "projet", cascade = { CascadeType.PERSIST, CascadeType.MERGE }, fetch = FetchType.LAZY)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

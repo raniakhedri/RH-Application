@@ -103,12 +103,14 @@ export interface Employe {
   soldeCongeInitial: number | null;
   poste: string;
   typeContrat: string;
+  dateFinContrat: string | null;
   genre: string;
   departement: string;
   ribBancaire: string;
   managerId: number | null;
   managerNom: string | null;
   imageUrl: string | null;
+  lienDrive: string | null;
 }
 
 export interface PermissionDTO {
@@ -259,6 +261,8 @@ export interface Projet {
   dateDebut: string;
   dateFin: string;
   chefDeProjet?: Employe | null;
+  createurId?: number;
+  createurNom?: string;
   equipeId?: number | null;
   equipeIds?: number[];
   equipeNoms?: string[];
@@ -334,6 +338,7 @@ export enum TypeReferentiel {
   TYPE_CONGE = 'TYPE_CONGE',
   TYPE_DEMANDE = 'TYPE_DEMANDE',
   GENRE = 'GENRE',
+  DUREE_CDD = 'DUREE_CDD',
   PARAMETRE_SYSTEME = 'PARAMETRE_SYSTEME',
 }
 
@@ -346,6 +351,7 @@ export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
   [TypeReferentiel.TYPE_CONGE]: 'Type congé',
   [TypeReferentiel.TYPE_DEMANDE]: 'Type demande',
   [TypeReferentiel.GENRE]: 'Genre',
+  [TypeReferentiel.DUREE_CDD]: 'Durée CDD',
   [TypeReferentiel.PARAMETRE_SYSTEME]: 'Paramètre système',
 };
 

@@ -12,5 +12,6 @@ public class ProjetRequest {
     private LocalDate dateFin;
     private String statut; // Use String to avoid classloader conflicts with enum
     private Long chefDeProjetId;
+    private Long createurId; // ID of the employee who is creating the project
     private List<Long> equipeIds; // Multiple teams supported
 }

@@ -11,6 +11,7 @@ export const employeService = {
   update: (id: number, data: Partial<Employe>) => api.put<ApiResponse<Employe>>(`/employes/${id}`, data),
   delete: (id: number) => api.delete<ApiResponse<void>>(`/employes/${id}`),
   updateSoldeConge: (id: number, solde: number) => api.patch<ApiResponse<void>>(`/employes/${id}/solde-conge?solde=${solde}`),
+  updateLienDrive: (id: number, lienDrive: string | null) => api.patch<ApiResponse<Employe>>(`/employes/${id}/lien-drive`, { lienDrive }),
   uploadImage: (id: number, file: File) => {
     const formData = new FormData();
     formData.append('file', file);

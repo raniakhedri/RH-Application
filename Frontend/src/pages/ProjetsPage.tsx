@@ -4,6 +4,7 @@ import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineX, HiOutlineCl
 import { projetService } from '../api/projetService';
 import { equipeService } from '../api/equipeService';
 import { employeService } from '../api/employeService';
+import { useAuth } from '../context/AuthContext';
 import { Projet, Equipe, StatutProjet, Employe } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -19,6 +20,7 @@ const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success' | 'danger
 
 const ProjetsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [projets, setProjets] = useState<Projet[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,8 +45,9 @@ const ProjetsPage: React.FC = () => {
 
   const loadData = async () => {
     try {
+      const userId = user?.employeId;
       const [pRes, eqRes, empRes] = await Promise.all([
-        projetService.getAll(),
+        userId ? projetService.getByEmploye(userId) : projetService.getAll(),
         equipeService.getAll(),
         employeService.getAll(),
       ]);
@@ -79,12 +82,13 @@ const ProjetsPage: React.FC = () => {
       const payload = {
         ...formData,
         chefDeProjetId: formData.chefDeProjetId || null,
+        createurId: editingProjet ? undefined : user?.employeId,
         equipeIds: formData.equipeIds.length > 0 ? formData.equipeIds : [],
       };
       if (editingProjet) {
         await projetService.update(editingProjet.id, payload);
       } else {
-        await projetService.create(payload);
+        await projetService.create(payload as any);
       }
       setShowModal(false);
       setEditingProjet(null);
@@ -257,9 +261,9 @@ const ProjetsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Projets</h1>
+          <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Mes Projets</h1>
           <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
-            Gérer les projets de l'agence
+            Vos projets en tant que chef ou membre d'équipe
           </p>
         </div>
         <Button onClick={() => { resetForm(); setEditingProjet(null); setShowModal(true); }}>

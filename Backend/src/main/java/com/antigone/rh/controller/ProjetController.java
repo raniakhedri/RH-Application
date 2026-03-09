@@ -23,6 +23,11 @@ public class ProjetController {
         return ResponseEntity.ok(ApiResponse.ok(projetService.findAll()));
     }
 
+    @GetMapping("/by-employe/{employeId}")
+    public ResponseEntity<ApiResponse<List<ProjetDTO>>> getByEmploye(@PathVariable Long employeId) {
+        return ResponseEntity.ok(ApiResponse.ok(projetService.findByEmploye(employeId)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProjetDTO>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(projetService.findById(id)));

@@ -95,10 +95,10 @@ const menuGroups = [
         path: '/projets',
         icon: <HiOutlineBriefcase size={20} />,
         permission: 'VIEW_PROJETS',
-       /* children: [
-          { label: 'Tous les projets', path: '/projets' },
-         { label: 'Tâches', path: '/taches' },
-        ],*/
+        /* children: [
+           { label: 'Tous les projets', path: '/projets' },
+          { label: 'Tâches', path: '/taches' },
+         ],*/
       },
       { key: 'equipes', label: 'Équipes', path: '/equipes', icon: <HiOutlineUserGroup size={20} />, permission: 'VIEW_EQUIPES' },
     ] as NavItemDef[],
@@ -110,6 +110,7 @@ const menuGroups = [
       { key: 'roles', label: 'Rôles', path: '/roles', icon: <HiOutlineShieldCheck size={20} />, permission: 'VIEW_ROLES' },
       { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} />, permission: 'VIEW_REFERENTIELS' },
       { key: 'calendrier', label: 'Calendrier Entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
+      { key: 'tous-projets-admin', label: 'Tous les projets', path: '/admin/projets', icon: <HiOutlineBriefcase size={20} />, permission: 'VIEW_PROJETS' },
     ] as NavItemDef[],
   },
   {
@@ -267,9 +268,9 @@ const SidebarItem: React.FC<{
       <li>
         <button
           onClick={() => setOpenSubmenu(item.key)}
-          className={`menu-item group ${active ? 'menu-item-active' : 'menu-item-inactive'}`}
+          className="menu-item group menu-item-inactive"
         >
-          <span className={active ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}>
+          <span className="menu-item-icon-inactive">
             {item.icon}
           </span>
           {showText && (
