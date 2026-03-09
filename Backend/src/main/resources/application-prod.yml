@@ -3,6 +3,11 @@ server:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  mail:
+    from: ${MAIL_USERNAME}
+    enabled: true
+  upload:
+    dir: uploads/justificatifs
 
 spring:
   datasource:
@@ -46,10 +51,3 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
-
-app:
-  mail:
-    from: ${MAIL_USERNAME}
-    enabled: true
-  upload:
-    dir: uploads/justificatifs

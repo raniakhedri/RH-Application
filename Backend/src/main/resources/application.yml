@@ -3,6 +3,11 @@ server:
 
 app:
   frontend-url: http://localhost:3000,http://localhost:5173
+  mail:
+    from: yosr.khriji27@gmail.com
+    enabled: true
+  upload:
+    dir: uploads/justificatifs
 
 spring:
   datasource:
@@ -47,10 +52,3 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
-
-app:
-  mail:
-    from: yosr.khriji27@gmail.com
-    enabled: true
-  upload:
-    dir: uploads/justificatifs
