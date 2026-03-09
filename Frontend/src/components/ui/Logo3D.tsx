@@ -13,18 +13,18 @@ function Model() {
     }
   });
 
-  return <primitive ref={ref} object={scene} scale={2.2} position={[0, -0.5, 0]} />;
+  return <primitive ref={ref} object={scene} scale={3.5} position={[0, -0.3, 0]} />;
 }
 
 interface Logo3DProps {
   size?: number;
 }
 
-const Logo3D: React.FC<Logo3DProps> = ({ size = 40 }) => {
+const Logo3D: React.FC<Logo3DProps> = ({ size = 44 }) => {
   return (
     <div style={{ width: size, height: size }} className="shrink-0 rounded-lg overflow-hidden">
       <Canvas
-        camera={{ position: [0, 0, 3], fov: 45 }}
+        camera={{ position: [0, 0, 2], fov: 50 }}
         gl={{ alpha: true, antialias: true }}
         style={{ background: 'transparent' }}
       >
