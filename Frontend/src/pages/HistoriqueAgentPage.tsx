@@ -3,8 +3,7 @@ import { agentHistoriqueService } from '../api/agentHistoriqueService';
 import { employeService } from '../api/employeService';
 import { Employe, HistoriqueEmploye, JourDetail } from '../types';
 import Badge from '../components/ui/Badge';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+import { API_BASE } from '../api/axios';
 
 const formatTime = (time: string | null | undefined): string => {
   if (!time) return '--:--';

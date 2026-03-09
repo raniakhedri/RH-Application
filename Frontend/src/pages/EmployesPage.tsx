@@ -11,6 +11,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
 import Badge from '../components/ui/Badge';
+import { API_BASE } from '../api/axios';
 
 const EmployesPage: React.FC = () => {
   const [employes, setEmployes] = useState<Employe[]>([]);
@@ -418,7 +419,7 @@ const EmployesPage: React.FC = () => {
       render: (item: Employe) => (
         <div className="flex items-center gap-3">
           {item.imageUrl ? (
-            <img src={`http://localhost:8080${item.imageUrl}`} alt="" className="w-8 h-8 rounded-full object-cover" />
+            <img src={`${API_BASE}${item.imageUrl}`} alt="" className="w-8 h-8 rounded-full object-cover" />
           ) : (
             <div className="w-8 h-8 rounded-full bg-secondary-50 text-secondary-500 dark:bg-secondary-500/[0.12] dark:text-secondary-400 flex items-center justify-center text-xs font-semibold">
               {item.prenom[0]}{item.nom[0]}
@@ -620,7 +621,7 @@ const EmployesPage: React.FC = () => {
           >
             {imagePreview || editingEmploye?.imageUrl ? (
               <img
-                src={imagePreview || `http://localhost:8080${editingEmploye?.imageUrl}`}
+                src={imagePreview || `${API_BASE}${editingEmploye?.imageUrl}`}
                 alt="Photo"
                 className="w-full h-full object-cover"
               />
@@ -873,7 +874,7 @@ const EmployesPage: React.FC = () => {
             {/* Header with photo */}
             <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
               {viewingEmploye.imageUrl ? (
-                <img src={`http://localhost:8080${viewingEmploye.imageUrl}`} alt="" className="w-20 h-20 rounded-2xl object-cover" />
+                <img src={`${API_BASE}${viewingEmploye.imageUrl}`} alt="" className="w-20 h-20 rounded-2xl object-cover" />
               ) : (
                 <div className="w-20 h-20 rounded-2xl bg-secondary-50 text-secondary-500 dark:bg-secondary-500/[0.12] dark:text-secondary-400 flex items-center justify-center text-2xl font-semibold">
                   {viewingEmploye.prenom[0]}{viewingEmploye.nom[0]}
@@ -1066,7 +1067,7 @@ const EmployesPage: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {doc.fichierUrl && (
-                            <a href={`http://localhost:8080${doc.fichierUrl}`} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-green-50 dark:hover:bg-green-500/10 text-green-500" title="Télécharger">
+                            <a href={`${API_BASE}${doc.fichierUrl}`} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-green-50 dark:hover:bg-green-500/10 text-green-500" title="Télécharger">
                               <HiOutlineDownload size={14} />
                             </a>
                           )}

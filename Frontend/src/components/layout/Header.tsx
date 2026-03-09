@@ -6,6 +6,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useSidebar } from '../../hooks/useSidebar';
 import { notificationService } from '../../api/notificationService';
 import { NotificationResponse } from '../../types';
+import { API_BASE } from '../../api/axios';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -264,7 +265,7 @@ const Header: React.FC = () => {
               className="flex items-center gap-2 rounded-full pl-2 pr-1 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               {user?.imageUrl ? (
-                <img src={`http://localhost:8080${user.imageUrl}`} alt="" className="h-9 w-9 rounded-full object-cover" />
+                <img src={`${API_BASE}${user.imageUrl}`} alt="" className="h-9 w-9 rounded-full object-cover" />
               ) : (
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary-500 text-white text-sm font-semibold">
                   {user?.prenom?.[0]}{user?.nom?.[0]}

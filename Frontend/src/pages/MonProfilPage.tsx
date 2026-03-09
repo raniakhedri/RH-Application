@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { employeService } from '../api/employeService';
 import { Employe } from '../types';
 import Badge from '../components/ui/Badge';
+import { API_BASE } from '../api/axios';
 import {
   HiOutlineUser,
   HiOutlineMail,
@@ -74,7 +75,7 @@ const MonProfilPage: React.FC = () => {
 
         <div className="relative flex items-center gap-5">
           {employe.imageUrl ? (
-            <img src={`http://localhost:8080${employe.imageUrl}`} alt="" className="w-20 h-20 rounded-2xl object-cover shrink-0" />
+            <img src={`${API_BASE}${employe.imageUrl}`} alt="" className="w-20 h-20 rounded-2xl object-cover shrink-0" />
           ) : (
             <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm text-3xl font-bold shrink-0">
               {employe.prenom?.[0]}{employe.nom?.[0]}

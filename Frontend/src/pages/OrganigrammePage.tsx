@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HiOutlineChevronDown, HiOutlineChevronRight, HiOutlineMail, HiOutlineX } from 'react-icons/hi';
 import { employeService } from '../api/employeService';
 import { OrgNode } from '../types';
+import { API_BASE } from '../api/axios';
 
 const collectAllEmails = (nodes: OrgNode[]): { id: number; nom: string; email: string }[] => {
   const result: { id: number; nom: string; email: string }[] = [];
@@ -167,7 +168,7 @@ const OrgNodeCard: React.FC<{
           </div>
 
           {node.imageUrl ? (
-            <img src={`http://localhost:8080${node.imageUrl}`} alt="" className="w-10 h-10 rounded-xl object-cover" />
+            <img src={`${API_BASE}${node.imageUrl}`} alt="" className="w-10 h-10 rounded-xl object-cover" />
           ) : (
             <div className="w-10 h-10 rounded-xl bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400 flex items-center justify-center text-sm font-bold">
               {node.nom.split(' ').map(n => n[0]).join('').slice(0, 2)}
