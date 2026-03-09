@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/antigone_rh
     username: postgres
-    password: Karim123
+    password: admin
     driver-class-name: org.postgresql.Driver
 
   jpa:
