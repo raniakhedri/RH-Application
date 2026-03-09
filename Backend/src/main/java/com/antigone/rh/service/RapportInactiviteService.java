@@ -43,11 +43,14 @@ public class RapportInactiviteService {
      */
     public List<RapportInactiviteDTO> genererSemaineCourante() {
         LocalDate today = LocalDate.now();
-        // Semaine précédente : du lundi au vendredi
-        LocalDate lundiDernier = today.with(TemporalAdjusters.previous(DayOfWeek.MONDAY));
-        LocalDate vendrediDernier = lundiDernier.plusDays(4);
+        // Semaine courante : du lundi au vendredi (ou aujourd'hui si on est en milieu
+        // de semaine)
+        LocalDate lundiCourant = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate vendrediCourant = lundiCourant.plusDays(4);
+        // La fin effective est le minimum entre vendredi et aujourd'hui
+        LocalDate finEffective = today.isBefore(vendrediCourant) ? today : vendrediCourant;
 
-        return genererRapports(lundiDernier, vendrediDernier);
+        return genererRapports(lundiCourant, finEffective);
     }
 
     /**
@@ -160,6 +163,39 @@ public class RapportInactiviteService {
     // ========================================
 
     private RapportInactiviteDTO toDTO(RapportInactivite r) {
+        int totalInactiviteMinutes = r.getTotalInactiviteMinutes();
+        int toleranceMinutes = r.getToleranceMinutes();
+        int inactiviteExcedentaire = r.getInactiviteExcedentaire();
+        int retardCumule = r.getRetardCumule() != null ? r.getRetardCumule() : 0;
+        double montantDeduction = r.getMontantDeduction();
+
+        // Pour les rapports EN_ATTENTE, recalculer dynamiquement depuis la base
+        if ("EN_ATTENTE".equals(r.getDecision())) {
+            LocalDateTime start = r.getSemaineDebut().atStartOfDay();
+            LocalDateTime end = r.getSemaineFin().atTime(23, 59, 59);
+            Long employeId = r.getEmploye().getId();
+
+            long inactiveMinutesLive = heartbeatRepository.countInactiveMinutes(employeId, start, end);
+            totalInactiviteMinutes = (int) inactiveMinutesLive;
+            inactiviteExcedentaire = (int) Math.max(0, inactiveMinutesLive - toleranceMinutes);
+
+            List<Pointage> pointages = pointageRepository.findByEmployeIdAndDatePointageBetween(
+                    employeId, r.getSemaineDebut(), r.getSemaineFin());
+            retardCumule = pointages.stream()
+                    .mapToInt(p -> p.getRetardMinutes() != null ? p.getRetardMinutes() : 0)
+                    .sum();
+
+            double prixMinute = agentService.calculatePrixMinute(r.getEmploye());
+            montantDeduction = inactiviteExcedentaire * prixMinute;
+
+            // Mettre à jour l'entité en base aussi
+            r.setTotalInactiviteMinutes(totalInactiviteMinutes);
+            r.setInactiviteExcedentaire(inactiviteExcedentaire);
+            r.setRetardCumule(retardCumule);
+            r.setMontantDeduction(montantDeduction);
+            rapportRepository.save(r);
+        }
+
         String decideParNom = null;
         if (r.getDecidePar() != null) {
             decideParNom = r.getDecidePar().getNom() + " " + r.getDecidePar().getPrenom();
@@ -173,11 +209,11 @@ public class RapportInactiviteService {
                 .employeMatricule(r.getEmploye().getMatricule())
                 .semaineDebut(r.getSemaineDebut().toString())
                 .semaineFin(r.getSemaineFin().toString())
-                .totalInactiviteMinutes(r.getTotalInactiviteMinutes())
-                .toleranceMinutes(r.getToleranceMinutes())
-                .inactiviteExcedentaire(r.getInactiviteExcedentaire())
-                .retardCumule(r.getRetardCumule() != null ? r.getRetardCumule() : 0)
-                .montantDeduction(r.getMontantDeduction())
+                .totalInactiviteMinutes(totalInactiviteMinutes)
+                .toleranceMinutes(toleranceMinutes)
+                .inactiviteExcedentaire(inactiviteExcedentaire)
+                .retardCumule(retardCumule)
+                .montantDeduction(montantDeduction)
                 .decision(r.getDecision())
                 .decideParNom(decideParNom)
                 .commentaire(r.getCommentaire())

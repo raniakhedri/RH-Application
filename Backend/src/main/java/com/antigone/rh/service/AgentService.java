@@ -102,7 +102,7 @@ public class AgentService {
 
         Long empId = employe.getId();
         LocalDate today = LocalDate.now();
-        LocalTime now = LocalTime.now();
+        LocalTime now = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
         boolean surReseau = isOnEntrepriseNetwork(request.getSsid());
 
         if ("CLOCK_IN".equals(request.getEventType())) {

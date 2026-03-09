@@ -19,7 +19,7 @@ import {
 } from 'react-icons/hi';
 
 type FilterType = 'all' | 'en_attente' | 'deduit' | 'annule';
-type SortField = 'employe' | 'semaineDebut' | 'totalInactiviteMinutes' | 'inactiviteExcedentaire' | 'montantDeduction' | 'decision';
+type SortField = 'employe' | 'semaineDebut' | 'totalInactiviteMinutes' | 'montantDeduction' | 'decision';
 type SortDir = 'asc' | 'desc';
 
 const RapportsInactivitePage: React.FC = () => {
@@ -196,9 +196,6 @@ const RapportsInactivitePage: React.FC = () => {
           break;
         case 'totalInactiviteMinutes':
           cmp = a.totalInactiviteMinutes - b.totalInactiviteMinutes;
-          break;
-        case 'inactiviteExcedentaire':
-          cmp = a.inactiviteExcedentaire - b.inactiviteExcedentaire;
           break;
         case 'montantDeduction':
           cmp = a.montantDeduction - b.montantDeduction;
@@ -388,9 +385,6 @@ const RapportsInactivitePage: React.FC = () => {
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Retard cumulé
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200" onClick={() => handleSort('inactiviteExcedentaire')}>
-                    Excédent. <SortIcon field="inactiviteExcedentaire" />
-                  </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200" onClick={() => handleSort('montantDeduction')}>
                     Déduction <SortIcon field="montantDeduction" />
                   </th>
@@ -424,18 +418,13 @@ const RapportsInactivitePage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className={`text-sm font-medium ${rapport.totalInactiviteMinutes > rapport.toleranceMinutes ? 'text-red-600' : 'text-orange-500'}`}>
+                      <span className={`text-sm font-medium ${rapport.totalInactiviteMinutes > 0 ? 'text-red-600' : 'text-orange-500'}`}>
                         {formatMinutes(rapport.totalInactiviteMinutes)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className={`text-sm font-medium ${(rapport.retardCumule || 0) > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
                         {(rapport.retardCumule || 0) > 0 ? formatMinutes(rapport.retardCumule) : '0'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`text-sm font-semibold ${rapport.inactiviteExcedentaire > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {rapport.inactiviteExcedentaire > 0 ? `+${formatMinutes(rapport.inactiviteExcedentaire)}` : '0'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -495,7 +484,7 @@ const RapportsInactivitePage: React.FC = () => {
             </div>
 
             {/* Stats grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="text-center p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
                 <p className="text-lg font-bold text-orange-600">{formatMinutes(selectedRapport.totalInactiviteMinutes)}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Inactivité totale</p>
@@ -503,10 +492,6 @@ const RapportsInactivitePage: React.FC = () => {
               <div className="text-center p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
                 <p className="text-lg font-bold text-orange-600">{formatMinutes(selectedRapport.retardCumule || 0)}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Retard cumulé</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
-                <p className="text-lg font-bold text-red-600">{formatMinutes(selectedRapport.inactiviteExcedentaire)}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Excédentaire</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
                 <p className="text-lg font-bold text-red-600">{formatMontant(selectedRapport.montantDeduction)}</p>
