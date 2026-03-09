@@ -6,8 +6,11 @@ import { employeService } from '../api/employeService';
 import { Equipe, Projet, Employe, EquipeCreateRequest } from '../types';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 const EquipesPage: React.FC = () => {
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [projets, setProjets] = useState<Projet[]>([]);
   const [employes, setEmployes] = useState<Employe[]>([]);
@@ -118,14 +121,14 @@ const EquipesPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Supprimer cette équipe ?')) {
+    confirm('Supprimer cette équipe ?', async () => {
       try {
         await equipeService.delete(id);
         loadData();
       } catch (err) {
         console.error('Erreur suppression:', err);
       }
-    }
+    }, 'Supprimer l\'équipe');
   };
 
   const getProjetNom = (id: number | null) => {
@@ -368,6 +371,15 @@ const EquipesPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel="Supprimer"
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };

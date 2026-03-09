@@ -9,11 +9,14 @@ import { compteService } from '../api/compteService';
 import { Employe, Referentiel, RoleDTO, EmployeStatsDTO, CompetenceDTO, DocumentEmployeDTO } from '../types';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import DataTable from '../components/ui/DataTable';
 import Badge from '../components/ui/Badge';
 import { API_BASE } from '../api/axios';
+import { useConfirm } from '../hooks/useConfirm';
 
 const EmployesPage: React.FC = () => {
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [employes, setEmployes] = useState<Employe[]>([]);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -231,7 +234,7 @@ const EmployesPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cet employé ?')) {
+    confirm('Êtes-vous sûr de vouloir supprimer cet employé ?', async () => {
       try {
         await employeService.delete(id);
         loadAll();
@@ -240,7 +243,7 @@ const EmployesPage: React.FC = () => {
         alert(msg);
         console.error('Erreur suppression:', err);
       }
-    }
+    }, 'Supprimer l\'employé');
   };
 
   const resetForm = () => {
@@ -324,11 +327,13 @@ const EmployesPage: React.FC = () => {
   };
 
   const handleDeleteCompetence = async (id: number) => {
-    if (!viewingEmploye || !window.confirm('Supprimer cette compétence ?')) return;
-    try {
-      await competenceService.delete(id);
-      loadCompetences(viewingEmploye.id);
-    } catch { /* ignore */ }
+    if (!viewingEmploye) return;
+    confirm('Supprimer cette compétence ?', async () => {
+      try {
+        await competenceService.delete(id);
+        loadCompetences(viewingEmploye.id);
+      } catch { /* ignore */ }
+    }, 'Supprimer la compétence');
   };
 
   const handleSaveDocument = async () => {
@@ -365,11 +370,13 @@ const EmployesPage: React.FC = () => {
   };
 
   const handleDeleteDocument = async (id: number) => {
-    if (!viewingEmploye || !window.confirm('Supprimer ce document ?')) return;
-    try {
-      await documentEmployeService.delete(id);
-      loadDocuments(viewingEmploye.id);
-    } catch { /* ignore */ }
+    if (!viewingEmploye) return;
+    confirm('Supprimer ce document ?', async () => {
+      try {
+        await documentEmployeService.delete(id);
+        loadDocuments(viewingEmploye.id);
+      } catch { /* ignore */ }
+    }, 'Supprimer le document');
   };
 
   const handleSaveDriveLink = async () => {
@@ -1209,6 +1216,15 @@ const EmployesPage: React.FC = () => {
           </div>
         )}
       </Modal>
+
+    <ConfirmDialog
+      isOpen={confirmState.isOpen}
+      title={confirmState.title}
+      message={confirmState.message}
+      confirmLabel="Supprimer"
+      onConfirm={handleConfirm}
+      onCancel={handleCancel}
+    />
     </div>
   );
 };

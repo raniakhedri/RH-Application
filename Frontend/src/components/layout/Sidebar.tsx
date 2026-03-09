@@ -25,6 +25,7 @@ import { useSidebar } from '../../hooks/useSidebar';
 import { useAuth } from '../../context/AuthContext';
 import { demandeService } from '../../api/demandeService';
 import { agentDashboardService } from '../../api/agentDashboardService';
+import Logo3D from '../ui/Logo3D';
 
 interface NavItemDef {
   label: string;
@@ -202,9 +203,7 @@ const Sidebar: React.FC = () => {
       >
         {/* Logo area */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white font-bold text-xl">
-            A
-          </div>
+          <Logo3D size={40} />
           {showText && (
             <div className="overflow-hidden">
               <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Antigone</h1>

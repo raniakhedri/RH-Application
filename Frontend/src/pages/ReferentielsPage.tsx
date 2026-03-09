@@ -13,10 +13,13 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
 import Badge from '../components/ui/Badge';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 const ALL_TYPES = Object.values(TypeReferentiel);
 
 const ReferentielsPage: React.FC = () => {
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [referentiels, setReferentiels] = useState<Referentiel[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -68,14 +71,14 @@ const ReferentielsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce référentiel ?')) {
+    confirm('Êtes-vous sûr de vouloir supprimer ce référentiel ?', async () => {
       try {
         await referentielService.delete(id);
         loadReferentiels();
       } catch (err: any) {
         alert(err.response?.data?.message || 'Erreur lors de la suppression');
       }
-    }
+    }, 'Supprimer le référentiel');
   };
 
   const handleToggleActif = async (id: number) => {
@@ -317,6 +320,15 @@ const ReferentielsPage: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel="Supprimer"
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };

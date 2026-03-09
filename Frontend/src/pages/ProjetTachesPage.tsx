@@ -8,6 +8,8 @@ import { Tache, Projet, Employe, StatutTache } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success'> = {
     TODO: 'neutral',
@@ -47,6 +49,7 @@ const emptyForm = (): TacheForm => ({
 const ProjetTachesPage: React.FC = () => {
     const { projetId } = useParams<{ projetId: string }>();
     const navigate = useNavigate();
+    const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
 
     const [projet, setProjet] = useState<Projet | null>(null);
     const [taches, setTaches] = useState<Tache[]>([]);
@@ -246,13 +249,14 @@ const ProjetTachesPage: React.FC = () => {
     // ── Delete ─────────────────────────────────────────────────
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm('Supprimer cette tâche ?')) return;
-        try {
-            await tacheService.delete(id);
-            setTaches(prev => prev.filter(t => t.id !== id));
-        } catch (err) {
-            console.error('Erreur suppression:', err);
-        }
+        confirm('Supprimer cette tâche ?', async () => {
+            try {
+                await tacheService.delete(id);
+                setTaches(prev => prev.filter(t => t.id !== id));
+            } catch (err) {
+                console.error('Erreur suppression:', err);
+            }
+        }, 'Supprimer la tâche');
     };
 
     const getMemberNom = (id: number | null) => {
@@ -571,6 +575,15 @@ const ProjetTachesPage: React.FC = () => {
                     </div>
                 )}
             </Modal>
+
+            <ConfirmDialog
+                isOpen={confirmState.isOpen}
+                title={confirmState.title}
+                message={confirmState.message}
+                confirmLabel="Supprimer"
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+            />
         </div>
     );
 };

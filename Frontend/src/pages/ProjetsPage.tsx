@@ -10,6 +10,8 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success' | 'danger'> = {
   PLANIFIE: 'neutral',
@@ -21,6 +23,7 @@ const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success' | 'danger
 const ProjetsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [projets, setProjets] = useState<Projet[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,14 +119,14 @@ const ProjetsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Supprimer ce projet ?')) {
+    confirm('Supprimer ce projet ?', async () => {
       try {
         await projetService.delete(id);
         loadData();
       } catch (err) {
         console.error('Erreur suppression:', err);
       }
-    }
+    }, 'Supprimer le projet');
   };
 
   const handleChangeStatut = async (id: number, statut: StatutProjet) => {
@@ -417,6 +420,15 @@ const ProjetsPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel="Supprimer"
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };
