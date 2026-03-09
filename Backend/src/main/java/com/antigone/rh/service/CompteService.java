@@ -128,8 +128,7 @@ public class CompteService {
                 employe.getEmail(),
                 employe.getNom() + " " + employe.getPrenom(),
                 username,
-                rawPassword
-        );
+                rawPassword);
 
         log.info("Compte créé pour {} : username={}", employe.getNom(), username);
 
@@ -197,8 +196,7 @@ public class CompteService {
         emailService.sendPasswordReset(
                 email,
                 compte.getEmploye().getNom() + " " + compte.getEmploye().getPrenom(),
-                resetLink
-        );
+                resetLink);
 
         log.info("Token de réinitialisation généré pour: {}", email);
     }

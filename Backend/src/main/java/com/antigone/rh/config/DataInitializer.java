@@ -69,7 +69,8 @@ public class DataInitializer implements CommandLineRunner {
             roleRepository.save(adminRole);
             log.info("Rôle ADMIN créé avec toutes les permissions ({})", allPermissions.size());
         } else {
-            // Mettre à jour le rôle ADMIN existant pour s'assurer qu'il a toutes les permissions
+            // Mettre à jour le rôle ADMIN existant pour s'assurer qu'il a toutes les
+            // permissions
             Role adminRole = roleRepository.findByNom("ADMIN").get();
             List<Permission> allPermissions = permissionRepository.findAll();
             adminRole.setPermissions(new HashSet<>(allPermissions));
@@ -163,6 +164,7 @@ public class DataInitializer implements CommandLineRunner {
                 .roles(Set.of(adminRole))
                 .build();
         compteRepository.save(adminCompte);
-        log.info("Compte admin créé - username: admin, mot de passe: Admin@123 (changement obligatoire à la première connexion)");
+        log.info(
+                "Compte admin créé - username: admin, mot de passe: Admin@123 (changement obligatoire à la première connexion)");
     }
 }
