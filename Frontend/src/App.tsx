@@ -30,6 +30,9 @@ import ProjetTachesPage from './pages/ProjetTachesPage';
 
 import MesDemandesPapierPage from './pages/MesDemandesPapierPage';
 import OrganigrammePage from './pages/OrganigrammePage';
+import SuiviTempsReelPage from './pages/SuiviTempsReelPage';
+import RapportsInactivitePage from './pages/RapportsInactivitePage';
+import HistoriqueAgentPage from './pages/HistoriqueAgentPage';
 import { NotificationProvider } from './context/NotificationContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -85,6 +88,9 @@ const App: React.FC = () => {
           <Route path="mes-taches" element={<MesTachesPage />} />
           <Route path="mes-demandes-papier" element={<MesDemandesPapierPage />} />
           <Route path="projets/:projetId/taches" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetTachesPage /></PermissionRoute>} />
+          <Route path="suivi-temps-reel" element={<PermissionRoute permission="VIEW_MONITORING"><SuiviTempsReelPage /></PermissionRoute>} />
+          <Route path="rapports-inactivite" element={<PermissionRoute permission="VIEW_MONITORING"><RapportsInactivitePage /></PermissionRoute>} />
+          <Route path="historique-agent" element={<PermissionRoute permission="VIEW_MONITORING"><HistoriqueAgentPage /></PermissionRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

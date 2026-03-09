@@ -33,8 +33,8 @@ public class RoleService {
             Map.entry("VIEW_REFERENTIELS", "Référentiels"),
             Map.entry("VIEW_CALENDRIER", "Calendrier Entreprise"),
             Map.entry("VIEW_COMPTES", "Comptes"),
-            Map.entry("VIEW_ROLES", "Rôles")
-    );
+            Map.entry("VIEW_ROLES", "Rôles"),
+            Map.entry("VIEW_MONITORING", "Monitoring"));
 
     public List<RoleDTO> getAllRoles() {
         return roleRepository.findAll().stream()

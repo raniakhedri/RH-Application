@@ -15,10 +15,14 @@ import {
   HiOutlineClipboardList,
   HiOutlineViewBoards,
   HiOutlinePaperClip,
+  HiOutlineDesktopComputer,
+  HiOutlineDocumentReport,
+  HiOutlineDownload,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
 import { useAuth } from '../../context/AuthContext';
 import { demandeService } from '../../api/demandeService';
+import { agentDashboardService } from '../../api/agentDashboardService';
 
 interface NavItemDef {
   label: string;
@@ -108,6 +112,14 @@ const menuGroups = [
       { key: 'calendrier', label: 'Calendrier Entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
     ] as NavItemDef[],
   },
+  {
+    title: 'MONITORING',
+    items: [
+      { key: 'suivi-temps-reel', label: 'Suivi Temps Réel', path: '/suivi-temps-reel', icon: <HiOutlineDesktopComputer size={20} />, permission: 'VIEW_MONITORING' },
+      { key: 'rapports-inactivite', label: "Rapports d'Inactivité", path: '/rapports-inactivite', icon: <HiOutlineDocumentReport size={20} />, permission: 'VIEW_MONITORING' },
+      { key: 'historique-agent', label: 'Historique Agent', path: '/historique-agent', icon: <HiOutlineClipboardList size={20} />, permission: 'VIEW_MONITORING' },
+    ] as NavItemDef[],
+  },
 ];
 
 const Sidebar: React.FC = () => {
@@ -115,6 +127,7 @@ const Sidebar: React.FC = () => {
   const { user } = useAuth();
   const { isExpanded, isMobileOpen, isHovered, openSubmenu, setIsHovered, setOpenSubmenu, toggleMobileSidebar } = useSidebar();
   const [pendingCount, setPendingCount] = useState(0);
+  const [agentActive, setAgentActive] = useState(true); // hide button by default until checked
 
   const userPermissions = user?.permissions || [];
   const canViewValidations = userPermissions.includes('VIEW_VALIDATIONS');
@@ -132,6 +145,22 @@ const Sidebar: React.FC = () => {
     const interval = setInterval(fetchPending, 30000); // refresh every 30s
     return () => clearInterval(interval);
   }, [canViewValidations]);
+
+  // Check if agent is active for current user
+  useEffect(() => {
+    if (!user?.employeId) return;
+    const checkAgent = async () => {
+      try {
+        const res = await agentDashboardService.checkAgentActive(user.employeId);
+        setAgentActive(res.data.data.active);
+      } catch {
+        setAgentActive(false);
+      }
+    };
+    checkAgent();
+    const interval = setInterval(checkAgent, 60000); // check every minute
+    return () => clearInterval(interval);
+  }, [user?.employeId]);
 
   // Filter menu groups by user permissions
   const filteredMenuGroups = menuGroups
@@ -204,6 +233,20 @@ const Sidebar: React.FC = () => {
             </div>
           ))}
         </nav>
+
+        {/* Agent download button - only shown if agent is not active */}
+        {!agentActive && (
+          <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-3">
+            <a
+              href="/api/agent/download"
+              download
+              className="flex items-center gap-3 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600"
+            >
+              <HiOutlineDownload size={20} className="shrink-0" />
+              {showText && <span>Installer l'Agent</span>}
+            </a>
+          </div>
+        )}
       </aside>
     </>
   );
