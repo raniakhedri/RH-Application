@@ -32,6 +32,9 @@ public class CompteService {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    @Value("${app.frontend-base-url:${app.frontend-url}}")
+    private String frontendBaseUrl;
+
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%";
     private static final int RESET_TOKEN_EXPIRY_MINUTES = 30;
@@ -192,7 +195,7 @@ public class CompteService {
         compte.setResetTokenExpiry(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRY_MINUTES));
         compteRepository.save(compte);
 
-        String resetLink = frontendUrl.split(",")[0] + "/reset-password?token=" + token;
+        String resetLink = frontendBaseUrl.split(",")[0].replaceAll("/+$", "") + "/reset-password?token=" + token;
         emailService.sendPasswordReset(
                 email,
                 compte.getEmploye().getNom() + " " + compte.getEmploye().getPrenom(),
