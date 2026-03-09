@@ -1,26 +1,31 @@
 package com.antigone.rh.service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EmailService {
-
-    private final JavaMailSender mailSender;
 
     @Value("${app.mail.from:antigone.rh.app@gmail.com}")
     private String fromEmail;
 
+    @Value("${app.mail.from-name:Antigone RH}")
+    private String fromName;
+
     @Value("${app.mail.enabled:false}")
     private boolean mailEnabled;
+
+    @Value("${app.mail.brevo-api-key:}")
+    private String brevoApiKey;
+
+    private final RestTemplate restTemplate = new RestTemplate();
 
     public void sendCredentials(String toEmail, String employeNom, String username, String password) {
         String subject = "Antigone RH - Vos identifiants de connexion";
@@ -38,18 +43,28 @@ public class EmailService {
 
         if (mailEnabled) {
             try {
-                MimeMessage mimeMessage = mailSender.createMimeMessage();
-                MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-                helper.setFrom(fromEmail);
-                helper.setTo(toEmail);
-                helper.setSubject(subject);
-                helper.setText(htmlBody, true);
-                mailSender.send(mimeMessage);
-                log.info("Email envoyé à {} - {}", toEmail, subject);
-            } catch (MessagingException e) {
-                log.error("Erreur lors de l'envoi de l'email à {}: {}", toEmail, e.getMessage());
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.set("api-key", brevoApiKey);
+
+                Map<String, Object> body = Map.of(
+                        "sender", Map.of("name", fromName, "email", fromEmail),
+                        "to", List.of(Map.of("email", toEmail, "name", recipientName)),
+                        "subject", subject,
+                        "htmlContent", htmlBody
+                );
+
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+                ResponseEntity<String> response = restTemplate.postForEntity(
+                        "https://api.brevo.com/v3/smtp/email", request, String.class);
+
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    log.info("Email envoyé à {} - {}", toEmail, subject);
+                } else {
+                    log.error("Erreur Brevo API: {} - {}", response.getStatusCode(), response.getBody());
+                }
             } catch (Exception e) {
-                log.error("Erreur inattendue lors de l'envoi de l'email à {}: {}", toEmail, e.getMessage());
+                log.error("Erreur lors de l'envoi de l'email à {}: {}", toEmail, e.getMessage());
             }
         } else {
             log.info("=== EMAIL (mode simulation) ===");
