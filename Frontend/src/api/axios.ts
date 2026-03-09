@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE = import.meta.env.VITE_API_URL || 'https://rh-antigone.onrender.com';
+export const API_BASE = (import.meta.env.VITE_API_URL as string)?.trim() || 'https://rh-antigone.onrender.com';
 
 const api = axios.create({
   baseURL: `${API_BASE}/api`,
