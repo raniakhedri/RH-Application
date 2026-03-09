@@ -38,6 +38,9 @@ const EmployesPage: React.FC = () => {
     useInitialSolde: false, soldeCongeInitial: '' as string | number,
   });
 
+  // Form submission state – errors shown only after the user clicks "Créer"
+  const [submitted, setSubmitted] = useState(false);
+
   // Compte creation (only for new employee)
   const [createCompte, setCreateCompte] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState<number>(0);
@@ -117,12 +120,9 @@ const EmployesPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    setSubmitted(true);
+    if (hasErrors) return;
     try {
-      // Validate required fields before sending
-      if (!formData.nom.trim() || !formData.prenom.trim() || !formData.email.trim()) {
-        alert('Veuillez remplir tous les champs obligatoires (Nom, Prénom, Email)');
-        return;
-      }
 
       // Clean empty strings to null for backend
       const payload: any = { ...formData };
@@ -255,6 +255,7 @@ const EmployesPage: React.FC = () => {
     setSelectedRoleId(0);
     setImageFile(null);
     setImagePreview(null);
+    setSubmitted(false);
   };
 
   const hasActiveFilters = Object.values(filters).some(v => v !== '');
@@ -474,18 +475,28 @@ const EmployesPage: React.FC = () => {
   // Validation helpers
   const onlyDigits = (value: string) => value.replace(/[^0-9]/g, '');
   const onlyLetters = (value: string) => value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '');
+  const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
   const isValidEmail = (email: string) => !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isValidTunisianPhone = (phone: string) => !phone || /^[259]\d{7}$/.test(phone);
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const formErrors = {
-    nom: !formData.nom.trim(),
-    prenom: !formData.prenom.trim(),
-    email: !formData.email.trim() || !isValidEmail(formData.email),
-    cin: !!formData.cin && formData.cin.length !== 8,
+    cin: !formData.cin.trim() || formData.cin.length !== 8,
     cnss: !!formData.cnss && (formData.cnss.length < 8 || formData.cnss.length > 12),
+    genre: !formData.genre,
+    prenom: !formData.prenom.trim(),
+    nom: !formData.nom.trim(),
+    email: !formData.email.trim() || !isValidEmail(formData.email),
+    telephone: !formData.telephone.trim() || !isValidTunisianPhone(formData.telephone),
+    telephonePro: !!formData.telephonePro && !isValidTunisianPhone(formData.telephonePro),
+    poste: !formData.poste,
+    departement: !formData.departement,
+    typeContrat: !formData.typeContrat,
+    salaire: formData.salaire === '' || formData.salaire === null || Number(formData.salaire) < 0,
+    dateEmbauche: !formData.dateEmbauche || formData.dateEmbauche > todayStr,
     ribBancaire: !!formData.ribBancaire && formData.ribBancaire.length !== 20,
-    telephonePro: !!formData.telephonePro && !/^[0-9]+$/.test(formData.telephonePro),
   };
-  const hasErrors = formErrors.nom || formErrors.prenom || formErrors.email || formErrors.cin || formErrors.cnss || formErrors.ribBancaire || formErrors.telephonePro;
+  const hasErrors = Object.values(formErrors).some(Boolean);
 
   return (
     <div className="space-y-6">
@@ -662,74 +673,79 @@ const EmployesPage: React.FC = () => {
             </div>
           )}
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CIN</label>
-            <input type="text" value={formData.cin} onChange={(e) => setFormData({ ...formData, cin: onlyDigits(e.target.value).slice(0, 8) })} placeholder="8 chiffres" maxLength={8} className={formErrors.cin ? inputErrorClass : inputClass} />
-            {formErrors.cin && <p className="text-theme-xs text-error-500 mt-1">Le CIN doit contenir exactement 8 chiffres</p>}
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CIN *</label>
+            <input type="text" value={formData.cin} onChange={(e) => setFormData({ ...formData, cin: onlyDigits(e.target.value).slice(0, 8) })} placeholder="8 chiffres" maxLength={8} className={submitted && formErrors.cin ? inputErrorClass : inputClass} />
+            {submitted && formErrors.cin && <p className="text-theme-xs text-error-500 mt-1">Le CIN doit contenir exactement 8 chiffres</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CNSS</label>
-            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: onlyDigits(e.target.value).slice(0, 12) })} placeholder="8 à 12 chiffres" maxLength={12} className={formErrors.cnss ? inputErrorClass : inputClass} />
-            {formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir entre 8 et 12 chiffres</p>}
+            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: onlyDigits(e.target.value).slice(0, 12) })} placeholder="8 à 12 chiffres" maxLength={12} className={submitted && formErrors.cnss ? inputErrorClass : inputClass} />
+            {submitted && formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir entre 8 et 12 chiffres</p>}
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genre</label>
-            <select value={formData.genre} onChange={(e) => setFormData({ ...formData, genre: e.target.value })} className={selectClass}>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genre *</label>
+            <select value={formData.genre} onChange={(e) => setFormData({ ...formData, genre: e.target.value })} className={submitted && formErrors.genre ? inputErrorClass : selectClass}>
               <option value="">Sélectionner</option>
               {genres.map((g) => (
                 <option key={g.id} value={g.libelle}>{g.libelle}</option>
               ))}
             </select>
+            {submitted && formErrors.genre && <p className="text-theme-xs text-error-500 mt-1">Le genre est obligatoire</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prénom *</label>
-            <input type="text" value={formData.prenom} onChange={(e) => setFormData({ ...formData, prenom: onlyLetters(e.target.value) })} placeholder="Lettres uniquement" className={formErrors.prenom && formData.prenom !== undefined ? inputErrorClass : inputClass} />
-            {formErrors.prenom && <p className="text-theme-xs text-error-500 mt-1">Le prénom est obligatoire</p>}
+            <input type="text" value={formData.prenom} onChange={(e) => setFormData({ ...formData, prenom: capitalize(onlyLetters(e.target.value)) })} placeholder="Lettres uniquement" className={submitted && formErrors.prenom ? inputErrorClass : inputClass} />
+            {submitted && formErrors.prenom && <p className="text-theme-xs text-error-500 mt-1">Le prénom est obligatoire</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom *</label>
-            <input type="text" value={formData.nom} onChange={(e) => setFormData({ ...formData, nom: onlyLetters(e.target.value) })} placeholder="Lettres uniquement" className={formErrors.nom && formData.nom !== undefined ? inputErrorClass : inputClass} />
-            {formErrors.nom && <p className="text-theme-xs text-error-500 mt-1">Le nom est obligatoire</p>}
+            <input type="text" value={formData.nom} onChange={(e) => setFormData({ ...formData, nom: capitalize(onlyLetters(e.target.value)) })} placeholder="Lettres uniquement" className={submitted && formErrors.nom ? inputErrorClass : inputClass} />
+            {submitted && formErrors.nom && <p className="text-theme-xs text-error-500 mt-1">Le nom est obligatoire</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
-            <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="exemple@email.com" className={formErrors.email && formData.email !== undefined ? inputErrorClass : inputClass} />
-            {formErrors.email && formData.email && <p className="text-theme-xs text-error-500 mt-1">Format email invalide</p>}
+            <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="exemple@email.com" className={submitted && formErrors.email ? inputErrorClass : inputClass} />
+            {submitted && formErrors.email && <p className="text-theme-xs text-error-500 mt-1">{!formData.email.trim() ? "L'email est obligatoire" : 'Format email invalide'}</p>}
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone</label>
-            <input type="text" value={formData.telephone} onChange={(e) => setFormData({ ...formData, telephone: onlyDigits(e.target.value) })} placeholder="Chiffres uniquement" className={inputClass} />
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone *</label>
+            <input type="text" value={formData.telephone} onChange={(e) => setFormData({ ...formData, telephone: onlyDigits(e.target.value).slice(0, 8) })} placeholder="8 chiffres (commence par 2, 5 ou 9)" maxLength={8} className={submitted && formErrors.telephone ? inputErrorClass : inputClass} />
+            {submitted && formErrors.telephone && <p className="text-theme-xs text-error-500 mt-1">{!formData.telephone.trim() ? 'Le téléphone est obligatoire' : 'Format tunisien invalide (8 chiffres, commence par 2, 5 ou 9)'}</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone professionnel</label>
-            <input type="text" value={formData.telephonePro} onChange={(e) => setFormData({ ...formData, telephonePro: onlyDigits(e.target.value) })} placeholder="Chiffres uniquement" className={formErrors.telephonePro ? inputErrorClass : inputClass} />
-            {formErrors.telephonePro && <p className="text-theme-xs text-error-500 mt-1">Le téléphone professionnel doit contenir uniquement des chiffres</p>}
+            <input type="text" value={formData.telephonePro} onChange={(e) => setFormData({ ...formData, telephonePro: onlyDigits(e.target.value).slice(0, 8) })} placeholder="8 chiffres (commence par 2, 5 ou 9)" maxLength={8} className={submitted && formErrors.telephonePro ? inputErrorClass : inputClass} />
+            {submitted && formErrors.telephonePro && <p className="text-theme-xs text-error-500 mt-1">Format tunisien invalide (8 chiffres, commence par 2, 5 ou 9)</p>}
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Poste</label>
-            <select value={formData.poste} onChange={(e) => setFormData({ ...formData, poste: e.target.value })} className={selectClass}>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Poste *</label>
+            <select value={formData.poste} onChange={(e) => setFormData({ ...formData, poste: e.target.value })} className={submitted && formErrors.poste ? inputErrorClass : selectClass}>
               <option value="">Sélectionner un poste</option>
               {postes.map((p) => (
                 <option key={p.id} value={p.libelle}>{p.libelle}</option>
               ))}
             </select>
+            {submitted && formErrors.poste && <p className="text-theme-xs text-error-500 mt-1">Le poste est obligatoire</p>}
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Département</label>
-            <select value={formData.departement} onChange={(e) => setFormData({ ...formData, departement: e.target.value })} className={selectClass}>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Département *</label>
+            <select value={formData.departement} onChange={(e) => setFormData({ ...formData, departement: e.target.value })} className={submitted && formErrors.departement ? inputErrorClass : selectClass}>
               <option value="">Sélectionner un département</option>
               {departements.map((d) => (
                 <option key={d.id} value={d.libelle}>{d.libelle}</option>
               ))}
             </select>
+            {submitted && formErrors.departement && <p className="text-theme-xs text-error-500 mt-1">Le département est obligatoire</p>}
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type contrat</label>
-            <select value={formData.typeContrat} onChange={(e) => setFormData({ ...formData, typeContrat: e.target.value })} className={selectClass}>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type contrat *</label>
+            <select value={formData.typeContrat} onChange={(e) => setFormData({ ...formData, typeContrat: e.target.value })} className={submitted && formErrors.typeContrat ? inputErrorClass : selectClass}>
               <option value="">Sélectionner un type</option>
               {typesContrat.map((t) => (
                 <option key={t.id} value={t.libelle}>{t.libelle}</option>
               ))}
             </select>
+            {submitted && formErrors.typeContrat && <p className="text-theme-xs text-error-500 mt-1">Le type de contrat est obligatoire</p>}
           </div>
           {formData.typeContrat.toUpperCase() === 'CDD' && (
             <div>
@@ -767,17 +783,19 @@ const EmployesPage: React.FC = () => {
           )}
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RIB Bancaire</label>
-            <input type="text" value={formData.ribBancaire} onChange={(e) => setFormData({ ...formData, ribBancaire: onlyDigits(e.target.value).slice(0, 20) })} placeholder="20 chiffres" maxLength={20} className={formErrors.ribBancaire ? inputErrorClass : inputClass} />
-            {formErrors.ribBancaire && <p className="text-theme-xs text-error-500 mt-1">Le RIB doit contenir exactement 20 chiffres</p>}
+            <input type="text" value={formData.ribBancaire} onChange={(e) => setFormData({ ...formData, ribBancaire: onlyDigits(e.target.value).slice(0, 20) })} placeholder="20 chiffres" maxLength={20} className={submitted && formErrors.ribBancaire ? inputErrorClass : inputClass} />
+            {submitted && formErrors.ribBancaire && <p className="text-theme-xs text-error-500 mt-1">Le RIB doit contenir exactement 20 chiffres</p>}
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date d'embauche</label>
-            <input type="date" value={formData.dateEmbauche} onChange={(e) => setFormData({ ...formData, dateEmbauche: e.target.value })} className={inputClass} />
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date d'embauche *</label>
+            <input type="date" value={formData.dateEmbauche} onChange={(e) => setFormData({ ...formData, dateEmbauche: e.target.value })} max={todayStr} className={submitted && formErrors.dateEmbauche ? inputErrorClass : inputClass} />
+            {submitted && formErrors.dateEmbauche && <p className="text-theme-xs text-error-500 mt-1">{!formData.dateEmbauche ? "La date d'embauche est obligatoire" : "La date d'embauche ne peut pas être dans le futur"}</p>}
           </div>
 
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Salaire</label>
-            <input type="number" min="0" step="0.01" value={formData.salaire} onChange={(e) => setFormData({ ...formData, salaire: e.target.value })} placeholder="Montant en DT" className={inputClass} />
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Salaire *</label>
+            <input type="number" min="0" step="0.01" value={formData.salaire} onChange={(e) => setFormData({ ...formData, salaire: e.target.value })} placeholder="Montant en DT" className={submitted && formErrors.salaire ? inputErrorClass : inputClass} />
+            {submitted && formErrors.salaire && <p className="text-theme-xs text-error-500 mt-1">{formData.salaire === '' || formData.salaire === null ? 'Le salaire est obligatoire' : 'Le salaire doit être positif'}</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manager</label>
@@ -861,7 +879,7 @@ const EmployesPage: React.FC = () => {
 
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="ghost" onClick={() => setShowModal(false)}>Annuler</Button>
-          <Button onClick={handleSave} disabled={hasErrors || (createCompte && !selectedRoleId)}>
+          <Button onClick={handleSave} disabled={submitted && hasErrors || (createCompte && !selectedRoleId)}>
             {editingEmploye ? 'Modifier' : 'Créer'}
           </Button>
         </div>
