@@ -18,6 +18,7 @@ import {
   HiOutlineDesktopComputer,
   HiOutlineDocumentReport,
   HiOutlineDownload,
+  HiOutlineChartBar,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
 import { useAuth } from '../../context/AuthContext';
@@ -110,7 +111,8 @@ const menuGroups = [
       { key: 'roles', label: 'Rôles', path: '/roles', icon: <HiOutlineShieldCheck size={20} />, permission: 'VIEW_ROLES' },
       { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} />, permission: 'VIEW_REFERENTIELS' },
       { key: 'calendrier', label: 'Calendrier Entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
-      { key: 'tous-projets-admin', label: 'Tous les projets', path: '/admin/projets', icon: <HiOutlineBriefcase size={20} />, permission: 'VIEW_PROJETS' },
+      { key: 'tous-projets-admin', label: 'Tous les projets', path: '/admin/projets', icon: <HiOutlineBriefcase size={20} />, permission: 'VIEW_TOUS_PROJETS' },
+      { key: 'dashboard-rh', label: 'Dashboard RH', path: '/dashboard-rh', icon: <HiOutlineChartBar size={20} />, permission: 'VIEW_DASHBOARD_RH' },
     ] as NavItemDef[],
   },
   {
