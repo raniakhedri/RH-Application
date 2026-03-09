@@ -20,7 +20,7 @@ interface Logo3DProps {
   size?: number;
 }
 
-const Logo3D: React.FC<Logo3DProps> = ({ size = 48 }) => {
+const Logo3D: React.FC<Logo3DProps> = ({ size = 10 }) => {
   return (
     <div style={{ width: size, height: size }} className="shrink-0 rounded-lg overflow-hidden">
       <Canvas
