@@ -1,4 +1,5 @@
 FROM eclipse-temurin:17-jdk-alpine AS build
+RUN apk add --no-cache curl
 WORKDIR /app
 COPY mvnw pom.xml ./
 COPY .mvn .mvn
