@@ -11,5 +11,6 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 RUN mkdir -p uploads/justificatifs uploads/images uploads/documents uploads/agent
+COPY uploads/agent/AgentDesktop-Setup.exe uploads/agent/
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
