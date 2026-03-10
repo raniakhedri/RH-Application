@@ -65,7 +65,7 @@ const ChangePasswordPage: React.FC = () => {
         // Update user context to remove mustChangePassword
         const updatedUser = { ...user, mustChangePassword: false };
         login(updatedUser);
-        navigate('/dashboard');
+        navigate(isForced ? '/dashboard' : '/mon-profil');
       } else {
         setError(response.data.message || 'Erreur lors du changement');
       }

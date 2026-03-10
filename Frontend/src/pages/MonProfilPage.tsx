@@ -26,6 +26,7 @@ const MonProfilPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editingDriveLink, setEditingDriveLink] = useState(false);
   const [driveLinkValue, setDriveLinkValue] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user?.employeId) {
@@ -93,6 +94,13 @@ const MonProfilPage: React.FC = () => {
                 <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">{employe.typeContrat}</span>
               )}
             </div>
+            <button
+              onClick={() => navigate('/change-password')}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-sm font-medium transition-colors"
+            >
+              <HiOutlineLockClosed size={16} />
+              Changer le mot de passe
+            </button>
           </div>
         </div>
       </div>

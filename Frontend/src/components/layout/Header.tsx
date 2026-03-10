@@ -298,13 +298,6 @@ const Header: React.FC = () => {
                   Mon profil
                 </button>
                 <button
-                  onClick={() => { setShowUserMenu(false); navigate('/change-password'); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-theme-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
-                >
-                  <HiOutlineLockClosed size={18} />
-                  Changer le mot de passe
-                </button>
-                <button
                   onClick={logout}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-theme-sm text-error-500 hover:bg-gray-100 dark:hover:bg-white/5"
                 >
