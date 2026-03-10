@@ -188,7 +188,7 @@ const ResetPasswordPage: React.FC = () => {
         </div>
 
         <p className="text-center text-white/30 text-theme-sm mt-6">
-          © 2026 Antigone Creative Agency. Tous droits réservés.
+          © 2026 Antigone-IT. Tous droits réservés.
         </p>
       </div>
     </div>
