@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { employeService } from '../api/employeService';
 import { Employe } from '../types';
@@ -18,6 +19,7 @@ import {
   HiOutlineCheck,
   HiOutlineX,
   HiOutlineFolder,
+  HiOutlineLockClosed,
 } from 'react-icons/hi';
 
 const MonProfilPage: React.FC = () => {
