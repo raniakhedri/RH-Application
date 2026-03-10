@@ -59,13 +59,14 @@ const menuGroups = [
         label: 'Mes demandes',
         path: '/mes-demandes',
         icon: <HiOutlineClipboardList size={20} />,
+        permission: 'VIEW_MES_DEMANDES',
         children: [
           { label: 'Mes demandes congés', path: '/mes-demandes' },
           { label: 'Mes demandes papiers', path: '/mes-demandes-papier' },
         ],
       },
-      { key: 'mes-taches', label: 'Mes projets', path: '/mes-taches', icon: <HiOutlineViewBoards size={20} /> },
-      { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} /> },
+      { key: 'mes-taches', label: 'Mes projets', path: '/mes-taches', icon: <HiOutlineViewBoards size={20} />, permission: 'VIEW_MES_PROJETS' },
+      { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_MON_CALENDRIER' },
 
     ] as NavItemDef[],
   },
