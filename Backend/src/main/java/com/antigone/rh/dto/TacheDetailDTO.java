@@ -54,6 +54,7 @@ public class TacheDetailDTO {
         private String nom;
         private String prenom;
         private String telephone;
+        private String telephonePro;
         private String departement;
         private String email;
     }

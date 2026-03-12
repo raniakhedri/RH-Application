@@ -295,6 +295,7 @@ export interface TacheMembreInfo {
   nom: string;
   prenom: string;
   telephone: string;
+  telephonePro?: string;
   departement: string;
   email?: string;
 }

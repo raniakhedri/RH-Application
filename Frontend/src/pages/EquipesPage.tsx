@@ -3,7 +3,8 @@ import { HiOutlinePlus, HiOutlineUserRemove, HiOutlineTrash, HiOutlinePencil } f
 import { equipeService } from '../api/equipeService';
 import { projetService } from '../api/projetService';
 import { employeService } from '../api/employeService';
-import { Equipe, Projet, Employe, EquipeCreateRequest } from '../types';
+import { demandeService } from '../api/demandeService';
+import { Equipe, Projet, Employe, EquipeCreateRequest, StatutDemande } from '../types';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 
@@ -12,6 +13,7 @@ const EquipesPage: React.FC = () => {
   const [projets, setProjets] = useState<Projet[]>([]);
   const [employes, setEmployes] = useState<Employe[]>([]);
   const [loading, setLoading] = useState(true);
+  const [congeAujourdhuiIds, setCongeAujourdhuiIds] = useState<Set<number>>(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [selectedEquipe, setSelectedEquipe] = useState<Equipe | null>(null);
@@ -31,14 +33,29 @@ const EquipesPage: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [eqRes, pRes, empRes] = await Promise.all([
+      const today = new Date().toISOString().split('T')[0];
+      const [eqRes, pRes, empRes, demandesRes] = await Promise.all([
         equipeService.getAll(),
         projetService.getAll(),
         employeService.getAll(),
+        demandeService.getByStatut(StatutDemande.APPROUVEE),
       ]);
       setEquipes(eqRes.data.data || []);
       setProjets(pRes.data.data || []);
       setEmployes(empRes.data.data || []);
+      // Build set of employeIds on congé today
+      const demandes = demandesRes.data.data || [];
+      const onConge = new Set<number>();
+      demandes.forEach(d => {
+        if (d.dateDebut && d.dateFin && d.employeId) {
+          const debut = d.dateDebut.toString().substring(0, 10);
+          const fin = d.dateFin.toString().substring(0, 10);
+          if (debut <= today && today <= fin) {
+            onConge.add(d.employeId);
+          }
+        }
+      });
+      setCongeAujourdhuiIds(onConge);
     } catch (err) {
       console.error('Erreur chargement:', err);
     } finally {
@@ -217,12 +234,17 @@ const EquipesPage: React.FC = () => {
                             {membre.prenom?.[0]}{membre.nom?.[0]}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-theme-sm font-medium text-gray-800 dark:text-white truncate">
+                            <p className="text-theme-sm font-medium text-gray-800 dark:text-white truncate flex items-center gap-2">
                               {membre.prenom} {membre.nom}
+                              {congeAujourdhuiIds.has(membre.id) && (
+                                <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[10px] font-semibold text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+                                  En congé
+                                </span>
+                              )}
                             </p>
-                            {membre.telephone && (
+                            {(membre.telephonePro || membre.telephone) && (
                               <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-                                📞 {membre.telephone}
+                                📞 {membre.telephonePro || membre.telephone}
                               </p>
                             )}
                             {membre.departement && (

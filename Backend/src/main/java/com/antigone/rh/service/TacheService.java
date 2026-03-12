@@ -164,6 +164,7 @@ public class TacheService {
                                 .nom(m.getNom())
                                 .prenom(m.getPrenom())
                                 .telephone(m.getTelephone())
+                                .telephonePro(m.getTelephonePro())
                                 .departement(m.getDepartement())
                                 .email(m.getEmail())
                                 .build())

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { tacheService } from '../api/tacheService';
+import { demandeService } from '../api/demandeService';
 import { useAuth } from '../context/AuthContext';
-import { TacheDetail, TacheEquipeInfo, TacheMembreInfo, StatutTache } from '../types';
+import { TacheDetail, TacheEquipeInfo, TacheMembreInfo, StatutTache, StatutDemande } from '../types';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
@@ -44,8 +45,8 @@ const MemberCard: React.FC<{ membre: TacheMembreInfo }> = ({ membre }) => (
             {membre.departement && (
                 <p className="mt-0.5 text-theme-xs text-brand-500 dark:text-brand-400">🏢 {membre.departement}</p>
             )}
-            {membre.telephone && (
-                <p className="text-theme-xs text-gray-500 dark:text-gray-400">📞 {membre.telephone}</p>
+            {(membre.telephonePro || membre.telephone) && (
+                <p className="text-theme-xs text-gray-500 dark:text-gray-400">📞 {membre.telephonePro || membre.telephone}</p>
             )}
             {membre.email && (
                 <p className="text-theme-xs text-gray-500 dark:text-gray-400">✉️ {membre.email}</p>
@@ -69,14 +70,33 @@ const MesTachesPage: React.FC = () => {
 
     const [selectedProject, setSelectedProject] = useState<ProjectGroup | null>(null);
     const [selectedEquipe, setSelectedEquipe] = useState<TacheEquipeInfo | null>(null);
+    // Set of employeNom strings for people on congé today
+    const [congeAujourdhuiNoms, setCongeAujourdhuiNoms] = useState<Set<string>>(new Set());
 
     useEffect(() => { loadData(); }, [user?.employeId]);
 
     const loadData = async () => {
         if (!user?.employeId) return;
         try {
-            const res = await tacheService.getByAssignee(user.employeId);
+            const today = new Date().toISOString().split('T')[0];
+            const [res, demandesRes] = await Promise.all([
+                tacheService.getByAssignee(user.employeId),
+                demandeService.getByStatut(StatutDemande.APPROUVEE),
+            ]);
             setTaches(res.data.data || []);
+            // Build set of employee names on congé today
+            const demandes = demandesRes.data.data || [];
+            const onConge = new Set<string>();
+            demandes.forEach(d => {
+                if (d.dateDebut && d.dateFin && d.employeNom) {
+                    const debut = d.dateDebut.toString().substring(0, 10);
+                    const fin = d.dateFin.toString().substring(0, 10);
+                    if (debut <= today && today <= fin) {
+                        onConge.add(d.employeNom);
+                    }
+                }
+            });
+            setCongeAujourdhuiNoms(onConge);
         } catch (err) {
             console.error(err);
         } finally {
@@ -233,14 +253,23 @@ const MesTachesPage: React.FC = () => {
                                     <p className="mt-3 text-theme-sm font-semibold text-gray-800 dark:text-white">{pg.projetNom}</p>
                                     {pg.projetStatut && (
                                         <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-theme-xs font-medium ${pg.projetStatut === 'EN_COURS' ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/10' :
-                                                pg.projetStatut === 'CLOTURE' ? 'bg-success-50 text-success-600 dark:bg-success-500/10' :
-                                                    pg.projetStatut === 'ANNULE' ? 'bg-error-50 text-error-600 dark:bg-error-500/10' :
-                                                        'bg-gray-100 text-gray-600 dark:bg-gray-700'
+                                            pg.projetStatut === 'CLOTURE' ? 'bg-success-50 text-success-600 dark:bg-success-500/10' :
+                                                pg.projetStatut === 'ANNULE' ? 'bg-error-50 text-error-600 dark:bg-error-500/10' :
+                                                    'bg-gray-100 text-gray-600 dark:bg-gray-700'
                                             }`}>
                                             {pg.projetStatut}
                                         </span>
                                     )}
-                                    {pg.chefDeProjetNom && <p className="mt-0.5 text-theme-xs text-gray-500">Chef : {pg.chefDeProjetNom}</p>}
+                                    {pg.chefDeProjetNom && (
+                                        <p className="mt-0.5 text-theme-xs text-gray-500 flex items-center gap-2">
+                                            Chef : {pg.chefDeProjetNom}
+                                            {congeAujourdhuiNoms.has(pg.chefDeProjetNom) && (
+                                                <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[10px] font-semibold text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+                                                    En congé
+                                                </span>
+                                            )}
+                                        </p>
+                                    )}
                                     {pg.projetDateFin && <p className="text-theme-xs text-warning-500">Fin : {pg.projetDateFin}</p>}
                                     <div className="mt-3 flex gap-2">
                                         <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-theme-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
@@ -261,7 +290,16 @@ const MesTachesPage: React.FC = () => {
                             <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 dark:border-brand-500/20 dark:bg-brand-500/5">
                                 <p className="text-theme-sm font-semibold text-brand-700 dark:text-brand-300">{selectedProject.projetNom}</p>
                                 <div className="mt-1 flex flex-wrap gap-4 text-theme-xs text-brand-600 dark:text-brand-400">
-                                    {selectedProject.chefDeProjetNom && <span>👤 {selectedProject.chefDeProjetNom}</span>}
+                                    {selectedProject.chefDeProjetNom && (
+                                        <span className="flex items-center gap-2">
+                                            👤 {selectedProject.chefDeProjetNom}
+                                            {congeAujourdhuiNoms.has(selectedProject.chefDeProjetNom) && (
+                                                <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[10px] font-semibold text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+                                                    En congé
+                                                </span>
+                                            )}
+                                        </span>
+                                    )}
                                     {selectedProject.projetDateFin && <span>📅 Fin : {selectedProject.projetDateFin}</span>}
                                 </div>
                             </div>
@@ -383,21 +421,24 @@ const MesTachesPage: React.FC = () => {
                                                             {tache.titre}
                                                         </p>
                                                         {tache.projetNom && (
-                                                            <p className="mt-0.5 truncate text-theme-xs text-brand-500 dark:text-brand-400">
+                                                            <p className="mt-0.5 truncate text-theme-xs text-brand-500 dark:text-brand-400 flex items-center gap-1.5">
                                                                 {tache.projetNom}
+                                                                {tache.chefDeProjetNom && (
+                                                                    <span className="text-gray-400">
+                                                                        · Chef: {tache.chefDeProjetNom}
+                                                                        {congeAujourdhuiNoms.has(tache.chefDeProjetNom) && (
+                                                                            <span className="ml-1 rounded-full bg-warning-50 px-1.5 py-0.5 text-[10px] font-semibold text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+                                                                                En congé
+                                                                            </span>
+                                                                        )}
+                                                                    </span>
+                                                                )}
                                                             </p>
                                                         )}
                                                         {tache.dateEcheance && (
                                                             <p className="mt-0.5 text-theme-xs text-gray-400">⏰ {tache.dateEcheance}</p>
                                                         )}
                                                     </div>
-                                                    <button
-                                                        onClick={e => openEdit(tache, e)}
-                                                        className="flex-shrink-0 rounded p-1 text-gray-400 hover:bg-brand-50 hover:text-brand-500 dark:hover:bg-brand-500/10"
-                                                        title="Modifier"
-                                                    >
-                                                        <HiOutlinePencil size={14} />
-                                                    </button>
                                                 </div>
                                             </div>
                                         ))

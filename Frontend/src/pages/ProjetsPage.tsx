@@ -4,8 +4,9 @@ import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineX, HiOutlineCl
 import { projetService } from '../api/projetService';
 import { equipeService } from '../api/equipeService';
 import { employeService } from '../api/employeService';
+import { demandeService } from '../api/demandeService';
 import { useAuth } from '../context/AuthContext';
-import { Projet, Equipe, StatutProjet, Employe } from '../types';
+import { Projet, Equipe, StatutProjet, Employe, StatutDemande } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import DataTable from '../components/ui/DataTable';
@@ -36,6 +37,7 @@ const ProjetsPage: React.FC = () => {
   });
   const [employes, setEmployes] = useState<Employe[]>([]);
   const [dateError, setDateError] = useState<string | null>(null);
+  const [congeAujourdhuiIds, setCongeAujourdhuiIds] = useState<Set<number>>(new Set());
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -45,15 +47,30 @@ const ProjetsPage: React.FC = () => {
 
   const loadData = async () => {
     try {
+      const today = new Date().toISOString().split('T')[0];
       const userId = user?.employeId;
-      const [pRes, eqRes, empRes] = await Promise.all([
+      const [pRes, eqRes, empRes, demandesRes] = await Promise.all([
         userId ? projetService.getByEmploye(userId) : projetService.getAll(),
         equipeService.getAll(),
         employeService.getAll(),
+        demandeService.getByStatut(StatutDemande.APPROUVEE),
       ]);
       setProjets(pRes.data.data || []);
       setEquipes(eqRes.data.data || []);
       setEmployes(empRes.data.data || []);
+      // Build set of employeIds on congé today
+      const demandes = demandesRes.data.data || [];
+      const onConge = new Set<number>();
+      demandes.forEach(d => {
+        if (d.dateDebut && d.dateFin && d.employeId) {
+          const debut = d.dateDebut.toString().substring(0, 10);
+          const fin = d.dateFin.toString().substring(0, 10);
+          if (debut <= today && today <= fin) {
+            onConge.add(d.employeId);
+          }
+        }
+      });
+      setCongeAujourdhuiIds(onConge);
     } catch (err) {
       console.error('Erreur chargement projets:', err);
     } finally {
@@ -185,7 +202,20 @@ const ProjetsPage: React.FC = () => {
     {
       key: 'chef',
       label: 'Chef',
-      render: (p: Projet) => p.chefDeProjet ? `${p.chefDeProjet.prenom} ${p.chefDeProjet.nom}` : '-',
+      render: (p: Projet) => {
+        if (!p.chefDeProjet) return '-';
+        const isOnConge = congeAujourdhuiIds.has(p.chefDeProjet.id);
+        return (
+          <span className="flex items-center gap-2">
+            {p.chefDeProjet.prenom} {p.chefDeProjet.nom}
+            {isOnConge && (
+              <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[10px] font-semibold text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+                En congé
+              </span>
+            )}
+          </span>
+        );
+      },
     },
     {
       key: 'equipes',
