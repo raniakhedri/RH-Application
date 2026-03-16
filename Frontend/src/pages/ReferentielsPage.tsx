@@ -267,18 +267,6 @@ const ReferentielsPage: React.FC = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
-            <select
-              value={refForm.typeReferentiel}
-              onChange={(e) => setRefForm({ ...refForm, typeReferentiel: e.target.value })}
-              className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
-            >
-              {ALL_TYPES.map((t) => (
-                <option key={t} value={t}>{TypeReferentielLabels[t]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Libellé *</label>
             <input
               type="text"

@@ -489,7 +489,7 @@ const EmployesPage: React.FC = () => {
 
   const formErrors = {
     cin: !formData.cin.trim() || formData.cin.length !== 8,
-    cnss: !!formData.cnss && (formData.cnss.length < 8 || formData.cnss.length > 12),
+    cnss: !!formData.cnss && !/^[0-9]{1,12}(-[0-9]+)*$/.test(formData.cnss),
     genre: !formData.genre,
     prenom: !formData.prenom.trim(),
     nom: !formData.nom.trim(),
@@ -686,8 +686,8 @@ const EmployesPage: React.FC = () => {
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CNSS</label>
-            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: onlyDigits(e.target.value).slice(0, 12) })} placeholder="8 à 12 chiffres" maxLength={12} className={submitted && formErrors.cnss ? inputErrorClass : inputClass} />
-            {submitted && formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir entre 8 et 12 chiffres</p>}
+            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: e.target.value.replace(/[^0-9-]/g, '') })} placeholder="Ex: 1234-567890" maxLength={20} className={submitted && formErrors.cnss ? inputErrorClass : inputClass} />
+            {submitted && formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir des chiffres (tirets autorisés)</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genre *</label>
