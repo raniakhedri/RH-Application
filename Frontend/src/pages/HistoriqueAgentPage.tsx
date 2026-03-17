@@ -56,17 +56,38 @@ const formatDate = (dateStr: string): string => {
   return d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
 };
 
+const getMonthOptions = () => {
+  const options = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    options.push({ label: label.charAt(0).toUpperCase() + label.slice(1), value });
+  }
+  return options;
+};
+
 const HistoriqueAgentPage: React.FC = () => {
   const [employes, setEmployes] = useState<Employe[]>([]);
   const [selectedEmployeId, setSelectedEmployeId] = useState<number | null>(null);
   const [historique, setHistorique] = useState<HistoriqueEmploye | null>(null);
   const [loading, setLoading] = useState(false);
-  const [debut, setDebut] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
-  });
-  const [fin, setFin] = useState(() => new Date().toISOString().split('T')[0]);
+
+  const currentMonth = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonth());
+
+  const monthToRange = (ym: string) => {
+    const [year, month] = ym.split('-').map(Number);
+    const debut = new Date(year, month - 1, 1).toISOString().split('T')[0];
+    const fin = new Date(year, month, 0).toISOString().split('T')[0];
+    return { debut, fin };
+  };
+
+  const { debut, fin } = monthToRange(selectedMonth);
   const [viewMode, setViewMode] = useState<'table' | 'timeline'>('table');
 
   useEffect(() => {
@@ -155,26 +176,17 @@ const HistoriqueAgentPage: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
               <HiOutlineCalendar size={15} className="text-gray-400" />
-              Du
+              Mois
             </label>
-            <input
-              type="date"
-              value={debut}
-              onChange={(e) => setDebut(e.target.value)}
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
               className="h-11 rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
-              <HiOutlineCalendar size={15} className="text-gray-400" />
-              Au
-            </label>
-            <input
-              type="date"
-              value={fin}
-              onChange={(e) => setFin(e.target.value)}
-              className="h-11 rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
-            />
+            >
+              {getMonthOptions().map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
