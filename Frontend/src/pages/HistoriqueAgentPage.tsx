@@ -10,6 +10,8 @@ import {
   HiOutlineDesktopComputer,
   HiOutlineViewList,
   HiOutlineViewBoards,
+  HiOutlineBan,
+  HiOutlineEyeOff,
 } from 'react-icons/hi';
 import { agentHistoriqueService } from '../api/agentHistoriqueService';
 import { employeService } from '../api/employeService';
@@ -223,15 +225,21 @@ const HistoriqueAgentPage: React.FC = () => {
 
           {/* Stats summary cards */}
           {stats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-              <StatCard icon={<HiOutlineCheckCircle size={20} />} label="Présents" value={stats.presents} bgColor="bg-green-50 dark:bg-green-900/20" iconColor="text-green-500" borderColor="border-green-200 dark:border-green-800" valueColor="text-green-700 dark:text-green-300" />
-              <StatCard icon={<HiOutlineClock size={20} />} label="Retards" value={stats.retards} bgColor="bg-orange-50 dark:bg-orange-900/20" iconColor="text-orange-500" borderColor="border-orange-200 dark:border-orange-800" valueColor="text-orange-700 dark:text-orange-300" />
-              <StatCard icon={<HiOutlineXCircle size={20} />} label="Absents" value={stats.absents} bgColor="bg-red-50 dark:bg-red-900/20" iconColor="text-red-500" borderColor="border-red-200 dark:border-red-800" valueColor="text-red-700 dark:text-red-300" />
-              <StatCard icon={<HiOutlineCalendar size={20} />} label="Congés" value={stats.conges} bgColor="bg-blue-50 dark:bg-blue-900/20" iconColor="text-blue-500" borderColor="border-blue-200 dark:border-blue-800" valueColor="text-blue-700 dark:text-blue-300" />
-              <StatCard icon={<HiOutlineDesktopComputer size={20} />} label="Télétravail" value={stats.teletravail} bgColor="bg-teal-50 dark:bg-teal-900/20" iconColor="text-teal-500" borderColor="border-teal-200 dark:border-teal-800" valueColor="text-teal-700 dark:text-teal-300" />
-              <StatCard icon={<HiOutlineCalendar size={20} />} label="Jours fériés" value={stats.feries} bgColor="bg-gray-50 dark:bg-gray-800/50" iconColor="text-gray-500" borderColor="border-gray-200 dark:border-gray-700" valueColor="text-gray-700 dark:text-gray-300" />
-              <StatCard icon={<HiOutlineClock size={20} />} label="Total retard" value={`${stats.totalRetardMin} min`} bgColor="bg-orange-50 dark:bg-orange-900/20" iconColor="text-orange-500" borderColor="border-orange-200 dark:border-orange-800" valueColor="text-orange-700 dark:text-orange-300" />
-            </div>
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <StatCard icon={<HiOutlineCheckCircle size={20} />} label="Présents" value={stats.presents} bgColor="bg-green-50 dark:bg-green-900/20" iconColor="text-green-500" borderColor="border-green-200 dark:border-green-800" valueColor="text-green-700 dark:text-green-300" />
+                <StatCard icon={<HiOutlineClock size={20} />} label="Retards" value={stats.retards} bgColor="bg-orange-50 dark:bg-orange-900/20" iconColor="text-orange-500" borderColor="border-orange-200 dark:border-orange-800" valueColor="text-orange-700 dark:text-orange-300" />
+                <StatCard icon={<HiOutlineXCircle size={20} />} label="Absents" value={stats.absents} bgColor="bg-red-50 dark:bg-red-900/20" iconColor="text-red-500" borderColor="border-red-200 dark:border-red-800" valueColor="text-red-700 dark:text-red-300" />
+                <StatCard icon={<HiOutlineCalendar size={20} />} label="Congés" value={stats.conges} bgColor="bg-blue-50 dark:bg-blue-900/20" iconColor="text-blue-500" borderColor="border-blue-200 dark:border-blue-800" valueColor="text-blue-700 dark:text-blue-300" />
+                <StatCard icon={<HiOutlineDesktopComputer size={20} />} label="Télétravail" value={stats.teletravail} bgColor="bg-teal-50 dark:bg-teal-900/20" iconColor="text-teal-500" borderColor="border-teal-200 dark:border-teal-800" valueColor="text-teal-700 dark:text-teal-300" />
+                <StatCard icon={<HiOutlineCalendar size={20} />} label="Jours fériés" value={stats.feries} bgColor="bg-gray-50 dark:bg-gray-800/50" iconColor="text-gray-500" borderColor="border-gray-200 dark:border-gray-700" valueColor="text-gray-700 dark:text-gray-300" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard icon={<HiOutlineBan size={20} />} label="Total absences" value={`${stats.absents} jour${stats.absents > 1 ? 's' : ''}`} bgColor="bg-red-50 dark:bg-red-900/20" iconColor="text-red-500" borderColor="border-red-200 dark:border-red-800" valueColor="text-red-700 dark:text-red-300" />
+                <StatCard icon={<HiOutlineClock size={20} />} label="Total retard" value={`${stats.totalRetardMin} min`} bgColor="bg-orange-50 dark:bg-orange-900/20" iconColor="text-orange-500" borderColor="border-orange-200 dark:border-orange-800" valueColor="text-orange-700 dark:text-orange-300" />
+                <StatCard icon={<HiOutlineEyeOff size={20} />} label="Total inactif" value={`${stats.totalInactifMin} min`} bgColor="bg-purple-50 dark:bg-purple-900/20" iconColor="text-purple-500" borderColor="border-purple-200 dark:border-purple-800" valueColor="text-purple-700 dark:text-purple-300" />
+              </div>
+            </>
           )}
 
           {/* Table view */}
