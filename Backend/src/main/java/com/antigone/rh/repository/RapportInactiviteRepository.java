@@ -23,4 +23,13 @@ public interface RapportInactiviteRepository extends JpaRepository<RapportInacti
     @Query("SELECT r FROM RapportInactivite r WHERE r.semaineDebut >= :debut AND r.semaineFin <= :fin " +
             "ORDER BY r.dateGeneration DESC")
     List<RapportInactivite> findByPeriode(@Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
+
+    @Query("SELECT r FROM RapportInactivite r WHERE r.employe.id = :employeId AND r.decision IN ('DEDUIT','ANNULE') " +
+            "ORDER BY r.semaineFin DESC")
+    List<RapportInactivite> findLastDecidedByEmployeId(@Param("employeId") Long employeId);
+
+    @Query("SELECT r FROM RapportInactivite r WHERE r.employe.id = :employeId AND r.decision = 'EN_ATTENTE' " +
+            "AND r.semaineDebut = :debut AND r.semaineFin = :fin")
+    Optional<RapportInactivite> findPendingByEmployeAndPeriod(@Param("employeId") Long employeId,
+            @Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
 }

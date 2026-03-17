@@ -256,7 +256,7 @@ const RapportsInactivitePage: React.FC = () => {
           </Button>
           <Button size="sm" onClick={handleGenerer} disabled={generating}>
             <HiOutlineRefresh size={16} className={generating ? 'animate-spin' : ''} />
-            {generating ? 'Génération...' : 'Générer semaine courante'}
+            {generating ? 'Génération...' : 'Générer les rapports'}
           </Button>
         </div>
       </div>
