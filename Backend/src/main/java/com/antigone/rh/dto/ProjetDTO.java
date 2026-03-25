@@ -25,4 +25,5 @@ public class ProjetDTO {
     private Long equipeId; // kept for backward compat (first equipe)
     private List<Long> equipeIds; // all equipe IDs
     private List<String> equipeNoms;
+    private List<EmployeDTO> membres; // Selected subordinates
 }

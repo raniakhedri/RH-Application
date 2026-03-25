@@ -57,4 +57,11 @@ public class Projet {
     @Builder.Default
     @JsonIgnore
     private List<Tache> taches = new ArrayList<>();
+
+    @ManyToMany(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @JoinTable(name = "projet_membres", joinColumns = @JoinColumn(name = "projet_id"), inverseJoinColumns = @JoinColumn(name = "employe_id"))
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Employe> membres = new ArrayList<>();
 }

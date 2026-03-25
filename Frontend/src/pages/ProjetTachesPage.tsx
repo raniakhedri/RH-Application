@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineArrowLeft } from 'react-icons/hi';
 import { tacheService } from '../api/tacheService';
 import { projetService } from '../api/projetService';
-import { equipeService } from '../api/equipeService';
 import { Tache, Projet, Employe, StatutTache } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -85,22 +84,18 @@ const ProjetTachesPage: React.FC = () => {
         if (!pid) return;
         setLoading(true);
         try {
-            const [pRes, tRes, eqRes] = await Promise.all([
+            const [pRes, tRes] = await Promise.all([
                 projetService.getById(pid),
                 tacheService.getByProjet(pid),
-                equipeService.getAll(),
             ]);
-            setProjet(pRes.data.data);
+            const p: Projet = pRes.data.data;
+            setProjet(p);
             setTaches(tRes.data.data || []);
-
-            // Extract unique members from this project's équipes
-            const allEquipes = eqRes.data.data || [];
-            const projectEquipes = allEquipes.filter((eq: any) => eq.projetId === pid);
+            // Build project members from projet.membres (chef + selected subordinates)
             const memberMap = new Map<number, Employe>();
-            for (const eq of projectEquipes) {
-                for (const m of (eq.membres || [])) {
-                    memberMap.set(m.id, m);
-                }
+            if (p?.chefDeProjet) memberMap.set(p.chefDeProjet.id, p.chefDeProjet as Employe);
+            for (const m of (p?.membres ?? [])) {
+                if (!memberMap.has(m.id)) memberMap.set(m.id, m);
             }
             setProjectMembers(Array.from(memberMap.values()));
         } catch (err) {
@@ -286,7 +281,7 @@ const ProjetTachesPage: React.FC = () => {
                 </label>
             )}
             {projectMembers.length === 0 ? (
-                <p className="text-theme-xs text-gray-400 italic">Aucun membre dans les équipes de ce projet.</p>
+                <p className="text-theme-xs text-gray-400 italic">Aucun membre assigné à ce projet.</p>
             ) : (
                 <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600">
                     {projectMembers.map(m => (
