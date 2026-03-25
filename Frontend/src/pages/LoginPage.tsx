@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../api/authService';
+import Logo3D from '../components/ui/Logo3D';
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -48,8 +49,8 @@ const LoginPage: React.FC = () => {
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-500 rounded-2xl shadow-lg mb-4">
-            <span className="text-3xl font-bold text-white">A</span>
+          <div className="inline-flex items-center justify-center mb-4">
+            <Logo3D size={80} />
           </div>
           <h1 className="text-3xl font-bold text-white">Antigone</h1>
           <p className="text-white/60 mt-1">Gestion des Ressources Humaines</p>
@@ -111,7 +112,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         <p className="text-center text-white/30 text-theme-sm mt-6">
-          © 2026 Antigone Creative Agency. Tous droits réservés.
+          © 2026 Antigone-IT. Tous droits réservés.
         </p>
       </div>
     </div>

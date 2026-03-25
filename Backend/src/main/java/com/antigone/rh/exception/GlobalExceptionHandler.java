@@ -22,7 +22,8 @@ public class GlobalExceptionHandler {
 
         String userMessage;
 
-        // Check unique constraint violations FIRST (PostgreSQL: "unique constraint" or "uk_")
+        // Check unique constraint violations FIRST (PostgreSQL: "unique constraint" or
+        // "uk_")
         if (combined.contains("unique") || combined.contains("uk_") || combined.contains("duplicate")) {
             if (combined.contains("cin")) {
                 userMessage = "Ce numéro CIN existe déjà";
@@ -68,6 +69,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
+        log.error("RuntimeException caught: {}", ex.getMessage(), ex);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage()));

@@ -16,7 +16,7 @@ public class EmployeDTO {
     private String matricule;
     @jakarta.validation.constraints.Pattern(regexp = "^[0-9]{8}$", message = "Le CIN doit contenir exactement 8 chiffres")
     private String cin;
-    @jakarta.validation.constraints.Pattern(regexp = "^[0-9]{8,12}$", message = "Le CNSS doit contenir entre 8 et 12 chiffres")
+    @jakarta.validation.constraints.Pattern(regexp = "^[0-9]{1,12}(-[0-9]+)*$", message = "Le CNSS doit contenir des chiffres (tirets autorisés)")
     private String cnss;
     private String nom;
     private String prenom;

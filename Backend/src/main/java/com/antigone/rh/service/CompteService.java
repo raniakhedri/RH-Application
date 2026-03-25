@@ -5,6 +5,7 @@ import com.antigone.rh.entity.*;
 import com.antigone.rh.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,12 @@ public class CompteService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final RoleService roleService;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    @Value("${app.frontend-base-url:${app.frontend-url}}")
+    private String frontendBaseUrl;
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%";
@@ -124,8 +131,7 @@ public class CompteService {
                 employe.getEmail(),
                 employe.getNom() + " " + employe.getPrenom(),
                 username,
-                rawPassword
-        );
+                rawPassword);
 
         log.info("Compte créé pour {} : username={}", employe.getNom(), username);
 
@@ -189,12 +195,11 @@ public class CompteService {
         compte.setResetTokenExpiry(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRY_MINUTES));
         compteRepository.save(compte);
 
-        String resetLink = "http://localhost:3000/reset-password?token=" + token;
+        String resetLink = frontendBaseUrl.split(",")[0].replaceAll("/+$", "") + "/reset-password?token=" + token;
         emailService.sendPasswordReset(
                 email,
                 compte.getEmploye().getNom() + " " + compte.getEmploye().getPrenom(),
-                resetLink
-        );
+                resetLink);
 
         log.info("Token de réinitialisation généré pour: {}", email);
     }

@@ -6,8 +6,11 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
 import Badge from '../components/ui/Badge';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 const RolesPage: React.FC = () => {
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [roles, setRoles] = useState<RoleDTO[]>([]);
   const [allPermissions, setAllPermissions] = useState<PermissionDTO[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -71,7 +74,7 @@ const RolesPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce rôle ?')) {
+    confirm('Êtes-vous sûr de vouloir supprimer ce rôle ?', async () => {
       try {
         await roleService.delete(id);
         loadData();
@@ -79,7 +82,7 @@ const RolesPage: React.FC = () => {
         const error = err as { response?: { data?: { message?: string } } };
         alert(error.response?.data?.message || 'Erreur lors de la suppression');
       }
-    }
+    }, 'Supprimer le rôle');
   };
 
   const togglePermission = (permId: number) => {
@@ -232,6 +235,15 @@ const RolesPage: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel="Supprimer"
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };

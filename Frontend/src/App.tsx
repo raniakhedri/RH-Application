@@ -10,7 +10,6 @@ import NewDemandePage from './pages/NewDemandePage';
 import ValidationsPage from './pages/ValidationsPage';
 import NewDemandePapierPage from './pages/NewDemandePapierPage';
 import DemandesPapierPage from './pages/DemandesPapierPage';
-import PointagePage from './pages/PointagePage';
 import ProjetsPage from './pages/ProjetsPage';
 import TachesPage from './pages/TachesPage';
 import EquipesPage from './pages/EquipesPage';
@@ -30,7 +29,11 @@ import ProjetTachesPage from './pages/ProjetTachesPage';
 
 import MesDemandesPapierPage from './pages/MesDemandesPapierPage';
 import OrganigrammePage from './pages/OrganigrammePage';
+import SuiviTempsReelPage from './pages/SuiviTempsReelPage';
+import RapportsInactivitePage from './pages/RapportsInactivitePage';
+import HistoriqueAgentPage from './pages/HistoriqueAgentPage';
 import TousProjetsAdminPage from './pages/TousProjetsAdminPage';
+import DashboardRHPage from './pages/DashboardRHPage';
 import DepartementsPage from './pages/DepartementsPage';
 import { NotificationProvider } from './context/NotificationContext';
 
@@ -87,7 +90,11 @@ const App: React.FC = () => {
           <Route path="mes-taches" element={<MesTachesPage />} />
           <Route path="mes-demandes-papier" element={<MesDemandesPapierPage />} />
           <Route path="projets/:projetId/taches" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetTachesPage /></PermissionRoute>} />
-          <Route path="admin/projets" element={<PermissionRoute permission="VIEW_PROJETS"><TousProjetsAdminPage /></PermissionRoute>} />
+          <Route path="suivi-temps-reel" element={<PermissionRoute permission="VIEW_MONITORING"><SuiviTempsReelPage /></PermissionRoute>} />
+          <Route path="rapports-inactivite" element={<PermissionRoute permission="VIEW_MONITORING"><RapportsInactivitePage /></PermissionRoute>} />
+          <Route path="historique-agent" element={<PermissionRoute permission="VIEW_MONITORING"><HistoriqueAgentPage /></PermissionRoute>} />
+          <Route path="admin/projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><TousProjetsAdminPage /></PermissionRoute>} />
+          <Route path="dashboard-rh" element={<PermissionRoute permission="VIEW_DASHBOARD_RH"><DashboardRHPage /></PermissionRoute>} />
           <Route path="admin/departements" element={<PermissionRoute permission="VIEW_EMPLOYES"><DepartementsPage /></PermissionRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

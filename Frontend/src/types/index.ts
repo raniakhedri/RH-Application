@@ -535,3 +535,74 @@ export interface OrgNode {
   email: string;
   children: OrgNode[];
 }
+
+// =====================
+// MONITORING - DASHBOARD TEMPS RÉEL
+// =====================
+export interface DashboardEmployeStatus {
+  employeId: number;
+  nom: string;
+  prenom: string;
+  poste: string;
+  departement: string;
+  imageUrl: string | null;
+  statut: string;
+  heureEntree: string | null;
+  heureSortie: string | null;
+  retardMinutes: number;
+  scoreJournalier: number;
+  agentActif: boolean;
+  ssidConnecte: string | null;
+  surReseauEntreprise: boolean;
+  tempsActifMinutes: number;
+  tempsInactifMinutes: number;
+}
+
+// =====================
+// MONITORING - RAPPORTS INACTIVITÉ
+// =====================
+export interface RapportInactivite {
+  id: number;
+  employeId: number;
+  employeNom: string;
+  employePrenom: string;
+  employeMatricule: string;
+  semaineDebut: string;
+  semaineFin: string;
+  totalInactiviteMinutes: number;
+  toleranceMinutes: number;
+  inactiviteExcedentaire: number;
+  retardCumule: number;
+  montantDeduction: number;
+  decision: string;
+  decideParNom: string | null;
+  commentaire: string | null;
+  dateDecision: string | null;
+  dateGeneration: string | null;
+}
+
+// =====================
+// MONITORING - HISTORIQUE AGENT
+// =====================
+export interface JourDetail {
+  date: string;
+  statut: string;
+  heureEntree: string | null;
+  heureSortie: string | null;
+  retardMinutes: number;
+  tempsActifMinutes: number;
+  tempsInactifMinutes: number;
+  ssid: string | null;
+  surReseauEntreprise: boolean;
+  teletravail: boolean | null;
+}
+
+export interface HistoriqueEmploye {
+  employeId: number;
+  nom: string;
+  prenom: string;
+  poste: string;
+  departement: string;
+  imageUrl: string | null;
+  jours: JourDetail[];
+}

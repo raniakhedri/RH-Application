@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: antigone-rh-backend
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./Backend/Dockerfile
+    dockerContext: ./Backend
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+
+databases:
+  - name: antigone-rh-db
+    plan: free
+    databaseName: antigone_rh
+    postgresMajorVersion: 16

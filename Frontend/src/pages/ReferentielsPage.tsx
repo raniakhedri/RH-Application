@@ -13,10 +13,26 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
 import Badge from '../components/ui/Badge';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 const ALL_TYPES = Object.values(TypeReferentiel);
 
+const PLACEHOLDERS: Record<string, { libelle: string; description: string }> = {
+  [TypeReferentiel.DEPARTEMENT]: { libelle: 'Ex: IT, Finance, Ressources Humaines...', description: 'Décrivez le département...' },
+  [TypeReferentiel.TYPE_CONTRAT]: { libelle: 'Ex: CDI, CDD, Stage, Freelance...', description: 'Décrivez le type de contrat...' },
+  [TypeReferentiel.SITE_ETABLISSEMENT]: { libelle: 'Ex: Siège Casablanca, Agence Rabat...', description: 'Décrivez le site ou établissement...' },
+  [TypeReferentiel.POSTE]: { libelle: 'Ex: Développeur, Chef de projet, RH...', description: 'Décrivez le poste...' },
+  [TypeReferentiel.NIVEAU_HIERARCHIQUE]: { libelle: 'Ex: Junior, Senior, Manager, Directeur...', description: 'Décrivez le niveau hiérarchique...' },
+  [TypeReferentiel.TYPE_CONGE]: { libelle: 'Ex: Annuel, Maladie, Maternité...', description: 'Décrivez le type de congé...' },
+  [TypeReferentiel.TYPE_DEMANDE]: { libelle: 'Ex: Attestation de travail, Ordre de mission...', description: 'Décrivez le type de demande...' },
+  [TypeReferentiel.GENRE]: { libelle: 'Ex: Masculin, Féminin...', description: 'Décrivez le genre...' },
+  [TypeReferentiel.DUREE_CDD]: { libelle: 'Ex: 6 mois, 12 mois, 24 mois...', description: 'Décrivez la durée du CDD...' },
+  [TypeReferentiel.PARAMETRE_SYSTEME]: { libelle: 'Ex: Solde congé initial, Délai validation...', description: 'Décrivez le paramètre système...' },
+};
+
 const ReferentielsPage: React.FC = () => {
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [referentiels, setReferentiels] = useState<Referentiel[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -68,14 +84,14 @@ const ReferentielsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce référentiel ?')) {
+    confirm('Êtes-vous sûr de vouloir supprimer ce référentiel ?', async () => {
       try {
         await referentielService.delete(id);
         loadReferentiels();
       } catch (err: any) {
         alert(err.response?.data?.message || 'Erreur lors de la suppression');
       }
-    }
+    }, 'Supprimer le référentiel');
   };
 
   const handleToggleActif = async (id: number) => {
@@ -264,24 +280,12 @@ const ReferentielsPage: React.FC = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
-            <select
-              value={refForm.typeReferentiel}
-              onChange={(e) => setRefForm({ ...refForm, typeReferentiel: e.target.value })}
-              className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
-            >
-              {ALL_TYPES.map((t) => (
-                <option key={t} value={t}>{TypeReferentielLabels[t]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Libellé *</label>
             <input
               type="text"
               value={refForm.libelle}
               onChange={(e) => setRefForm({ ...refForm, libelle: e.target.value })}
-              placeholder="Ex: IT, Finance, CDI, CDD..."
+              placeholder={PLACEHOLDERS[refForm.typeReferentiel]?.libelle || 'Libellé du référentiel...'}
               className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
             />
           </div>
@@ -290,7 +294,7 @@ const ReferentielsPage: React.FC = () => {
             <textarea
               value={refForm.description}
               onChange={(e) => setRefForm({ ...refForm, description: e.target.value })}
-              placeholder="Description du référentiel..."
+              placeholder={PLACEHOLDERS[refForm.typeReferentiel]?.description || 'Description du référentiel...'}
               rows={3}
               className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
             />
@@ -317,6 +321,15 @@ const ReferentielsPage: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel="Supprimer"
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };

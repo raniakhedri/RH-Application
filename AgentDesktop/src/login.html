@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigone RH Agent - Connexion</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            color: white;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .titlebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 32px;
+            -webkit-app-region: drag;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+        }
+
+        .titlebar-btn {
+            -webkit-app-region: no-drag;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 18px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .titlebar-btn:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 40px;
+            width: 380px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            border-color: #4fc3f7;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .server-group {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        .server-input {
+            font-size: 12px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+
+        .btn-login:hover {
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+            transform: translateY(-1px);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 13px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 15px;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 11px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="titlebar">
+        <button class="titlebar-btn" onclick="minimizeWindow()">−</button>
+        <button class="titlebar-btn" onclick="closeWindow()">×</button>
+    </div>
+
+    <div class="login-container">
+        <div class="logo">🏢</div>
+        <h1>Antigone RH</h1>
+        <p class="subtitle">Agent de monitoring - Connectez-vous pour démarrer</p>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form onsubmit="handleLogin(event)">
+            <div class="server-group">
+                <label>Serveur</label>
+                <input type="text" id="serverUrl" class="server-input" placeholder="http://localhost:8080"
+                    value="http://localhost:8080">
+            </div>
+
+            <div class="form-group">
+                <label>Nom d'utilisateur</label>
+                <input type="text" id="username" placeholder="Votre identifiant" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" id="password" placeholder="Votre mot de passe" required>
+            </div>
+
+            <button type="submit" class="btn-login" id="btnLogin">
+                Se Connecter
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <span class="spinner"></span> Connexion en cours...
+        </div>
+
+        <p class="footer">© 2026 Antigone RH - Agent Desktop v1.0</p>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        async function handleLogin(e) {
+            e.preventDefault();
+
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!serverUrl || !username || !password) return;
+
+            // Masquer erreur, afficher loading
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('btnLogin').disabled = true;
+
+            // Envoyer au main process
+            ipcRenderer.send('login-attempt', { serverUrl, username, password });
+        }
+
+        // Réponse du login
+        ipcRenderer.on('login-result', (event, result) => {
+            document.getElementById('loading').classList.remove('active');
+            document.getElementById('btnLogin').disabled = false;
+
+            if (result.success) {
+                document.getElementById('btnLogin').textContent = '✓ Connecté!';
+                document.getElementById('btnLogin').style.background = '#4caf50';
+            } else {
+                const errorEl = document.getElementById('errorMessage');
+                errorEl.textContent = result.message || 'Identifiants incorrects';
+                errorEl.style.display = 'block';
+            }
+        });
+
+        function minimizeWindow() {
+            ipcRenderer.send('login-minimize');
+        }
+
+        function closeWindow() {
+            ipcRenderer.send('login-close');
+        }
+    </script>
+</body>
+
+</html>

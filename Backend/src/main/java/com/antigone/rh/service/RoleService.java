@@ -33,8 +33,13 @@ public class RoleService {
             Map.entry("VIEW_REFERENTIELS", "Référentiels"),
             Map.entry("VIEW_CALENDRIER", "Calendrier Entreprise"),
             Map.entry("VIEW_COMPTES", "Comptes"),
-            Map.entry("VIEW_ROLES", "Rôles")
-    );
+            Map.entry("VIEW_ROLES", "Rôles"),
+            Map.entry("VIEW_MONITORING", "Monitoring"),
+            Map.entry("VIEW_TOUS_PROJETS", "Tous les projets"),
+            Map.entry("VIEW_DASHBOARD_RH", "Dashboard RH"),
+            Map.entry("VIEW_MES_DEMANDES", "Mes demandes"),
+            Map.entry("VIEW_MES_PROJETS", "Mes projets"),
+            Map.entry("VIEW_MON_CALENDRIER", "Mon calendrier"));
 
     public List<RoleDTO> getAllRoles() {
         return roleRepository.findAll().stream()
@@ -105,6 +110,13 @@ public class RoleService {
                         .build());
             }
         }
+        // Supprimer les permissions obsolètes qui ne sont plus dans PERMISSION_LABELS
+        permissionRepository.findAll().stream()
+                .filter(p -> !PERMISSION_LABELS.containsKey(p.getPermission()))
+                .forEach(p -> {
+                    p.getRoles().forEach(role -> role.getPermissions().remove(p));
+                    permissionRepository.delete(p);
+                });
     }
 
     public RoleDTO toDTO(Role role) {

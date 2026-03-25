@@ -8,6 +8,8 @@ import {
   HiOutlineClock,
   HiOutlineExclamation,
 } from 'react-icons/hi';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi';
 import { calendrierService } from '../api/calendrierService';
 import { equipeService } from '../api/equipeService';
@@ -50,6 +52,7 @@ function eachDayBetween(start: string, end: string): string[] {
 }
 
 const CalendrierPage: React.FC = () => {
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [activeTab, setActiveTab] = useState<Tab>('jours');
 
   // ============ Jours state ============
@@ -173,14 +176,14 @@ const CalendrierPage: React.FC = () => {
   };
 
   const handleDeleteJour = async (id: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce jour ?')) {
+    confirm('Êtes-vous sûr de vouloir supprimer ce jour ?', async () => {
       try {
         await calendrierService.deleteJour(id);
         loadJours();
       } catch (err: any) {
         alert(err.response?.data?.message || 'Erreur lors de la suppression');
       }
-    }
+    }, 'Supprimer le jour');
   };
 
   const resetJourForm = () => {
@@ -258,14 +261,14 @@ const CalendrierPage: React.FC = () => {
   };
 
   const handleDeleteHoraire = async (id: number) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cet horaire ?')) {
+    confirm('Êtes-vous sûr de vouloir supprimer cet horaire ?', async () => {
       try {
         await calendrierService.deleteHoraire(id);
         loadHoraires();
       } catch (err: any) {
         alert(err.response?.data?.message || 'Erreur lors de la suppression');
       }
-    }
+    }, 'Supprimer l\'horaire');
   };
 
   const resetHoraireForm = () => {
@@ -396,21 +399,21 @@ const CalendrierPage: React.FC = () => {
   };
 
   const handleDeleteTacheObl = async (id: number) => {
-    if (window.confirm('Supprimer cette restriction ?')) {
+    confirm('Supprimer cette restriction ?', async () => {
       try {
         await tacheObligatoireService.delete(id);
         loadTachesObl();
       } catch { /* ignore */ }
-    }
+    }, 'Supprimer la restriction');
   };
 
   const handleDeleteGroup = async (records: TacheObligatoireDTO[]) => {
-    if (window.confirm(`Supprimer la restriction "${records[0]?.nom}" et toutes ses entrées ?`)) {
+    confirm(`Supprimer la restriction "${records[0]?.nom}" et toutes ses entrées ?`, async () => {
       try {
         await Promise.all(records.map(r => tacheObligatoireService.delete(r.id)));
         loadTachesObl();
       } catch { /* ignore */ }
-    }
+    }, 'Supprimer la restriction');
   };
 
   const openEditGroup = (records: TacheObligatoireDTO[]) => {
@@ -1303,6 +1306,15 @@ const CalendrierPage: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel="Supprimer"
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };

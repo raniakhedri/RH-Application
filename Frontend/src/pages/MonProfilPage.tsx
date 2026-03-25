@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { employeService } from '../api/employeService';
 import { Employe } from '../types';
 import Badge from '../components/ui/Badge';
+import { API_BASE } from '../api/axios';
 import {
   HiOutlineUser,
   HiOutlineMail,
@@ -17,6 +19,7 @@ import {
   HiOutlineCheck,
   HiOutlineX,
   HiOutlineFolder,
+  HiOutlineLockClosed,
 } from 'react-icons/hi';
 
 const MonProfilPage: React.FC = () => {
@@ -25,6 +28,7 @@ const MonProfilPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editingDriveLink, setEditingDriveLink] = useState(false);
   const [driveLinkValue, setDriveLinkValue] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user?.employeId) {
@@ -74,7 +78,7 @@ const MonProfilPage: React.FC = () => {
 
         <div className="relative flex items-center gap-5">
           {employe.imageUrl ? (
-            <img src={`http://localhost:8080${employe.imageUrl}`} alt="" className="w-20 h-20 rounded-2xl object-cover shrink-0" />
+            <img src={`${API_BASE}${employe.imageUrl}`} alt="" className="w-20 h-20 rounded-2xl object-cover shrink-0" />
           ) : (
             <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm text-3xl font-bold shrink-0">
               {employe.prenom?.[0]}{employe.nom?.[0]}
@@ -92,6 +96,13 @@ const MonProfilPage: React.FC = () => {
                 <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">{employe.typeContrat}</span>
               )}
             </div>
+            <button
+              onClick={() => navigate('/change-password')}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-sm font-medium transition-colors"
+            >
+              <HiOutlineLockClosed size={16} />
+              Changer le mot de passe
+            </button>
           </div>
         </div>
       </div>

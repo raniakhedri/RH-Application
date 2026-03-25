@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation de Présence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-app-region: drag;
+        }
+
+        .container {
+            text-align: center;
+            padding: 30px;
+            width: 100%;
+        }
+
+        .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .message {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .timer {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            color: #4fc3f7;
+        }
+
+        .timer.warning {
+            color: #ff9800;
+        }
+
+        .timer.critical {
+            color: #f44336;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4fc3f7;
+            border-radius: 3px;
+            transition: width 1s linear;
+        }
+
+        .btn-confirm {
+            -webkit-app-region: no-drag;
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 14px 50px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-confirm:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        .btn-confirm:active {
+            transform: scale(0.98);
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 11px;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="icon">🔔</div>
+        <h1>Confirmation de Présence</h1>
+        <p class="message">
+            Veuillez confirmer votre présence en cliquant sur le bouton ci-dessous.<br>
+            Si vous ne confirmez pas à temps, une absence sera enregistrée.
+        </p>
+
+        <div class="timer" id="timer">60</div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 100%"></div>
+        </div>
+
+        <button class="btn-confirm" id="btnConfirm" onclick="confirmPresence()">
+            ✓ Je suis présent
+        </button>
+
+        <p class="footer">Antigone RH Agent - Surveillance automatique</p>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        let timeoutSeconds = 60;
+        let remainingSeconds = timeoutSeconds;
+        let countdownInterval = null;
+
+        // Recevoir le timeout configuré depuis le main process
+        ipcRenderer.on('set-timeout', (event, seconds) => {
+            timeoutSeconds = seconds;
+            remainingSeconds = seconds;
+            updateDisplay();
+            startCountdown();
+        });
+
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            countdownInterval = setInterval(() => {
+                remainingSeconds--;
+                updateDisplay();
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    // Temps écoulé - non confirmé
+                    ipcRenderer.send('presence-response', false);
+                }
+            }, 1000);
+        }
+
+        function updateDisplay() {
+            const timerEl = document.getElementById('timer');
+            const progressFill = document.getElementById('progressFill');
+
+            timerEl.textContent = remainingSeconds;
+
+            const percent = (remainingSeconds / timeoutSeconds) * 100;
+            progressFill.style.width = percent + '%';
+
+            // Changer couleur selon le temps restant
+            timerEl.className = 'timer';
+            if (remainingSeconds <= 10) {
+                timerEl.classList.add('critical');
+                progressFill.style.background = '#f44336';
+            } else if (remainingSeconds <= 20) {
+                timerEl.classList.add('warning');
+                progressFill.style.background = '#ff9800';
+            }
+        }
+
+        function confirmPresence() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            document.getElementById('btnConfirm').textContent = '✓ Confirmé!';
+            document.getElementById('btnConfirm').style.background = '#388e3c';
+            document.getElementById('btnConfirm').disabled = true;
+
+            // Envoyer la confirmation
+            ipcRenderer.send('presence-response', true);
+        }
+
+        // Démarrer le countdown
+        startCountdown();
+    </script>
+</body>
+
+</html>

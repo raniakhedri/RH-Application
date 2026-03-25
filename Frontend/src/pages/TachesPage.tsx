@@ -6,6 +6,8 @@ import { Tache, Projet, StatutTache } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success'> = {
   TODO: 'neutral',
@@ -20,6 +22,7 @@ const statutLabels: Record<string, string> = {
 };
 
 const TachesPage: React.FC = () => {
+  const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [taches, setTaches] = useState<Tache[]>([]);
   const [projets, setProjets] = useState<Projet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,14 +122,14 @@ const TachesPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Supprimer cette tâche ?')) {
+    confirm('Supprimer cette tâche ?', async () => {
       try {
         await tacheService.delete(id);
         loadData();
       } catch (err) {
         console.error('Erreur suppression:', err);
       }
-    }
+    }, 'Supprimer la tâche');
   };
 
   const getProjetNom = (id: number) => projets.find((p) => p.id === id)?.nom || '-';
@@ -381,6 +384,15 @@ const TachesPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel="Supprimer"
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };
