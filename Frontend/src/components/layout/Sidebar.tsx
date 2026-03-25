@@ -107,6 +107,7 @@ const menuGroups = [
       { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} />, permission: 'VIEW_REFERENTIELS' },
       { key: 'calendrier', label: 'Calendrier Entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
       { key: 'tous-projets-admin', label: 'Tous les projets', path: '/admin/projets', icon: <HiOutlineBriefcase size={20} />, permission: 'VIEW_PROJETS' },
+      { key: 'departements', label: 'Départements', path: '/admin/departements', icon: <HiOutlineUserGroup size={20} />, permission: 'VIEW_EMPLOYES' },
     ] as NavItemDef[],
   },
 ];

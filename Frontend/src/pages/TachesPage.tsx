@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
 import { tacheService } from '../api/tacheService';
 import { projetService } from '../api/projetService';
-import { equipeService } from '../api/equipeService';
-import { Tache, Projet, Employe, StatutTache } from '../types';
+import { Tache, Projet, StatutTache } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -23,8 +22,6 @@ const statutLabels: Record<string, string> = {
 const TachesPage: React.FC = () => {
   const [taches, setTaches] = useState<Tache[]>([]);
   const [projets, setProjets] = useState<Projet[]>([]);
-  const [employes, setEmployes] = useState<Employe[]>([]);
-  const [equipeMembers, setEquipeMembers] = useState<Employe[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filterProjet, setFilterProjet] = useState<string>('');
@@ -58,19 +55,14 @@ const TachesPage: React.FC = () => {
     }
   };
 
-  // Load equipe members when project changes in form
-  const loadEquipeMembers = async (projetId: number) => {
-    if (!projetId) {
-      setEquipeMembers([]);
-      return;
-    }
-    try {
-      const res = await equipeService.getMembresByProjet(projetId);
-      setEquipeMembers(res.data.data || []);
-    } catch (err) {
-      console.error('Erreur chargement membres:', err);
-      setEquipeMembers([]);
-    }
+  // Compute assignable members for the currently selected project: chef + selected membres
+  const getMembresForProjet = (projetId: number) => {
+    const p = projets.find(pr => pr.id === projetId);
+    if (!p) return [];
+    const map = new Map<number, { id: number; prenom: string; nom: string }>();
+    if (p.chefDeProjet) map.set(p.chefDeProjet.id, p.chefDeProjet);
+    (p.membres ?? []).forEach(m => { if (!map.has(m.id)) map.set(m.id, m); });
+    return Array.from(map.values());
   };
 
   const handleSubmit = async () => {
@@ -140,8 +132,13 @@ const TachesPage: React.FC = () => {
   const getProjetNom = (id: number) => projets.find((p) => p.id === id)?.nom || '-';
   const getEmployeNom = (id: number | null) => {
     if (!id) return 'Non assignée';
-    const e = equipeMembers.find((emp) => emp.id === id) || employes.find((emp) => emp.id === id);
-    return e ? `${e.prenom} ${e.nom}` : '-';
+    // Search across all projets' members
+    for (const p of projets) {
+      if (p.chefDeProjet?.id === id) return `${p.chefDeProjet.prenom} ${p.chefDeProjet.nom}`;
+      const m = (p.membres ?? []).find(m => m.id === id);
+      if (m) return `${m.prenom} ${m.nom}`;
+    }
+    return '-';
   };
 
   // Drag & Drop handlers
@@ -181,7 +178,6 @@ const TachesPage: React.FC = () => {
       projetId: tache.projetId,
       assigneeId: tache.assigneeId,
     });
-    loadEquipeMembers(tache.projetId);
     setDateError(null);
     setShowModal(true);
   };
@@ -214,17 +210,12 @@ const TachesPage: React.FC = () => {
     const firstProjetId = projets[0]?.id || 0;
     setEditingTache(null);
     setFormData({ titre: '', dateEcheance: '', projetId: firstProjetId, assigneeId: null });
-    setEquipeMembers([]);
-    if (firstProjetId) {
-      loadEquipeMembers(firstProjetId);
-    }
     setDateError(null);
     setShowModal(true);
   };
 
   const handleProjetChange = (projetId: number) => {
     setFormData({ ...formData, projetId, assigneeId: null });
-    loadEquipeMembers(projetId);
   };
 
   return (
@@ -365,17 +356,17 @@ const TachesPage: React.FC = () => {
               className={inputClass}
             >
               <option value="">Non assignée</option>
-              {equipeMembers.length > 0 ? (
-                equipeMembers.map((e) => (
-                  <option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>
+              {getMembresForProjet(formData.projetId).length > 0 ? (
+                getMembresForProjet(formData.projetId).map((m) => (
+                  <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>
                 ))
               ) : (
-                <option value="" disabled>Aucun membre d'équipe pour ce projet</option>
+                <option value="" disabled>Aucun membre pour ce projet</option>
               )}
             </select>
-            {equipeMembers.length === 0 && formData.projetId > 0 && (
+            {getMembresForProjet(formData.projetId).length === 0 && formData.projetId > 0 && (
               <p className="mt-1 text-theme-xs text-warning-500">
-                Ce projet n'a pas d'équipe assignée. Créez d'abord une équipe.
+                Ce projet n'a pas encore de membres assignés.
               </p>
             )}
           </div>

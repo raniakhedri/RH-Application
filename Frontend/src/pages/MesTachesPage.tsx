@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { tacheService } from '../api/tacheService';
 import { demandeService } from '../api/demandeService';
 import { useAuth } from '../context/AuthContext';
-import { TacheDetail, TacheEquipeInfo, TacheMembreInfo, StatutTache, StatutDemande } from '../types';
+import { TacheDetail, TacheMembreInfo, StatutTache, StatutDemande } from '../types';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
@@ -14,7 +14,7 @@ interface ProjectGroup {
     projetDateFin: string | null;
     projetStatut: string | null;
     chefDeProjetNom: string | null;
-    equipes: TacheEquipeInfo[];
+    membres: TacheMembreInfo[];
     tacheCount: number;
 }
 
@@ -69,7 +69,6 @@ const MesTachesPage: React.FC = () => {
     const [editLoading, setEditLoading] = useState(false);
 
     const [selectedProject, setSelectedProject] = useState<ProjectGroup | null>(null);
-    const [selectedEquipe, setSelectedEquipe] = useState<TacheEquipeInfo | null>(null);
     // Set of employeNom strings for people on congé today
     const [congeAujourdhuiNoms, setCongeAujourdhuiNoms] = useState<Set<string>>(new Set());
 
@@ -115,7 +114,7 @@ const MesTachesPage: React.FC = () => {
                     projetDateFin: t.projetDateFin,
                     projetStatut: t.projetStatut,
                     chefDeProjetNom: t.chefDeProjetNom,
-                    equipes: t.equipes || [],
+                    membres: Array.from(new Map((t.membresProjet ?? []).map(m => [m.id, m])).values()),
                     tacheCount: 0,
                 });
             }
@@ -200,37 +199,22 @@ const MesTachesPage: React.FC = () => {
                         <div>
                             <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Mes Projets</h1>
                             <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
-                                Explorez vos projets, équipes et membres
+                                Explorez vos projets et les membres de chaque projet
                             </p>
                         </div>
                         {/* Breadcrumb */}
-                        {(selectedProject || selectedEquipe) && (
+                        {selectedProject && (
                             <nav className="flex items-center gap-1.5 text-theme-xs">
                                 <button
-                                    onClick={() => { setSelectedProject(null); setSelectedEquipe(null); }}
+                                    onClick={() => setSelectedProject(null)}
                                     className="text-brand-500 hover:underline"
                                 >
                                     Projets
                                 </button>
-                                {selectedProject && (
-                                    <>
-                                        <HiOutlineChevronRight size={12} className="text-gray-300" />
-                                        <button
-                                            onClick={() => setSelectedEquipe(null)}
-                                            className={selectedEquipe ? 'text-brand-500 hover:underline' : 'font-semibold text-gray-700 dark:text-gray-200'}
-                                        >
-                                            {selectedProject.projetNom}
-                                        </button>
-                                    </>
-                                )}
-                                {selectedEquipe && (
-                                    <>
-                                        <HiOutlineChevronRight size={12} className="text-gray-300" />
-                                        <span className="font-semibold text-gray-700 dark:text-gray-200">
-                                            {selectedEquipe.nom}
-                                        </span>
-                                    </>
-                                )}
+                                <HiOutlineChevronRight size={12} className="text-gray-300" />
+                                <span className="font-semibold text-gray-700 dark:text-gray-200">
+                                    {selectedProject.projetNom}
+                                </span>
                             </nav>
                         )}
                     </div>
@@ -241,7 +225,7 @@ const MesTachesPage: React.FC = () => {
                             {projectGroups.map(pg => (
                                 <button
                                     key={pg.projetId}
-                                    onClick={() => { setSelectedProject(pg); setSelectedEquipe(null); }}
+                                    onClick={() => setSelectedProject(pg)}
                                     className="group rounded-2xl border border-gray-200 bg-white p-5 text-left transition-all hover:border-brand-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-dark"
                                 >
                                     <div className="flex items-start justify-between gap-2">
@@ -276,7 +260,7 @@ const MesTachesPage: React.FC = () => {
                                             {pg.tacheCount} tâche{pg.tacheCount > 1 ? 's' : ''}
                                         </span>
                                         <span className="rounded-full bg-secondary-50 px-2.5 py-0.5 text-theme-xs font-medium text-secondary-600 dark:bg-secondary-500/10 dark:text-secondary-400">
-                                            {pg.equipes.length} équipe{pg.equipes.length > 1 ? 's' : ''}
+                                            {pg.membres.length} membre{pg.membres.length !== 1 ? 's' : ''}
                                         </span>
                                     </div>
                                 </button>
@@ -284,8 +268,8 @@ const MesTachesPage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Level 2 — Équipes */}
-                    {selectedProject && !selectedEquipe && (
+                    {/* Level 2 — Membres du projet */}
+                    {selectedProject && (
                         <div className="space-y-4">
                             <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 dark:border-brand-500/20 dark:bg-brand-500/5">
                                 <p className="text-theme-sm font-semibold text-brand-700 dark:text-brand-300">{selectedProject.projetNom}</p>
@@ -303,60 +287,11 @@ const MesTachesPage: React.FC = () => {
                                     {selectedProject.projetDateFin && <span>📅 Fin : {selectedProject.projetDateFin}</span>}
                                 </div>
                             </div>
-                            {selectedProject.equipes.length === 0 ? (
-                                <p className="py-6 text-center text-theme-sm text-gray-400">Aucune équipe associée.</p>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                    {selectedProject.equipes.map(eq => (
-                                        <button
-                                            key={eq.id}
-                                            onClick={() => setSelectedEquipe(eq)}
-                                            className="group rounded-2xl border border-gray-200 bg-white p-5 text-left transition-all hover:border-secondary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-dark"
-                                        >
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary-50 text-secondary-500 dark:bg-secondary-500/10">
-                                                    <HiOutlineUsers size={22} />
-                                                </div>
-                                                <HiOutlineChevronRight size={16} className="mt-1 text-gray-300 group-hover:translate-x-0.5 group-hover:text-secondary-400" />
-                                            </div>
-                                            <p className="mt-3 text-theme-sm font-semibold text-gray-800 dark:text-white">{eq.nom}</p>
-                                            <p className="mt-0.5 text-theme-xs text-gray-500">{eq.membres?.length || 0} membre{(eq.membres?.length || 0) > 1 ? 's' : ''}</p>
-                                            {eq.membres && eq.membres.length > 0 && (
-                                                <div className="mt-3 flex -space-x-2">
-                                                    {eq.membres.slice(0, 5).map(m => (
-                                                        <div key={m.id} title={`${m.prenom} ${m.nom}`}
-                                                            className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-secondary-400 to-secondary-600 text-xs font-semibold text-white dark:border-gray-800">
-                                                            {m.prenom?.[0]}{m.nom?.[0]}
-                                                        </div>
-                                                    ))}
-                                                    {eq.membres.length > 5 && (
-                                                        <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-gray-100 text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-700">
-                                                            +{eq.membres.length - 5}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Level 3 — Members */}
-                    {selectedProject && selectedEquipe && (
-                        <div className="space-y-4">
-                            <div className="rounded-xl border border-secondary-100 bg-secondary-50/60 px-4 py-3 dark:border-secondary-500/20 dark:bg-secondary-500/5">
-                                <p className="text-theme-sm font-semibold text-secondary-700 dark:text-secondary-300">{selectedEquipe.nom}</p>
-                                <p className="mt-0.5 text-theme-xs text-secondary-500">
-                                    {selectedEquipe.membres?.length || 0} membre{(selectedEquipe.membres?.length || 0) > 1 ? 's' : ''} · {selectedProject.projetNom}
-                                </p>
-                            </div>
-                            {!selectedEquipe.membres || selectedEquipe.membres.length === 0 ? (
-                                <p className="py-6 text-center text-theme-sm text-gray-400">Aucun membre.</p>
+                            {selectedProject.membres.length === 0 ? (
+                                <p className="py-6 text-center text-theme-sm text-gray-400">Aucun membre assigné à ce projet.</p>
                             ) : (
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                    {selectedEquipe.membres.map(m => <MemberCard key={m.id} membre={m} />)}
+                                    {selectedProject.membres.map(m => <MemberCard key={m.id} membre={m} />)}
                                 </div>
                             )}
                         </div>

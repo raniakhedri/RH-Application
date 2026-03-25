@@ -266,6 +266,7 @@ export interface Projet {
   equipeId?: number | null;
   equipeIds?: number[];
   equipeNoms?: string[];
+  membres?: Employe[];
 }
 
 export interface Equipe {
@@ -318,7 +319,7 @@ export interface TacheDetail {
   chefDeProjetNom: string | null;
   chefDeProjetId: number | null;
   assigneeId: number | null;
-  equipes: TacheEquipeInfo[];
+  membresProjet?: TacheMembreInfo[];
 }
 
 export interface ApiResponse<T> {

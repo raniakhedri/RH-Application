@@ -14,4 +14,5 @@ public class ProjetRequest {
     private Long chefDeProjetId;
     private Long createurId; // ID of the employee who is creating the project
     private List<Long> equipeIds; // Multiple teams supported
+    private List<Long> membreIds; // Selected subordinates of the chef
 }
