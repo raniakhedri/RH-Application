@@ -21,4 +21,11 @@ public interface ProjetRepository extends JpaRepository<Projet, Long> {
      */
     @Query("SELECT DISTINCT e.projet FROM Equipe e JOIN e.membres m WHERE m.id = :employeId AND e.projet IS NOT NULL")
     List<Projet> findByEquipeMembre(Long employeId);
+
+    /**
+     * Projects where the given employee was directly selected as a member by the
+     * chef
+     */
+    @Query("SELECT DISTINCT p FROM Projet p JOIN p.membres m WHERE m.id = :employeId")
+    List<Projet> findByMembreId(Long employeId);
 }

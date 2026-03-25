@@ -4,14 +4,13 @@ import {
     HiOutlineSearch,
     HiOutlineChevronDown,
     HiOutlineChevronRight,
-    HiOutlineUserGroup,
+    HiOutlineUsers,
     HiOutlineClipboardList,
     HiOutlineUser,
 } from 'react-icons/hi';
 import { projetService } from '../api/projetService';
-import { equipeService } from '../api/equipeService';
 import { tacheService } from '../api/tacheService';
-import { Projet, Equipe, StatutProjet } from '../types';
+import { Projet, StatutProjet } from '../types';
 import Badge from '../components/ui/Badge';
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success' | 'danger'> = {
@@ -31,7 +30,6 @@ const tacheStatutLabels: Record<string, string> = {
 };
 
 interface TacheItem { id: number; titre: string; statut: string; dateEcheance?: string; assigneeNom?: string; }
-interface EquipeWithMembers extends Equipe { membres: any[]; }
 
 const TousProjetsAdminPage: React.FC = () => {
     const navigate = useNavigate();
@@ -40,7 +38,7 @@ const TousProjetsAdminPage: React.FC = () => {
     const [search, setSearch] = useState('');
     const [statutFilter, setStatutFilter] = useState('');
     const [expandedId, setExpandedId] = useState<number | null>(null);
-    const [detailData, setDetailData] = useState<Record<number, { equipes: EquipeWithMembers[]; taches: TacheItem[] }>>({});
+    const [detailData, setDetailData] = useState<Record<number, { taches: TacheItem[] }>>({});
     const [detailLoading, setDetailLoading] = useState<number | null>(null);
 
     useEffect(() => { loadProjets(); }, []);
@@ -59,11 +57,7 @@ const TousProjetsAdminPage: React.FC = () => {
         if (detailData[projetId]) return; // already loaded
         setDetailLoading(projetId);
         try {
-            const [eqRes, tRes] = await Promise.all([
-                equipeService.getByProjet(projetId),
-                tacheService.getByProjet(projetId),
-            ]);
-            const equipes: EquipeWithMembers[] = (eqRes.data?.data || eqRes.data || []);
+            const tRes = await tacheService.getByProjet(projetId);
             const taches: TacheItem[] = (tRes.data?.data || tRes.data || []).map((t: any) => ({
                 id: t.id,
                 titre: t.titre,
@@ -71,9 +65,17 @@ const TousProjetsAdminPage: React.FC = () => {
                 dateEcheance: t.dateEcheance,
                 assigneeNom: t.assignee ? `${t.assignee.prenom} ${t.assignee.nom}` : t.assigneeNom,
             }));
-            setDetailData(prev => ({ ...prev, [projetId]: { equipes, taches } }));
+            setDetailData(prev => ({ ...prev, [projetId]: { taches } }));
         } catch (e) { console.error(e); }
         finally { setDetailLoading(null); }
+    };
+
+    /** Build a deduped list of all members: chef first, then selected membres */
+    const getAllMembres = (projet: Projet) => {
+        const map = new Map<number, { id: number; prenom: string; nom: string; isChef?: boolean }>();
+        if (projet.chefDeProjet) map.set(projet.chefDeProjet.id, { ...projet.chefDeProjet, isChef: true });
+        (projet.membres ?? []).forEach(m => { if (!map.has(m.id)) map.set(m.id, m); });
+        return Array.from(map.values());
     };
 
     const filtered = projets.filter(p => {
@@ -125,6 +127,7 @@ const TousProjetsAdminPage: React.FC = () => {
                         const isExpanded = expandedId === projet.id;
                         const isLoading = detailLoading === projet.id;
                         const detail = detailData[projet.id];
+                        const membres = getAllMembres(projet);
 
                         return (
                             <div key={projet.id} className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark overflow-hidden">
@@ -152,9 +155,21 @@ const TousProjetsAdminPage: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 text-gray-400">
-                                        {(projet.equipeNoms?.length ?? 0) > 0 && (
+                                        {/* Member chips in the row */}
+                                        {membres.length > 0 && (
                                             <div className="flex flex-wrap gap-1">
-                                                {projet.equipeNoms!.map(n => <Badge key={n} text={n} variant="primary" />)}
+                                                {membres.map(m => (
+                                                    <span key={m.id}
+                                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${m.isChef
+                                                            ? 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-400'
+                                                            : 'bg-secondary-50 text-secondary-700 dark:bg-secondary-500/10 dark:text-secondary-400'}`}
+                                                    >
+                                                        <span className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold ${m.isChef ? 'bg-warning-200 dark:bg-warning-500/30' : 'bg-secondary-200 dark:bg-secondary-500/30'}`}>
+                                                            {m.prenom?.[0]}{m.nom?.[0]}
+                                                        </span>
+                                                        {m.prenom} {m.nom}
+                                                    </span>
+                                                ))}
                                             </div>
                                         )}
                                         <button
@@ -172,31 +187,34 @@ const TousProjetsAdminPage: React.FC = () => {
                                     <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 bg-gray-50/50 dark:bg-gray-800/20">
                                         {isLoading ? (
                                             <div className="py-6 text-center text-gray-400 text-theme-sm">Chargement des détails...</div>
-                                        ) : detail ? (
+                                        ) : (
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                                {/* Equipes */}
+                                                {/* Membres */}
                                                 <div>
                                                     <h4 className="flex items-center gap-2 text-theme-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
-                                                        <HiOutlineUserGroup size={14} /> Équipes ({detail.equipes.length})
+                                                        <HiOutlineUsers size={14} /> Membres ({membres.length})
                                                     </h4>
-                                                    {detail.equipes.length === 0 ? (
-                                                        <p className="text-theme-xs text-gray-400 italic">Aucune équipe assignée</p>
+                                                    {membres.length === 0 ? (
+                                                        <p className="text-theme-xs text-gray-400 italic">Aucun membre assigné</p>
                                                     ) : (
-                                                        <div className="space-y-3">
-                                                            {detail.equipes.map((eq: any) => (
-                                                                <div key={eq.id} className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 p-3">
-                                                                    <p className="font-semibold text-theme-sm text-gray-800 dark:text-white mb-2">{eq.nom}</p>
-                                                                    {(eq.membres || []).length > 0 ? (
-                                                                        <div className="flex flex-wrap gap-1">
-                                                                            {(eq.membres || []).map((m: any) => (
-                                                                                <span key={m.id} className="inline-flex items-center gap-1 rounded-full bg-secondary-50 text-secondary-600 px-2 py-0.5 text-[10px] font-medium dark:bg-secondary-500/10">
-                                                                                    {m.prenom} {m.nom}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <p className="text-theme-xs text-gray-400 italic">Aucun membre</p>
-                                                                    )}
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {membres.map(m => (
+                                                                <div key={m.id}
+                                                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-theme-xs ${m.isChef
+                                                                        ? 'border-warning-200 bg-warning-50 dark:border-warning-500/20 dark:bg-warning-500/5'
+                                                                        : 'border-secondary-100 bg-secondary-50 dark:border-secondary-500/20 dark:bg-secondary-500/5'}`}
+                                                                >
+                                                                    <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${m.isChef ? 'bg-warning-400' : 'bg-secondary-400'}`}>
+                                                                        {m.prenom?.[0]}{m.nom?.[0]}
+                                                                    </span>
+                                                                    <div>
+                                                                        <p className={`font-semibold leading-none ${m.isChef ? 'text-warning-700 dark:text-warning-400' : 'text-secondary-700 dark:text-secondary-400'}`}>
+                                                                            {m.prenom} {m.nom}
+                                                                        </p>
+                                                                        {m.isChef && (
+                                                                            <p className="text-[9px] text-warning-500 mt-0.5">Chef de projet</p>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -206,9 +224,9 @@ const TousProjetsAdminPage: React.FC = () => {
                                                 {/* Tâches */}
                                                 <div>
                                                     <h4 className="flex items-center gap-2 text-theme-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">
-                                                        <HiOutlineClipboardList size={14} /> Tâches ({detail.taches.length})
+                                                        <HiOutlineClipboardList size={14} /> Tâches ({detail?.taches.length ?? 0})
                                                     </h4>
-                                                    {detail.taches.length === 0 ? (
+                                                    {!detail || detail.taches.length === 0 ? (
                                                         <p className="text-theme-xs text-gray-400 italic">Aucune tâche</p>
                                                     ) : (
                                                         <div className="space-y-1.5 max-h-60 overflow-y-auto">
@@ -232,7 +250,7 @@ const TousProjetsAdminPage: React.FC = () => {
                                                     )}
                                                 </div>
                                             </div>
-                                        ) : null}
+                                        )}
                                     </div>
                                 )}
                             </div>

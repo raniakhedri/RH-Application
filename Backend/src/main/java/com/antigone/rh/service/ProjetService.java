@@ -50,8 +50,20 @@ public class ProjetService {
     }
 
     public List<ProjetDTO> findByEmploye(Long employeId) {
-        // Only projects this user created
-        return projetRepository.findByCreateurId(employeId).stream()
+        // Projects created by this user, where they are chef de projet, or selected as
+        // a member
+        List<Projet> parCreateur = projetRepository.findByCreateurId(employeId);
+        List<Projet> parChef = projetRepository.findByChefDeProjetId(employeId);
+        List<Projet> parMembre = projetRepository.findByMembreId(employeId);
+        return java.util.stream.Stream.concat(
+                java.util.stream.Stream.concat(parCreateur.stream(), parChef.stream()),
+                parMembre.stream())
+                .collect(java.util.stream.Collectors.toMap(
+                        Projet::getId,
+                        p -> p,
+                        (existing, dup) -> existing,
+                        java.util.LinkedHashMap::new))
+                .values().stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
@@ -99,6 +111,16 @@ public class ProjetService {
                 equipe.setProjet(savedProjet);
                 equipeRepository.save(equipe);
             }
+        }
+
+        // Member assignment (selected subordinates)
+        if (request.getMembreIds() != null && !request.getMembreIds().isEmpty()) {
+            List<Employe> membres = employeRepository.findAllById(request.getMembreIds());
+            savedProjet.getMembres().clear();
+            savedProjet.getMembres().addAll(membres);
+            projetRepository.save(savedProjet);
+        } else {
+            savedProjet.getMembres().clear();
         }
 
         return toDTO(savedProjet);
@@ -160,7 +182,16 @@ public class ProjetService {
             equipeRepository.save(equipe);
         }
 
-        return toDTO(savedProjet);
+        // Member assignment: only update if membreIds was explicitly sent
+        if (request.getMembreIds() != null) {
+            List<Employe> newMembres = request.getMembreIds().isEmpty()
+                    ? Collections.emptyList()
+                    : employeRepository.findAllById(request.getMembreIds());
+            savedProjet.getMembres().clear();
+            savedProjet.getMembres().addAll(newMembres);
+        }
+
+        return toDTO(projetRepository.save(savedProjet));
     }
 
     public void delete(Long id) {
@@ -181,6 +212,9 @@ public class ProjetService {
     public ProjetDTO toDTO(Projet projet) {
         List<Equipe> equipes = equipeRepository.findByProjetId(projet.getId());
         List<Long> equipeIds = equipes.stream().map(Equipe::getId).collect(Collectors.toList());
+        List<com.antigone.rh.dto.EmployeDTO> membresDTO = projet.getMembres() != null
+                ? projet.getMembres().stream().map(employeService::toDTO).collect(Collectors.toList())
+                : Collections.emptyList();
         return ProjetDTO.builder()
                 .id(projet.getId())
                 .nom(projet.getNom())
@@ -197,6 +231,7 @@ public class ProjetService {
                 .equipeNoms(equipes != null
                         ? equipes.stream().map(Equipe::getNom).collect(Collectors.toList())
                         : Collections.emptyList())
+                .membres(membresDTO)
                 .build();
     }
 
