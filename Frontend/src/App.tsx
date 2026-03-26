@@ -35,6 +35,7 @@ import HistoriqueAgentPage from './pages/HistoriqueAgentPage';
 import TousProjetsAdminPage from './pages/TousProjetsAdminPage';
 import DashboardRHPage from './pages/DashboardRHPage';
 import DepartementsPage from './pages/DepartementsPage';
+import ClientsPage from './pages/ClientsPage';
 import { NotificationProvider } from './context/NotificationContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -96,6 +97,7 @@ const App: React.FC = () => {
           <Route path="admin/projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><TousProjetsAdminPage /></PermissionRoute>} />
           <Route path="dashboard-rh" element={<PermissionRoute permission="VIEW_DASHBOARD_RH"><DashboardRHPage /></PermissionRoute>} />
           <Route path="admin/departements" element={<PermissionRoute permission="VIEW_EMPLOYES"><DepartementsPage /></PermissionRoute>} />
+          <Route path="admin/clients" element={<PermissionRoute permission="VIEW_CLIENTS"><ClientsPage /></PermissionRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

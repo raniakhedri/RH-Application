@@ -259,14 +259,20 @@ export interface Projet {
   nom: string;
   statut: StatutProjet;
   dateDebut: string;
-  dateFin: string;
+  dateFin: string | null;
+  /** 'DETERMINE' | 'INDETERMINE' */
+  typeProjet?: string;
   chefDeProjet?: Employe | null;
+  /** All chefs de projet (managers) */
+  chefsDeProjet?: Employe[];
   createurId?: number;
   createurNom?: string;
   equipeId?: number | null;
   equipeIds?: number[];
   equipeNoms?: string[];
   membres?: Employe[];
+  clientId?: number | null;
+  clientNom?: string | null;
 }
 
 export interface Equipe {

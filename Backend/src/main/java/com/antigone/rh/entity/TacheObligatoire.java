@@ -24,9 +24,9 @@ public class TacheObligatoire {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String dates;
 
-    /** The team this task is for (required) */
+    /** The team this task is for (now optional) */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "equipe_id", nullable = false)
+    @JoinColumn(name = "equipe_id")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Equipe equipe;

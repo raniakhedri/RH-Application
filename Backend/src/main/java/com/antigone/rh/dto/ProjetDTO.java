@@ -19,11 +19,18 @@ public class ProjetDTO {
     private StatutProjet statut;
     private LocalDate dateDebut;
     private LocalDate dateFin;
+    /** DETERMINE or INDETERMINE */
+    private String typeProjet;
     private EmployeDTO chefDeProjet;
+    /** All chefs de projet (managers) */
+    private List<EmployeDTO> chefsDeProjet;
     private Long createurId;
-    private String createurNom; // prenom + nom of the creator
-    private Long equipeId; // kept for backward compat (first equipe)
-    private List<Long> equipeIds; // all equipe IDs
+    private String createurNom;
+    private Long equipeId;
+    private List<Long> equipeIds;
     private List<String> equipeNoms;
-    private List<EmployeDTO> membres; // Selected subordinates
+    private List<EmployeDTO> membres;
+    /** Linked validated client */
+    private Long clientId;
+    private String clientNom;
 }

@@ -1,19 +1,23 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 app:
-  frontend-url: http://localhost:3000,http://localhost:5173
+  # CORS allowed origins — set FRONTEND_URL on Render; locally falls back to both Vite ports
+  frontend-url: ${FRONTEND_URL:${FRONTEND_BASE_URL:http://localhost:3000,http://localhost:5173}}
   mail:
-    from: yosr.khriji27@gmail.com
+    from: ${MAIL_USERNAME:yosr.khriji27@gmail.com}
     enabled: true
   upload:
     dir: uploads/justificatifs
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/antigone_rh
-    username: postgres
-    password: admin
+    # DATABASE_URL on Render must be in JDBC format:
+    #   jdbc:postgresql://host:5432/dbname
+    # (add the jdbc: prefix to the postgresql:// URL Render gives you)
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/antigone_rh}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -31,10 +35,11 @@ spring:
       mode: always
 
   mail:
-    host: smtp.gmail.com
+    host: smtp-relay.brevo.com
     port: 587
-    username: yosr.khriji27@gmail.com
-    password: fbgodopejvihkutw
+    username: ${MAIL_USERNAME:yosr.khriji27@gmail.com}
+    # BREVO_API_KEY is the SMTP key from your Brevo account
+    password: ${BREVO_API_KEY:fbgodopejvihkutw}
     properties:
       mail:
         smtp:

@@ -10,9 +10,18 @@ public class ProjetRequest {
     private String nom;
     private LocalDate dateDebut;
     private LocalDate dateFin;
-    private String statut; // Use String to avoid classloader conflicts with enum
+    private String statut;
+    /** DETERMINE or INDETERMINE */
+    private String typeProjet;
+    /** Single chef (legacy, kept for backward compat) */
     private Long chefDeProjetId;
-    private Long createurId; // ID of the employee who is creating the project
-    private List<Long> equipeIds; // Multiple teams supported
-    private List<Long> membreIds; // Selected subordinates of the chef
+    /**
+     * Multiple chefs de projet (managers) — replaces / supplements chefDeProjetId
+     */
+    private List<Long> chefDeProjetIds;
+    private Long createurId;
+    /** ID of the fully-validated client to link to this project */
+    private Long clientId;
+    private List<Long> equipeIds;
+    private List<Long> membreIds;
 }
