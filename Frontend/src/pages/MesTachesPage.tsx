@@ -75,27 +75,33 @@ const MesTachesPage: React.FC = () => {
     useEffect(() => { loadData(); }, [user?.employeId]);
 
     const loadData = async () => {
-        if (!user?.employeId) return;
+        if (!user?.employeId) {
+            setLoading(false); // ← fix: always stop the spinner
+            return;
+        }
         try {
             const today = new Date().toISOString().split('T')[0];
-            const [res, demandesRes] = await Promise.all([
+            const [res, demandesRes] = await Promise.allSettled([
                 tacheService.getByAssignee(user.employeId),
                 demandeService.getByStatut(StatutDemande.APPROUVEE),
             ]);
-            setTaches(res.data.data || []);
-            // Build set of employee names on congé today
-            const demandes = demandesRes.data.data || [];
-            const onConge = new Set<string>();
-            demandes.forEach(d => {
-                if (d.dateDebut && d.dateFin && d.employeNom) {
-                    const debut = d.dateDebut.toString().substring(0, 10);
-                    const fin = d.dateFin.toString().substring(0, 10);
-                    if (debut <= today && today <= fin) {
-                        onConge.add(d.employeNom);
+            if (res.status === 'fulfilled') {
+                setTaches(res.value.data.data || []);
+            }
+            if (demandesRes.status === 'fulfilled') {
+                const demandes = demandesRes.value.data.data || [];
+                const onConge = new Set<string>();
+                demandes.forEach(d => {
+                    if (d.dateDebut && d.dateFin && d.employeNom) {
+                        const debut = d.dateDebut.toString().substring(0, 10);
+                        const fin = d.dateFin.toString().substring(0, 10);
+                        if (debut <= today && today <= fin) {
+                            onConge.add(d.employeNom);
+                        }
                     }
-                }
-            });
-            setCongeAujourdhuiNoms(onConge);
+                });
+                setCongeAujourdhuiNoms(onConge);
+            }
         } catch (err) {
             console.error(err);
         } finally {

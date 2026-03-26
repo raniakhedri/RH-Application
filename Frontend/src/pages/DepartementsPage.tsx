@@ -11,6 +11,7 @@ import {
 } from 'react-icons/hi';
 import { employeService } from '../api/employeService';
 import { demandeService } from '../api/demandeService';
+import { referentielService } from '../api/referentielService';
 import { Employe, StatutDemande } from '../types';
 
 const DepartementsPage: React.FC = () => {
@@ -18,8 +19,9 @@ const DepartementsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [expandedDept, setExpandedDept] = useState<string | null>(null);
-    // Map<employeId, nombreJours> for employees currently on approved leave
     const [congeMap, setCongeMap] = useState<Map<number, number>>(new Map());
+    // All department names from Referentiel (ensures empty depts are visible)
+    const [allDeptNames, setAllDeptNames] = useState<string[]>([]);
 
     useEffect(() => {
         loadData();
@@ -28,27 +30,37 @@ const DepartementsPage: React.FC = () => {
     const loadData = async () => {
         try {
             const today = new Date().toISOString().split('T')[0];
-            const [empRes, demandeRes] = await Promise.all([
+            const [empResult, demandeResult, deptRefResult] = await Promise.allSettled([
                 employeService.getAll(),
                 demandeService.getByStatut(StatutDemande.APPROUVEE),
+                referentielService.getByType('DEPARTEMENT'),
             ]);
-            setEmployes(empRes.data.data || []);
 
-            // Build congé map: employeId → days for active leave today
-            const map = new Map<number, number>();
-            const demandes: any[] = demandeRes.data.data || [];
-            demandes.forEach(d => {
-                if (!d.dateDebut || !d.dateFin || !d.employeId) return;
-                const debut = d.dateDebut.toString().substring(0, 10);
-                const fin = d.dateFin.toString().substring(0, 10);
-                if (debut <= today && today <= fin) {
-                    // Use nombreJours if present, otherwise compute from dates
-                    const jours = d.nombreJours
-                        ?? (Math.round((new Date(fin).getTime() - new Date(debut).getTime()) / 86400000) + 1);
-                    map.set(d.employeId, jours);
-                }
-            });
-            setCongeMap(map);
+            if (empResult.status === 'fulfilled') {
+                setEmployes(empResult.value.data.data || []);
+            }
+            if (deptRefResult.status === 'fulfilled') {
+                const deptRefs: any[] = (deptRefResult.value.data.data || []).filter((r: any) => r.actif);
+                setAllDeptNames(deptRefs.map((r: any) => r.libelle));
+            } else {
+                console.warn('Dept referentiel load failed:', (deptRefResult as any).reason);
+            }
+
+            if (demandeResult.status === 'fulfilled') {
+                const map = new Map<number, number>();
+                const demandes: any[] = demandeResult.value.data.data || [];
+                demandes.forEach(d => {
+                    if (!d.dateDebut || !d.dateFin || !d.employeId) return;
+                    const debut = d.dateDebut.toString().substring(0, 10);
+                    const fin = d.dateFin.toString().substring(0, 10);
+                    if (debut <= today && today <= fin) {
+                        const jours = d.nombreJours
+                            ?? (Math.round((new Date(fin).getTime() - new Date(debut).getTime()) / 86400000) + 1);
+                        map.set(d.employeId, jours);
+                    }
+                });
+                setCongeMap(map);
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -56,19 +68,23 @@ const DepartementsPage: React.FC = () => {
         }
     };
 
-    /** Group employees by department */
+    /** Group employees by department, then merge with all referentiel departments */
     const departements = useMemo(() => {
         const map = new Map<string, Employe[]>();
+        // Seed all referentiel departments (even empty ones)
+        for (const name of allDeptNames) {
+            if (!map.has(name)) map.set(name, []);
+        }
+        // Add employees to their department
         for (const emp of employes) {
             const dept = emp.departement || 'Non défini';
             if (!map.has(dept)) map.set(dept, []);
             map.get(dept)!.push(emp);
         }
-        // Sort department names alphabetically
         return Array.from(map.entries())
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([nom, membres]) => ({ nom, membres }));
-    }, [employes]);
+    }, [employes, allDeptNames]);
 
     const filtered = useMemo(() => {
         if (!search.trim()) return departements;
