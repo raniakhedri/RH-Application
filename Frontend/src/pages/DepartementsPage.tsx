@@ -12,6 +12,7 @@ import {
 import { employeService } from '../api/employeService';
 import { demandeService } from '../api/demandeService';
 import { referentielService } from '../api/referentielService';
+import { compteService } from '../api/compteService';
 import { Employe, StatutDemande } from '../types';
 
 const DepartementsPage: React.FC = () => {
@@ -22,6 +23,8 @@ const DepartementsPage: React.FC = () => {
     const [congeMap, setCongeMap] = useState<Map<number, number>>(new Map());
     // All department names from Referentiel (ensures empty depts are visible)
     const [allDeptNames, setAllDeptNames] = useState<string[]>([]);
+    // Set of employeIds that have the MANAGER role
+    const [managerEmpIds, setManagerEmpIds] = useState<Set<number>>(new Set());
 
     useEffect(() => {
         loadData();
@@ -30,10 +33,11 @@ const DepartementsPage: React.FC = () => {
     const loadData = async () => {
         try {
             const today = new Date().toISOString().split('T')[0];
-            const [empResult, demandeResult, deptRefResult] = await Promise.allSettled([
+            const [empResult, demandeResult, deptRefResult, comptesResult] = await Promise.allSettled([
                 employeService.getAll(),
                 demandeService.getByStatut(StatutDemande.APPROUVEE),
                 referentielService.getByType('DEPARTEMENT'),
+                compteService.getAll(),
             ]);
 
             if (empResult.status === 'fulfilled') {
@@ -44,6 +48,19 @@ const DepartementsPage: React.FC = () => {
                 setAllDeptNames(deptRefs.map((r: any) => r.libelle));
             } else {
                 console.warn('Dept referentiel load failed:', (deptRefResult as any).reason);
+            }
+
+            // Build set of employeIds with the MANAGER role
+            if (comptesResult.status === 'fulfilled') {
+                const comptes = comptesResult.value.data.data || [];
+                const mgrIds = new Set<number>();
+                comptes.forEach((c: any) => {
+                    const hasManagerRole = (c.roles || []).some((r: any) =>
+                        r.nom?.toUpperCase() === 'MANAGER'
+                    );
+                    if (hasManagerRole && c.employeId) mgrIds.add(c.employeId);
+                });
+                setManagerEmpIds(mgrIds);
             }
 
             if (demandeResult.status === 'fulfilled') {
@@ -225,10 +242,16 @@ const DepartementsPage: React.FC = () => {
                                             </p>
                                         ) : (
                                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                                {dept.membres.map(emp => (
+                                                {dept.membres.map(emp => {
+                                                    const isManager = managerEmpIds.has(emp.id);
+                                                    return (
                                                     <div
                                                         key={emp.id}
-                                                        className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 hover:shadow-md transition-shadow"
+                                                        className={`flex items-start gap-3 rounded-xl border px-4 py-3 hover:shadow-md transition-shadow ${
+                                                            isManager
+                                                                ? 'border-warning-200 bg-warning-50 dark:border-warning-500/20 dark:bg-warning-500/5'
+                                                                : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'
+                                                        }`}
                                                     >
                                                         {/* Avatar */}
                                                         {emp.imageUrl ? (
@@ -238,16 +261,23 @@ const DepartementsPage: React.FC = () => {
                                                                 className="h-10 w-10 shrink-0 rounded-full object-cover"
                                                             />
                                                         ) : (
-                                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${colorClass} text-[12px] font-bold text-white`}>
+                                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${isManager ? 'from-warning-400 to-warning-600' : colorClass} text-[12px] font-bold text-white`}>
                                                                 {getInitials(emp)}
                                                             </div>
                                                         )}
 
                                                         {/* Details */}
                                                         <div className="min-w-0 flex-1">
-                                                            <p className="text-theme-sm font-semibold text-gray-800 dark:text-white truncate">
-                                                                {emp.prenom} {emp.nom}
-                                                            </p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className={`text-theme-sm font-semibold truncate ${isManager ? 'text-warning-700 dark:text-warning-400' : 'text-gray-800 dark:text-white'}`}>
+                                                                    {emp.prenom} {emp.nom}
+                                                                </p>
+                                                                {isManager && (
+                                                                    <span className="shrink-0 rounded-full bg-warning-100 px-2 py-0.5 text-[10px] font-bold text-warning-600 dark:bg-warning-500/20 dark:text-warning-400">
+                                                                        MANAGER
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             {emp.poste && (
                                                                 <div className="flex items-center gap-1 mt-0.5">
                                                                     <HiOutlineBriefcase size={11} className="text-gray-400 shrink-0" />
@@ -278,7 +308,8 @@ const DepartementsPage: React.FC = () => {
                                                             )}
                                                         </div>
                                                     </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>

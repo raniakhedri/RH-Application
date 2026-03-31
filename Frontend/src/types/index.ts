@@ -305,6 +305,9 @@ export interface TacheMembreInfo {
   telephonePro?: string;
   departement: string;
   email?: string;
+  managerNom?: string;
+  poste?: string;
+  isChef?: boolean;
 }
 
 export interface TacheEquipeInfo {
@@ -324,6 +327,7 @@ export interface TacheDetail {
   projetStatut: string | null;
   chefDeProjetNom: string | null;
   chefDeProjetId: number | null;
+  chefsDeProjetIds?: number[];
   assigneeId: number | null;
   membresProjet?: TacheMembreInfo[];
 }

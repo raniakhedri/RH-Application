@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { tacheService } from '../api/tacheService';
 import { demandeService } from '../api/demandeService';
+import { compteService } from '../api/compteService';
+import { projetService } from '../api/projetService';
 import { useAuth } from '../context/AuthContext';
-import { TacheDetail, TacheMembreInfo, StatutTache, StatutDemande } from '../types';
+import { TacheDetail, TacheMembreInfo, StatutTache, StatutDemande, Projet } from '../types';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
@@ -14,6 +16,7 @@ interface ProjectGroup {
     projetDateFin: string | null;
     projetStatut: string | null;
     chefDeProjetNom: string | null;
+    chefsDeProjetIds: Set<number>;
     membres: TacheMembreInfo[];
     tacheCount: number;
 }
@@ -33,27 +36,49 @@ const statutLabels: Record<string, string> = {
 const inputClass =
     'h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300';
 
-const MemberCard: React.FC<{ membre: TacheMembreInfo }> = ({ membre }) => (
-    <div className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-secondary-400 to-secondary-600 text-sm font-bold text-white shadow">
-            {membre.prenom?.[0]}{membre.nom?.[0]}
+const MemberCard: React.FC<{ membre: TacheMembreInfo }> = ({ membre }) => {
+    const isChef = membre.isChef;
+    return (
+        <div className={`flex items-start gap-3 rounded-xl border p-3.5 shadow-sm ${isChef
+            ? 'border-warning-200 bg-warning-50 dark:border-warning-500/20 dark:bg-warning-500/5'
+            : 'border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800'
+            }`}>
+            <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow ${isChef
+                ? 'bg-gradient-to-br from-warning-400 to-warning-600'
+                : 'bg-gradient-to-br from-secondary-400 to-secondary-600'
+                }`}>
+                {membre.prenom?.[0]}{membre.nom?.[0]}
+            </div>
+            <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                    <p className={`text-theme-sm font-semibold ${isChef ? 'text-warning-700 dark:text-warning-400' : 'text-gray-800 dark:text-white'}`}>
+                        {membre.prenom} {membre.nom}
+                    </p>
+                    {isChef && (
+                        <span className="rounded-full bg-warning-100 px-2 py-0.5 text-[10px] font-bold text-warning-600 dark:bg-warning-500/20 dark:text-warning-400">
+                            Manager
+                        </span>
+                    )}
+                </div>
+                {membre.poste && (
+                    <p className="mt-0.5 text-theme-xs text-gray-600 dark:text-gray-300">💼 {membre.poste}</p>
+                )}
+                {membre.departement && (
+                    <p className="mt-0.5 text-theme-xs text-brand-500 dark:text-brand-400">🏢 {membre.departement}</p>
+                )}
+                {membre.managerNom && (
+                    <p className="text-theme-xs text-gray-500 dark:text-gray-400">👤 Manager: {membre.managerNom}</p>
+                )}
+                {(membre.telephonePro || membre.telephone) && (
+                    <p className="text-theme-xs text-gray-500 dark:text-gray-400">📞 {membre.telephonePro || membre.telephone}</p>
+                )}
+                {membre.email && (
+                    <p className="text-theme-xs text-gray-500 dark:text-gray-400">✉️ {membre.email}</p>
+                )}
+            </div>
         </div>
-        <div className="min-w-0 flex-1">
-            <p className="text-theme-sm font-semibold text-gray-800 dark:text-white">
-                {membre.prenom} {membre.nom}
-            </p>
-            {membre.departement && (
-                <p className="mt-0.5 text-theme-xs text-brand-500 dark:text-brand-400">🏢 {membre.departement}</p>
-            )}
-            {(membre.telephonePro || membre.telephone) && (
-                <p className="text-theme-xs text-gray-500 dark:text-gray-400">📞 {membre.telephonePro || membre.telephone}</p>
-            )}
-            {membre.email && (
-                <p className="text-theme-xs text-gray-500 dark:text-gray-400">✉️ {membre.email}</p>
-            )}
-        </div>
-    </div>
-);
+    );
+};
 
 const MesTachesPage: React.FC = () => {
     const { user } = useAuth();
@@ -71,6 +96,10 @@ const MesTachesPage: React.FC = () => {
     const [selectedProject, setSelectedProject] = useState<ProjectGroup | null>(null);
     // Set of employeNom strings for people on congé today
     const [congeAujourdhuiNoms, setCongeAujourdhuiNoms] = useState<Set<string>>(new Set());
+    // Set of employeIds that have the MANAGER role
+    const [managerEmpIds, setManagerEmpIds] = useState<Set<number>>(new Set());
+    // Full project details keyed by projetId (to get all chefsDeProjet)
+    const [projetDetails, setProjetDetails] = useState<Map<number, Projet>>(new Map());
 
     useEffect(() => { loadData(); }, [user?.employeId]);
 
@@ -81,12 +110,40 @@ const MesTachesPage: React.FC = () => {
         }
         try {
             const today = new Date().toISOString().split('T')[0];
-            const [res, demandesRes] = await Promise.allSettled([
+            const [res, demandesRes, comptesRes] = await Promise.allSettled([
                 tacheService.getByAssignee(user.employeId),
                 demandeService.getByStatut(StatutDemande.APPROUVEE),
+                compteService.getAll(),
             ]);
             if (res.status === 'fulfilled') {
-                setTaches(res.value.data.data || []);
+                const tachesData = res.value.data.data || [];
+                setTaches(tachesData);
+
+                // Fetch full project details (to get all chefsDeProjet)
+                const uniqueProjetIds = Array.from(new Set(tachesData.filter((t: any) => t.projetId).map((t: any) => t.projetId)));
+                const projetResults = await Promise.allSettled(
+                    uniqueProjetIds.map(id => projetService.getById(id))
+                );
+                const pMap = new Map<number, Projet>();
+                projetResults.forEach((r, i) => {
+                    if (r.status === 'fulfilled') {
+                        const p = r.value.data.data;
+                        if (p) pMap.set(uniqueProjetIds[i], p);
+                    }
+                });
+                setProjetDetails(pMap);
+            }
+            // Build set of employeIds with the MANAGER role
+            if (comptesRes.status === 'fulfilled') {
+                const comptes = comptesRes.value.data.data || [];
+                const mgrIds = new Set<number>();
+                comptes.forEach((c: any) => {
+                    const hasManagerRole = (c.roles || []).some((r: any) =>
+                        r.nom?.toUpperCase() === 'MANAGER'
+                    );
+                    if (hasManagerRole && c.employeId) mgrIds.add(c.employeId);
+                });
+                setManagerEmpIds(mgrIds);
             }
             if (demandesRes.status === 'fulfilled') {
                 const demandes = demandesRes.value.data.data || [];
@@ -114,20 +171,100 @@ const MesTachesPage: React.FC = () => {
         for (const t of taches) {
             if (!t.projetId) continue;
             if (!map.has(t.projetId)) {
+                const fullProjet = projetDetails.get(t.projetId);
+
+                // Build set of chef IDs from full project details
+                const chefIds = new Set<number>();
+                if (t.chefDeProjetId) chefIds.add(t.chefDeProjetId);
+                if (fullProjet?.chefDeProjet) chefIds.add(fullProjet.chefDeProjet.id);
+                if (fullProjet?.chefsDeProjet) fullProjet.chefsDeProjet.forEach(c => chefIds.add(c.id));
+                if (t.chefsDeProjetIds) t.chefsDeProjetIds.forEach(id => chefIds.add(id));
+
+                // Start with membresProjet from tache data
+                const memberMap = new Map<number, TacheMembreInfo>();
+                (t.membresProjet ?? []).forEach(m => memberMap.set(m.id, m));
+
+                // Merge all chefs from full project details (fills in missing managers)
+                if (fullProjet?.chefsDeProjet) {
+                    fullProjet.chefsDeProjet.forEach(c => {
+                        if (!memberMap.has(c.id)) {
+                            memberMap.set(c.id, {
+                                id: c.id,
+                                nom: c.nom,
+                                prenom: c.prenom,
+                                telephone: c.telephone || '',
+                                telephonePro: c.telephonePro,
+                                departement: c.departement || '',
+                                email: c.email,
+                                managerNom: c.managerNom ?? undefined,
+                                poste: c.poste ?? undefined,
+                            });
+                        }
+                    });
+                }
+                if (fullProjet?.chefDeProjet) {
+                    const c = fullProjet.chefDeProjet;
+                    if (!memberMap.has(c.id)) {
+                        memberMap.set(c.id, {
+                            id: c.id,
+                            nom: c.nom,
+                            prenom: c.prenom,
+                            telephone: c.telephone || '',
+                            telephonePro: c.telephonePro,
+                            departement: c.departement || '',
+                            email: c.email,
+                            managerNom: (c as any).managerNom ?? undefined,
+                            poste: (c as any).poste ?? undefined,
+                        });
+                    }
+                }
+                // Also merge regular membres from full project
+                if (fullProjet?.membres) {
+                    fullProjet.membres.forEach(m => {
+                        if (!memberMap.has(m.id)) {
+                            memberMap.set(m.id, {
+                                id: m.id,
+                                nom: m.nom,
+                                prenom: m.prenom,
+                                telephone: m.telephone || '',
+                                telephonePro: m.telephonePro,
+                                departement: m.departement || '',
+                                email: m.email,
+                                managerNom: m.managerNom ?? undefined,
+                                poste: m.poste ?? undefined,
+                            });
+                        }
+                    });
+                }
+
+                // Mark each member: isChef if they are a project chef OR have the MANAGER role
+                const enriched = Array.from(memberMap.values()).map(m => ({
+                    ...m,
+                    isChef: chefIds.has(m.id) || managerEmpIds.has(m.id),
+                }));
+                enriched.sort((a, b) => (a.isChef === b.isChef ? 0 : a.isChef ? -1 : 1));
+
+                // Build chef names string from full project
+                let chefNom = t.chefDeProjetNom;
+                if (fullProjet?.chefsDeProjet && fullProjet.chefsDeProjet.length > 0) {
+                    chefNom = fullProjet.chefsDeProjet.map(c => `${c.prenom} ${c.nom}`).join(', ');
+                }
+
                 map.set(t.projetId, {
                     projetId: t.projetId,
                     projetNom: t.projetNom || 'Projet sans nom',
                     projetDateFin: t.projetDateFin,
                     projetStatut: t.projetStatut,
-                    chefDeProjetNom: t.chefDeProjetNom,
-                    membres: Array.from(new Map((t.membresProjet ?? []).map(m => [m.id, m])).values()),
+                    chefDeProjetNom: chefNom,
+                    chefsDeProjetIds: chefIds,
+                    membres: enriched,
                     tacheCount: 0,
                 });
             }
             map.get(t.projetId)!.tacheCount += 1;
         }
         return Array.from(map.values());
-    }, [taches]);
+    }, [taches, managerEmpIds, projetDetails]);
 
     const handleChangeStatut = async (id: number, statut: StatutTache) => {
         try {
