@@ -231,6 +231,13 @@ const ProjetsPage: React.FC = () => {
     setEditingProjet(projet);
     setModalMode('members');
     setSelectedMembreIds((projet.membres ?? []).map(m => m.id));
+    // Preserve existing chefs so handleChefSave doesn't accidentally clear them
+    setSelectedChefIds(
+      (projet.chefsDeProjet && projet.chefsDeProjet.length > 0
+        ? projet.chefsDeProjet
+        : projet.chefDeProjet ? [projet.chefDeProjet] : []
+      ).map(c => c.id)
+    );
     setLoadingSubordinates(true);
     // load subordinates for current user (chef) so they can pick underlings
     if (user?.employeId) {
@@ -260,6 +267,7 @@ const ProjetsPage: React.FC = () => {
       } as any);
       setShowModal(false);
       setEditingProjet(null);
+      setModalMode('full');
       setSubordinates([]); setSelectedMembreIds([]);
       loadData();
     } catch (err: any) {
@@ -504,7 +512,7 @@ const ProjetsPage: React.FC = () => {
           /* ── CHEF VIEW: member picker ── */
           <div className="space-y-4">
             <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 dark:border-brand-500/20 dark:bg-brand-500/5">
-              <p className="text-theme-sm font-semibold text-brand-700 dark:text-brand-300">{editingProjet!.nom}</p>
+              <p className="text-theme-sm font-semibold text-brand-700 dark:text-brand-300">{editingProjet?.nom}</p>
               <p className="mt-0.5 text-theme-xs text-brand-500">Sélectionnez les employés à ajouter à ce projet.</p>
             </div>
             {loadingSubordinates ? (
