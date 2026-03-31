@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { employeService } from '../api/employeService';
 import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
+import { useLocation } from 'react-router-dom';
 import { tacheService } from '../api/tacheService';
 import { projetService } from '../api/projetService';
 import { Tache, Projet, StatutTache } from '../types';
@@ -29,6 +30,8 @@ const TachesPage: React.FC = () => {
   const [projets, setProjets] = useState<Projet[]>([]);
   const { user } = useAuth();
   const [mySubordinates, setMySubordinates] = useState<any[]>([]);
+  const location = useLocation();
+  const fromAdminNav = ((location.state || {}) as any).fromAdmin === true;
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filterProjet, setFilterProjet] = useState<string>('');
@@ -72,27 +75,39 @@ const TachesPage: React.FC = () => {
   const getMembresForProjet = (projetId: number) => {
     const p = projets.find(pr => pr.id === projetId);
     if (!p) return [];
-    const map = new Map<number, { id: number; prenom: string; nom: string }>();
-    // always include chef(s) as options
-    if (p.chefDeProjet) map.set(p.chefDeProjet.id, p.chefDeProjet);
-    if (p.chefsDeProjet && p.chefsDeProjet.length > 0) {
-      p.chefsDeProjet.forEach((c: any) => { if (!map.has(c.id)) map.set(c.id, c); });
-    }
+    const map = new Map<number, any>();
 
-    // If current user is one of the project chefs, restrict members to his subordinates
     const isCurrentUserChef = user?.employeId && (
       p.chefDeProjet?.id === user.employeId || (p.chefsDeProjet ?? []).some((c: any) => c.id === user.employeId)
     );
 
+    // If navigation came from admin page, allow full list (all chefs + membres)
+    if (fromAdminNav) {
+      if (p.chefDeProjet) map.set(p.chefDeProjet.id, p.chefDeProjet);
+      if (p.chefsDeProjet && p.chefsDeProjet.length > 0) {
+        p.chefsDeProjet.forEach((c: any) => { if (!map.has(c.id)) map.set(c.id, c); });
+      }
+      (p.membres ?? []).forEach(m => { if (!map.has(m.id)) map.set(m.id, m); });
+      return Array.from(map.values());
+    }
+
     if (isCurrentUserChef) {
-      // prefer subordinates that are project members; if project has no members, show all subordinates
+      // Only allow assigning to self (chef) and project members who are subordinates of current user
+      if (user?.employeId && !map.has(user.employeId)) {
+        map.set(user.employeId, { id: user.employeId, prenom: user.prenom || '', nom: user.nom || '' });
+      }
       const memberIds = new Set((p.membres ?? []).map(m => m.id));
       const subs = mySubordinates || [];
-      const allowed = subs.filter((s: any) => memberIds.size === 0 ? true : memberIds.has(s.id));
+      const allowed = subs.filter((s: any) => memberIds.has(s.id));
       allowed.forEach((m: any) => { if (!map.has(m.id)) map.set(m.id, m); });
       return Array.from(map.values());
     }
 
+    // Default: non-chef view: include all chefs and project members
+    if (p.chefDeProjet) map.set(p.chefDeProjet.id, p.chefDeProjet);
+    if (p.chefsDeProjet && p.chefsDeProjet.length > 0) {
+      p.chefsDeProjet.forEach((c: any) => { if (!map.has(c.id)) map.set(c.id, c); });
+    }
     (p.membres ?? []).forEach(m => { if (!map.has(m.id)) map.set(m.id, m); });
     return Array.from(map.values());
   };
