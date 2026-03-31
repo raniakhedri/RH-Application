@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { employeService } from '../api/employeService';
 import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
 import { tacheService } from '../api/tacheService';
 import { projetService } from '../api/projetService';
@@ -25,6 +27,8 @@ const TachesPage: React.FC = () => {
   const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [taches, setTaches] = useState<Tache[]>([]);
   const [projets, setProjets] = useState<Projet[]>([]);
+  const { user } = useAuth();
+  const [mySubordinates, setMySubordinates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filterProjet, setFilterProjet] = useState<string>('');
@@ -41,6 +45,12 @@ const TachesPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    // load subordinates for current user (used to limit assignee choices when user is chef)
+    if (user?.employeId) {
+      employeService.getSubordinates(user.employeId)
+        .then(res => setMySubordinates(res.data.data || []))
+        .catch(err => console.error('Failed to load subordinates', err));
+    }
   }, []);
 
   const loadData = async () => {
@@ -63,7 +73,26 @@ const TachesPage: React.FC = () => {
     const p = projets.find(pr => pr.id === projetId);
     if (!p) return [];
     const map = new Map<number, { id: number; prenom: string; nom: string }>();
+    // always include chef(s) as options
     if (p.chefDeProjet) map.set(p.chefDeProjet.id, p.chefDeProjet);
+    if (p.chefsDeProjet && p.chefsDeProjet.length > 0) {
+      p.chefsDeProjet.forEach((c: any) => { if (!map.has(c.id)) map.set(c.id, c); });
+    }
+
+    // If current user is one of the project chefs, restrict members to his subordinates
+    const isCurrentUserChef = user?.employeId && (
+      p.chefDeProjet?.id === user.employeId || (p.chefsDeProjet ?? []).some((c: any) => c.id === user.employeId)
+    );
+
+    if (isCurrentUserChef) {
+      // prefer subordinates that are project members; if project has no members, show all subordinates
+      const memberIds = new Set((p.membres ?? []).map(m => m.id));
+      const subs = mySubordinates || [];
+      const allowed = subs.filter((s: any) => memberIds.size === 0 ? true : memberIds.has(s.id));
+      allowed.forEach((m: any) => { if (!map.has(m.id)) map.set(m.id, m); });
+      return Array.from(map.values());
+    }
+
     (p.membres ?? []).forEach(m => { if (!map.has(m.id)) map.set(m.id, m); });
     return Array.from(map.values());
   };
@@ -72,11 +101,12 @@ const TachesPage: React.FC = () => {
     // Validate dates against project range
     const selectedProjet = projets.find(p => p.id === formData.projetId);
     if (selectedProjet && formData.dateEcheance) {
-      if (formData.dateEcheance < selectedProjet.dateDebut) {
+      // Guard against nullable project dates (dateDebut/dateFin can be null)
+      if (selectedProjet.dateDebut && formData.dateEcheance < selectedProjet.dateDebut) {
         setDateError(`L'échéance ne peut pas être avant le début du projet (${selectedProjet.dateDebut})`);
         return;
       }
-      if (formData.dateEcheance > selectedProjet.dateFin) {
+      if (selectedProjet.dateFin && formData.dateEcheance > selectedProjet.dateFin) {
         setDateError(`L'échéance ne peut pas être après la fin du projet (${selectedProjet.dateFin})`);
         return;
       }

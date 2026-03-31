@@ -30,6 +30,8 @@ const ProjetsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingProjet, setEditingProjet] = useState<Projet | null>(null);
+  // modalMode: 'full' => full create/edit form; 'members' => chef member-picker
+  const [modalMode, setModalMode] = useState<'full' | 'members'>('full');
   const [formData, setFormData] = useState({
     nom: '',
     dateDebut: new Date().toISOString().split('T')[0],
@@ -196,6 +198,7 @@ const ProjetsPage: React.FC = () => {
 
   const handleEdit = (projet: Projet) => {
     setEditingProjet(projet);
+    setModalMode('full');
     setFormData({
       nom: projet.nom,
       dateDebut: projet.dateDebut,
@@ -220,6 +223,23 @@ const ProjetsPage: React.FC = () => {
         .then(res => setSubordinates(res.data.data || []))
         .catch(console.error)
         .finally(() => setLoadingSubordinates(false));
+    }
+    setShowModal(true);
+  };
+
+  const handleAffectMembers = (projet: Projet) => {
+    setEditingProjet(projet);
+    setModalMode('members');
+    setSelectedMembreIds((projet.membres ?? []).map(m => m.id));
+    setLoadingSubordinates(true);
+    // load subordinates for current user (chef) so they can pick underlings
+    if (user?.employeId) {
+      employeService.getSubordinates(user.employeId)
+        .then(res => setSubordinates(res.data.data || []))
+        .catch(console.error)
+        .finally(() => setLoadingSubordinates(false));
+    } else {
+      setLoadingSubordinates(false);
     }
     setShowModal(true);
   };
@@ -349,14 +369,19 @@ const ProjetsPage: React.FC = () => {
             </button>
           )}
           <button onClick={() => navigate(`/projets/${item.id}/taches`)} className="rounded-lg p-1.5 text-secondary-500 hover:bg-secondary-50" title="Tâches"><HiOutlineClipboardList size={16} /></button>
-          <button onClick={() => handleEdit(item)} className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50"><HiOutlinePencil size={16} /></button>
+          {/* New: Affect members button - visible to chefs of project */}
+          {((item.chefsDeProjet && item.chefsDeProjet.some(c => c.id === user?.employeId)) || item.chefDeProjet?.id === user?.employeId) && (
+            <button onClick={() => handleAffectMembers(item)} className="rounded-lg p-1.5 text-warning-500 hover:bg-warning-50" title="Affecter des membres">👥</button>
+          )}
+          {/* Edit opens full form (name/date/type) */}
+          <button onClick={() => handleEdit(item)} className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50" title="Modifier projet"><HiOutlinePencil size={16} /></button>
           <button onClick={() => handleDelete(item.id)} className="rounded-lg p-1.5 text-error-500 hover:bg-error-50"><HiOutlineTrash size={16} /></button>
         </div>
       ),
     },
   ];
 
-  // determine if the logged-in user is one of the chefs (member-picker mode)
+  // determine if the logged-in user is one of the chefs (member-picker candidate)
   const isChefEdit = !!editingProjet && (
     editingProjet.chefDeProjet?.id === user?.employeId ||
     (editingProjet.chefsDeProjet ?? []).some(c => c.id === user?.employeId)
@@ -473,9 +498,9 @@ const ProjetsPage: React.FC = () => {
         : <DataTable columns={columns} data={filteredProjets} onRowDoubleClick={handleEdit} />}
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)}
-        title={isChefEdit ? 'Gérer les membres du projet' : editingProjet ? 'Modifier le projet' : 'Nouveau projet'}
+        title={modalMode === 'members' ? 'Gérer les membres du projet' : editingProjet ? 'Modifier le projet' : 'Nouveau projet'}
         size="lg">
-        {isChefEdit ? (
+        {modalMode === 'members' ? (
           /* ── CHEF VIEW: member picker ── */
           <div className="space-y-4">
             <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3 dark:border-brand-500/20 dark:bg-brand-500/5">
