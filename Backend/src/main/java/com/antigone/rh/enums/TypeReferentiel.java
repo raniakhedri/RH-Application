@@ -10,6 +10,7 @@ public enum TypeReferentiel {
     TYPE_DEMANDE("Type demande"),
     GENRE("Genre"),
     PARAMETRE_SYSTEME("Paramètre système");
+    
 
     private final String label;
 

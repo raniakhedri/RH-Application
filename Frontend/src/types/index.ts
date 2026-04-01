@@ -352,7 +352,7 @@ export enum TypeReferentiel {
   TYPE_CONGE = 'TYPE_CONGE',
   TYPE_DEMANDE = 'TYPE_DEMANDE',
   GENRE = 'GENRE',
-  // DUREE_CDD removed
+  DUREE_CDD = 'DUREE_CDD',
   PARAMETRE_SYSTEME = 'PARAMETRE_SYSTEME',
 }
 
@@ -365,7 +365,7 @@ export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
   [TypeReferentiel.TYPE_CONGE]: 'Type congé',
   [TypeReferentiel.TYPE_DEMANDE]: 'Type demande',
   [TypeReferentiel.GENRE]: 'Genre',
-  // DUREE_CDD mapping removed
+  [TypeReferentiel.DUREE_CDD]: 'Durée CDD',
   [TypeReferentiel.PARAMETRE_SYSTEME]: 'Paramètre système',
 };
 
