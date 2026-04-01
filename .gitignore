@@ -2,6 +2,7 @@
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+Frontend/package-lock.json
 
 # Node modules
 node_modules/

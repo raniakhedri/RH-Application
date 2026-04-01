@@ -121,7 +121,7 @@ const ReferentielsPage: React.FC = () => {
       ),
     },
     { key: 'description', label: 'Description' },
-    ...(selectedType === TypeReferentiel.PARAMETRE_SYSTEME || selectedType === TypeReferentiel.DUREE_CDD
+    ...(selectedType === TypeReferentiel.PARAMETRE_SYSTEME
       ? [
           {
             key: 'valeur',
@@ -130,8 +130,7 @@ const ReferentielsPage: React.FC = () => {
               if (!item.valeur) return <span className="text-gray-400">—</span>;
               const lib = item.libelle.toUpperCase();
               let unit = '';
-              if (selectedType === TypeReferentiel.DUREE_CDD) unit = 'mois';
-              else if (lib.includes('MINUTE')) unit = 'minutes';
+              if (lib.includes('MINUTE')) unit = 'minutes';
               else if (lib.includes('HEURE')) unit = 'heures';
               else if (lib.includes('CONGE') || lib.includes('JOUR') || lib.includes('SOLDE')) unit = 'jours';
               return (
@@ -284,7 +283,7 @@ const ReferentielsPage: React.FC = () => {
               type="text"
               value={refForm.libelle}
               onChange={(e) => setRefForm({ ...refForm, libelle: e.target.value })}
-              placeholder="Ex: IT, Finance, CDI, CDD..."
+              placeholder="Ex: IT, Finance, CDI..."
               className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
             />
           </div>
@@ -298,16 +297,16 @@ const ReferentielsPage: React.FC = () => {
               className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
             />
           </div>
-          {(refForm.typeReferentiel === TypeReferentiel.PARAMETRE_SYSTEME || refForm.typeReferentiel === TypeReferentiel.DUREE_CDD) && (
+          {refForm.typeReferentiel === TypeReferentiel.PARAMETRE_SYSTEME && (
             <div>
               <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {refForm.typeReferentiel === TypeReferentiel.DUREE_CDD ? 'Durée en mois *' : 'Valeur *'}
+                {'Valeur *'}
               </label>
               <input
                 type="text"
                 value={refForm.valeur}
                 onChange={(e) => setRefForm({ ...refForm, valeur: e.target.value })}
-                placeholder={refForm.typeReferentiel === TypeReferentiel.DUREE_CDD ? 'Ex: 12, 24...' : 'Ex: 120, 30...'}
+                placeholder={'Ex: 120, 30...'}
                 className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300"
               />
             </div>

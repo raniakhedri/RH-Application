@@ -21,9 +21,24 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
 
     /**
-     * Create a notification for an employee.
+     * Crée une notification normale (non urgente).
      */
     public Notification create(Employe employe, String titre, String message, Demande demande) {
+        return save(employe, titre, message, demande, false);
+    }
+
+    /**
+     * Crée une notification urgente (ex : 3 jours avant fin contrat CIVP).
+     * Affichée différemment côté front via le champ urgent = true.
+     */
+    public Notification createUrgent(Employe employe, String titre, String message, Demande demande) {
+        return save(employe, titre, message, demande, true);
+    }
+
+    /**
+     * Méthode interne commune à create() et createUrgent().
+     */
+    private Notification save(Employe employe, String titre, String message, Demande demande, boolean urgent) {
         Notification notification = Notification.builder()
                 .employe(employe)
                 .titre(titre)
@@ -31,12 +46,13 @@ public class NotificationService {
                 .demande(demande)
                 .dateCreation(LocalDateTime.now())
                 .lu(false)
+                .urgent(urgent)
                 .build();
         return notificationRepository.save(notification);
     }
 
     /**
-     * Get all notifications for an employee (most recent first).
+     * Toutes les notifications d'un employé (plus récentes en premier).
      */
     public List<NotificationResponse> getByEmploye(Long employeId) {
         return notificationRepository.findByEmployeIdOrderByDateCreationDesc(employeId)
@@ -46,7 +62,7 @@ public class NotificationService {
     }
 
     /**
-     * Get unread notifications for an employee.
+     * Notifications non lues d'un employé.
      */
     public List<NotificationResponse> getUnreadByEmploye(Long employeId) {
         return notificationRepository.findByEmployeIdAndLuFalseOrderByDateCreationDesc(employeId)
@@ -56,14 +72,14 @@ public class NotificationService {
     }
 
     /**
-     * Count unread notifications.
+     * Nombre de notifications non lues.
      */
     public long countUnread(Long employeId) {
         return notificationRepository.countByEmployeIdAndLuFalse(employeId);
     }
 
     /**
-     * Mark a notification as read.
+     * Marquer une notification comme lue.
      */
     public NotificationResponse markAsRead(Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
@@ -74,22 +90,24 @@ public class NotificationService {
     }
 
     /**
-     * Mark all notifications as read for an employee.
+     * Marquer toutes les notifications comme lues.
      */
     public void markAllAsRead(Long employeId) {
-        List<Notification> unread = notificationRepository.findByEmployeIdAndLuFalseOrderByDateCreationDesc(employeId);
+        List<Notification> unread = notificationRepository
+                .findByEmployeIdAndLuFalseOrderByDateCreationDesc(employeId);
         unread.forEach(n -> n.setLu(true));
         notificationRepository.saveAll(unread);
     }
 
-    private NotificationResponse toResponse(Notification n) {
-        return NotificationResponse.builder()
-                .id(n.getId())
-                .titre(n.getTitre())
-                .message(n.getMessage())
-                .lu(n.getLu())
-                .dateCreation(n.getDateCreation())
-                .demandeId(n.getDemande() != null ? n.getDemande().getId() : null)
-                .build();
-    }
+  private NotificationResponse toResponse(Notification n) {
+    return NotificationResponse.builder()
+            .id(n.getId())
+            .titre(n.getTitre())
+            .message(n.getMessage())
+            .lu(n.isLu())           
+            .urgent(n.isUrgent())
+            .dateCreation(n.getDateCreation())
+            .demandeId(n.getDemande() != null ? n.getDemande().getId() : null)
+            .build();
+}
 }

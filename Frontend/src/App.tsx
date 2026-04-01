@@ -33,6 +33,7 @@ import SuiviTempsReelPage from './pages/SuiviTempsReelPage';
 import RapportsInactivitePage from './pages/RapportsInactivitePage';
 import HistoriqueAgentPage from './pages/HistoriqueAgentPage';
 import TousProjetsAdminPage from './pages/TousProjetsAdminPage';
+import CalendrierProjetsAdminPage from './pages/CalendrierProjetsAdminPage';
 import DashboardRHPage from './pages/DashboardRHPage';
 import { NotificationProvider } from './context/NotificationContext';
 
@@ -93,6 +94,7 @@ const App: React.FC = () => {
           <Route path="rapports-inactivite" element={<PermissionRoute permission="VIEW_MONITORING"><RapportsInactivitePage /></PermissionRoute>} />
           <Route path="historique-agent" element={<PermissionRoute permission="VIEW_MONITORING"><HistoriqueAgentPage /></PermissionRoute>} />
           <Route path="admin/projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><TousProjetsAdminPage /></PermissionRoute>} />
+          <Route path="admin/calendrier-projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><CalendrierProjetsAdminPage /></PermissionRoute>} />
           <Route path="dashboard-rh" element={<PermissionRoute permission="VIEW_DASHBOARD_RH"><DashboardRHPage /></PermissionRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
