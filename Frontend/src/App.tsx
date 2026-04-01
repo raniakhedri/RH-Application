@@ -34,6 +34,7 @@ import SuiviTempsReelPage from './pages/SuiviTempsReelPage';
 import RapportsInactivitePage from './pages/RapportsInactivitePage';
 import HistoriqueAgentPage from './pages/HistoriqueAgentPage';
 import TousProjetsAdminPage from './pages/TousProjetsAdminPage';
+import CalendrierProjetsAdminPage from './pages/CalendrierProjetsAdminPage';
 import DashboardRHPage from './pages/DashboardRHPage';
 import DepartementsPage from './pages/DepartementsPage';
 import ClientsPage from './pages/ClientsPage';

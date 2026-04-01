@@ -9,8 +9,8 @@ public enum TypeReferentiel {
     TYPE_CONGE("Type congé"),
     TYPE_DEMANDE("Type demande"),
     GENRE("Genre"),
-    DUREE_CDD("Durée CDD"),
     PARAMETRE_SYSTEME("Paramètre système");
+    
 
     private final String label;
 

@@ -26,4 +26,17 @@ public interface EmployeRepository extends JpaRepository<Employe, Long> {
 
     @Query("SELECT e FROM Employe e WHERE e.dateFinContrat IS NOT NULL AND e.dateFinContrat = :date")
     List<Employe> findByDateFinContrat(@Param("date") LocalDate date);
+
+    @Query("SELECT e FROM Employe e WHERE e.typeContrat = 'CIVP' AND e.dateFinContrat = :date")
+    List<Employe> findCivpByDateFinContrat(@Param("date") LocalDate date);
+
+    // ✅ Nouvelle query — cherche tous les CIVP expirant dans une plage de dates
+    @Query("SELECT e FROM Employe e WHERE e.typeContrat = 'CIVP' " +
+           "AND e.dateFinContrat IS NOT NULL " +
+           "AND e.dateFinContrat >= :dateDebut " +
+           "AND e.dateFinContrat <= :dateFin")
+    List<Employe> findCivpExpiringBetween(
+            @Param("dateDebut") LocalDate dateDebut,
+            @Param("dateFin") LocalDate dateFin
+    );
 }
