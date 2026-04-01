@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { HiOutlineExclamationCircle } from 'react-icons/hi';
 
 interface ConfirmDialogProps {
@@ -41,8 +42,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   const styles = variantStyles[variant];
 
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 99999 }}>
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative mx-4 w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-lg dark:border-gray-700 dark:bg-gray-800 animate-in fade-in zoom-in-95">
         <div className="flex flex-col items-center text-center">
@@ -67,7 +68,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

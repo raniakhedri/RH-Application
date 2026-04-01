@@ -29,21 +29,13 @@ public class TacheDetailDTO {
     private Long chefDeProjetId;
     private StatutProjet projetStatut;
 
+    private boolean urgente;
+
     // Assignee
     private Long assigneeId;
 
-    // Equipes with members
-    private List<EquipeInfoDTO> equipes;
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class EquipeInfoDTO {
-        private Long id;
-        private String nom;
-        private List<MembreInfoDTO> membres;
-    }
+    // Direct project members (chef + selected subordinates)
+    private List<MembreInfoDTO> membresProjet;
 
     @Data
     @Builder
@@ -54,6 +46,7 @@ public class TacheDetailDTO {
         private String nom;
         private String prenom;
         private String telephone;
+        private String telephonePro;
         private String departement;
         private String email;
     }

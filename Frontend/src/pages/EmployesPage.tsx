@@ -540,7 +540,7 @@ const EmployesPage: React.FC = () => {
 
   const formErrors = {
     cin: !formData.cin.trim() || formData.cin.length !== 8,
-    cnss: !!formData.cnss && (formData.cnss.length < 8 || formData.cnss.length > 12),
+    cnss: !!formData.cnss && !/^[0-9]{1,12}(-[0-9]+)*$/.test(formData.cnss),
     genre: !formData.genre,
     prenom: !formData.prenom.trim(),
     nom: !formData.nom.trim(),
@@ -794,7 +794,11 @@ const EmployesPage: React.FC = () => {
             <input type="text" value={formData.cin} onChange={(e) => setFormData({ ...formData, cin: onlyDigits(e.target.value).slice(0, 8) })} placeholder="8 chiffres" maxLength={8} className={submitted && formErrors.cin ? inputErrorClass : inputClass} />
             {submitted && formErrors.cin && <p className="text-theme-xs text-error-500 mt-1">Le CIN doit contenir exactement 8 chiffres</p>}
           </div>
-         
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CNSS</label>
+            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: e.target.value.replace(/[^0-9-]/g, '') })} placeholder="Ex: 1234-567890" maxLength={20} className={submitted && formErrors.cnss ? inputErrorClass : inputClass} />
+            {submitted && formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir des chiffres (tirets autorisés)</p>}
+          </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genre *</label>
             <select value={formData.genre} onChange={(e) => setFormData({ ...formData, genre: e.target.value })} className={submitted && formErrors.genre ? inputErrorClass : selectClass}>

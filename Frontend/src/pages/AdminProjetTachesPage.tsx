@@ -3,14 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineArrowLeft } from 'react-icons/hi';
 import { tacheService } from '../api/tacheService';
 import { projetService } from '../api/projetService';
-import { employeService } from '../api/employeService';
 import { Tache, Projet, Employe, StatutTache } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useConfirm } from '../hooks/useConfirm';
-import { useAuth } from '../context/AuthContext';
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success'> = {
     TODO: 'neutral',
@@ -49,23 +47,21 @@ const emptyForm = (): TacheForm => ({
     urgente: false,
 });
 
-const ProjetTachesPage: React.FC = () => {
+const AdminProjetTachesPage: React.FC = () => {
     const { projetId } = useParams<{ projetId: string }>();
     const navigate = useNavigate();
-    const { user } = useAuth();
     const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
 
     const [projet, setProjet] = useState<Projet | null>(null);
     const [taches, setTaches] = useState<Tache[]>([]);
-    const [projectMembers, setProjectMembers] = useState<Employe[]>([]); // restricted list for assignment
-    const [allMembers, setAllMembers] = useState<Employe[]>([]);         // full list for name display
+    const [projectMembers, setProjectMembers] = useState<Employe[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Drag state
     const dragTacheId = useRef<number | null>(null);
     const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
-    // Create modal — supports multiple tasks queued
+    // Create modal
     const [showCreate, setShowCreate] = useState(false);
     const [taskForms, setTaskForms] = useState<TacheForm[]>([emptyForm()]);
     const [createError, setCreateError] = useState<string | null>(null);
@@ -98,43 +94,16 @@ const ProjetTachesPage: React.FC = () => {
             setProjet(p);
             setTaches(tRes.data.data || []);
 
-            // Build the full member map (all chefs + all membres) for display purposes
-            const allMemberMap = new Map<number, Employe>();
-            if (p?.chefDeProjet) allMemberMap.set(p.chefDeProjet.id, p.chefDeProjet as Employe);
+            // Admin view: include ALL chefs + ALL members — no restrictions
+            const memberMap = new Map<number, Employe>();
+            if (p?.chefDeProjet) memberMap.set(p.chefDeProjet.id, p.chefDeProjet as Employe);
             if (p?.chefsDeProjet && p.chefsDeProjet.length > 0) {
-                p.chefsDeProjet.forEach(c => { if (!allMemberMap.has(c.id)) allMemberMap.set(c.id, c as Employe); });
+                p.chefsDeProjet.forEach(c => { if (!memberMap.has(c.id)) memberMap.set(c.id, c as Employe); });
             }
             for (const m of (p?.membres ?? [])) {
-                if (!allMemberMap.has(m.id)) allMemberMap.set(m.id, m);
+                if (!memberMap.has(m.id)) memberMap.set(m.id, m);
             }
-
-            // Determine if the current user is a chef (manager) on this project
-            const allMembersArr = Array.from(allMemberMap.values());
-            setAllMembers(allMembersArr);
-            const currentUserId = user?.employeId;
-            const isChef = currentUserId && (
-                p?.chefDeProjet?.id === currentUserId ||
-                (p?.chefsDeProjet ?? []).some(c => c.id === currentUserId)
-            );
-
-            if (isChef && currentUserId) {
-                // Manager: can only assign to themselves + their own subordinates who are project members
-                try {
-                    const subRes = await employeService.getSubordinates(currentUserId);
-                    const subordinateIds = new Set((subRes.data.data || subRes.data || []).map((s: any) => s.id));
-                    const filtered = Array.from(allMemberMap.values()).filter(
-                        m => m.id === currentUserId || subordinateIds.has(m.id)
-                    );
-                    setProjectMembers(filtered);
-                } catch {
-                    // Fallback: show only themselves
-                    const self = allMemberMap.get(currentUserId);
-                    setProjectMembers(self ? [self] : []);
-                }
-            } else {
-                // Non-chef user: show all members (shouldn't normally reach here but safe fallback)
-                setProjectMembers(Array.from(allMemberMap.values()));
-            }
+            setProjectMembers(Array.from(memberMap.values()));
         } catch (err) {
             console.error('Erreur chargement:', err);
         } finally {
@@ -162,12 +131,10 @@ const ProjetTachesPage: React.FC = () => {
         const tache = taches.find(t => t.id === dragTacheId.current);
         if (!tache || tache.statut === colStatut) return;
         dragTacheId.current = null;
-        // Optimistic update
         setTaches(prev => prev.map(t => t.id === tache.id ? { ...t, statut: colStatut } : t));
         try {
             await tacheService.changeStatut(tache.id, colStatut);
         } catch {
-            // Revert on failure
             loadData();
         }
     };
@@ -202,7 +169,6 @@ const ProjetTachesPage: React.FC = () => {
         try {
             for (const form of taskForms) {
                 if (form.assigneeIds.length <= 1) {
-                    // Single or no assignee → one task
                     const created = await tacheService.create(pid, {
                         titre: form.titre,
                         statut: form.statut,
@@ -213,7 +179,6 @@ const ProjetTachesPage: React.FC = () => {
                         await tacheService.assign(created.data.data.id, Number(form.assigneeIds[0]));
                     }
                 } else {
-                    // Multiple assignees → one task per member
                     for (const memberId of form.assigneeIds) {
                         const created = await tacheService.create(pid, {
                             titre: form.titre,
@@ -260,7 +225,6 @@ const ProjetTachesPage: React.FC = () => {
                 statut: editForm.statut,
                 urgente: editForm.urgente,
             } as any);
-            // Assign the first selected member (or clear)
             if (editForm.assigneeIds[0]) {
                 await tacheService.assign(editingTache.id, Number(editForm.assigneeIds[0]));
             }
@@ -297,7 +261,7 @@ const ProjetTachesPage: React.FC = () => {
 
     const getMemberNom = (id: number | null) => {
         if (!id) return 'Non assigné';
-        const m = allMembers.find(e => e.id === id);
+        const m = projectMembers.find(e => e.id === id);
         return m ? `${m.prenom} ${m.nom}` : '-';
     };
 
@@ -352,11 +316,11 @@ const ProjetTachesPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
+            {/* Header — back goes to admin/projets */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => navigate('/projets')}
+                        onClick={() => navigate('/admin/projets')}
                         className="flex items-center gap-1.5 rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                         <HiOutlineArrowLeft size={20} />
@@ -417,7 +381,6 @@ const ProjetTachesPage: React.FC = () => {
                                             onDragStart={e => handleDragStart(e, tache.id)}
                                             className={`cursor-grab rounded-xl border-2 bg-gray-50 px-3 py-2.5 shadow-sm transition-shadow active:cursor-grabbing active:shadow-md dark:bg-gray-800 ${tache.urgente ? 'border-error-400 dark:border-error-500' : 'border-gray-100 dark:border-gray-700'}`}
                                         >
-                                            {/* Drag handle hint */}
                                             <div className="mb-1.5 flex items-start justify-between gap-2">
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-1.5">
@@ -465,7 +428,6 @@ const ProjetTachesPage: React.FC = () => {
                                                     </button>
                                                 </div>
                                             </div>
-                                            {/* Drag hint icon */}
                                             <div className="flex justify-center opacity-20">
                                                 <svg width="16" height="8" viewBox="0 0 16 8" fill="currentColor" className="text-gray-400">
                                                     <circle cx="2" cy="2" r="1.5" /><circle cx="8" cy="2" r="1.5" /><circle cx="14" cy="2" r="1.5" />
@@ -651,4 +613,4 @@ const ProjetTachesPage: React.FC = () => {
     );
 };
 
-export default ProjetTachesPage;
+export default AdminProjetTachesPage;

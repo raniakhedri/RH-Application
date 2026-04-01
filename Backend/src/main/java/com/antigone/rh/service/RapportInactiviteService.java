@@ -10,10 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,38 +37,44 @@ public class RapportInactiviteService {
     }
 
     /**
-     * Générer les rapports pour la semaine courante (lundi à dimanche précédent)
+     * Générer les rapports depuis la dernière décision jusqu'à aujourd'hui pour chaque employé
      */
     public List<RapportInactiviteDTO> genererSemaineCourante() {
         LocalDate today = LocalDate.now();
-        // Semaine courante : du lundi au vendredi (ou aujourd'hui si on est en milieu
-        // de semaine)
-        LocalDate lundiCourant = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate vendrediCourant = lundiCourant.plusDays(4);
-        // La fin effective est le minimum entre vendredi et aujourd'hui
-        LocalDate finEffective = today.isBefore(vendrediCourant) ? today : vendrediCourant;
+        List<Employe> employes = employeRepository.findAll();
+        List<RapportInactiviteDTO> generated = new ArrayList<>();
 
-        return genererRapports(lundiCourant, finEffective);
+        for (Employe employe : employes) {
+            LocalDate debut = getDateApresDerniereDecision(employe.getId());
+            if (debut.isAfter(today)) continue;
+            generated.addAll(genererRapports(debut, today));
+        }
+
+        return generated;
     }
 
     /**
-     * Générer les rapports pour une période donnée
+     * Trouver la date du lendemain de la dernière décision pour un employé.
+     * S'il n'y a aucune décision, retourne la date d'embauche ou il y a 30 jours.
+     */
+    private LocalDate getDateApresDerniereDecision(Long employeId) {
+        List<RapportInactivite> lastDecided = rapportRepository.findLastDecidedByEmployeId(employeId);
+        if (!lastDecided.isEmpty()) {
+            return lastDecided.get(0).getSemaineFin().plusDays(1);
+        }
+        // Pas de décision précédente : prendre la date d'embauche ou 30 jours en arrière
+        Employe employe = employeRepository.findById(employeId).orElse(null);
+        if (employe != null && employe.getDateEmbauche() != null) {
+            return employe.getDateEmbauche();
+        }
+        return LocalDate.now().minusDays(30);
+    }
+
+    /**
+     * Générer les rapports pour une période donnée (sans découpage en semaines)
      */
     public List<RapportInactiviteDTO> genererPeriode(LocalDate debut, LocalDate fin) {
-        List<RapportInactiviteDTO> allRapports = new ArrayList<>();
-
-        // Découper en semaines (lundi à vendredi)
-        LocalDate currentMonday = debut.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        while (!currentMonday.isAfter(fin)) {
-            LocalDate currentFriday = currentMonday.plusDays(4);
-            if (!currentFriday.isAfter(fin) || currentMonday.isBefore(fin)) {
-                LocalDate effectiveFin = currentFriday.isAfter(fin) ? fin : currentFriday;
-                allRapports.addAll(genererRapports(currentMonday, effectiveFin));
-            }
-            currentMonday = currentMonday.plusWeeks(1);
-        }
-
-        return allRapports;
+        return genererRapports(debut, fin);
     }
 
     /**
@@ -100,49 +104,46 @@ public class RapportInactiviteService {
     // LOGIQUE DE GENERATION
     // ========================================
 
-    private List<RapportInactiviteDTO> genererRapports(LocalDate semaineDebut, LocalDate semaineFin) {
+    private List<RapportInactiviteDTO> genererRapports(LocalDate periodeDebut, LocalDate periodeFin) {
         List<Employe> employes = employeRepository.findAll();
         List<RapportInactiviteDTO> generated = new ArrayList<>();
 
         for (Employe employe : employes) {
-            // Vérifier si un rapport existe déjà pour cette période et cet employé
-            if (rapportRepository.findByEmployeIdAndSemaineDebutAndSemaineFin(
-                    employe.getId(), semaineDebut, semaineFin).isPresent()) {
+            // Vérifier si un rapport en attente existe déjà pour cette période exacte
+            if (rapportRepository.findPendingByEmployeAndPeriod(
+                    employe.getId(), periodeDebut, periodeFin).isPresent()) {
                 continue; // Déjà généré
             }
 
-            // Compter les minutes d'inactivité sur toute la semaine
-            LocalDateTime start = semaineDebut.atStartOfDay();
-            LocalDateTime end = semaineFin.atTime(23, 59, 59);
+            // Compter les minutes d'inactivité sur la période
+            LocalDateTime start = periodeDebut.atStartOfDay();
+            LocalDateTime end = periodeFin.atTime(23, 59, 59);
 
             long inactiveMinutes = heartbeatRepository.countInactiveMinutes(
                     employe.getId(), start, end);
 
-            // Si aucun heartbeat du tout, l'employé n'avait pas l'agent → on skip
-            long totalHeartbeats = heartbeatRepository.countActiveMinutes(employe.getId(), start, end)
-                    + inactiveMinutes;
-            if (totalHeartbeats == 0)
-                continue;
+            // Calculer le retard cumulé sur la période
+            List<Pointage> pointages = pointageRepository.findByEmployeIdAndDatePointageBetween(
+                    employe.getId(), periodeDebut, periodeFin);
+            int retardCumule = pointages.stream()
+                    .mapToInt(p -> p.getRetardMinutes() != null ? p.getRetardMinutes() : 0)
+                    .sum();
+
+            // Si aucun retard et aucune inactivité, pas besoin de rapport
+            if (retardCumule == 0 && inactiveMinutes == 0) continue;
 
             // Tolérance = 0 (chaque minute compte)
             int toleranceMinutes = 0;
             int inactiviteExcedentaire = (int) Math.max(0, inactiveMinutes - toleranceMinutes);
 
-            // Calculer le retard cumulé sur la période
-            List<Pointage> pointages = pointageRepository.findByEmployeIdAndDatePointageBetween(
-                    employe.getId(), semaineDebut, semaineFin);
-            int retardCumule = pointages.stream()
-                    .mapToInt(p -> p.getRetardMinutes() != null ? p.getRetardMinutes() : 0)
-                    .sum();
-
-            // Calculer le montant de déduction
+            // Calculer le montant de déduction basé sur le retard cumulé uniquement
             double prixMinute = agentService.calculatePrixMinute(employe);
-            double montantDeduction = inactiviteExcedentaire * prixMinute;
+            double montantDeduction = retardCumule * prixMinute;
 
             RapportInactivite rapport = RapportInactivite.builder()
                     .employe(employe)
-                    .semaineDebut(semaineDebut)
-                    .semaineFin(semaineFin)
+                    .semaineDebut(periodeDebut)
+                    .semaineFin(periodeFin)
                     .totalInactiviteMinutes((int) inactiveMinutes)
                     .toleranceMinutes(toleranceMinutes)
                     .inactiviteExcedentaire(inactiviteExcedentaire)
@@ -186,7 +187,7 @@ public class RapportInactiviteService {
                     .sum();
 
             double prixMinute = agentService.calculatePrixMinute(r.getEmploye());
-            montantDeduction = inactiviteExcedentaire * prixMinute;
+            montantDeduction = retardCumule * prixMinute;
 
             // Mettre à jour l'entité en base aussi
             r.setTotalInactiviteMinutes(totalInactiviteMinutes);

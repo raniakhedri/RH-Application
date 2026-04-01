@@ -39,7 +39,15 @@ public class RoleService {
             Map.entry("VIEW_DASHBOARD_RH", "Dashboard RH"),
             Map.entry("VIEW_MES_DEMANDES", "Mes demandes"),
             Map.entry("VIEW_MES_PROJETS", "Mes projets"),
-            Map.entry("VIEW_MON_CALENDRIER", "Mon calendrier"));
+            Map.entry("VIEW_MON_CALENDRIER", "Mon calendrier"),
+            // ── Clients ──────────────────────────────────────────────────────
+            Map.entry("VIEW_CLIENTS", "Clients - Voir"),
+            Map.entry("CREATE_CLIENT", "Clients - Créer"),
+            Map.entry("EDIT_CLIENT", "Clients - Modifier"),
+            Map.entry("DELETE_CLIENT", "Clients - Supprimer"),
+            Map.entry("VALIDATE_CLIENT_CEO", "Clients - Validation CEO"),
+            Map.entry("VALIDATE_CLIENT_COO", "Clients - Validation COO"),
+            Map.entry("VALIDATE_CLIENT_DA", "Clients - Validation DA"));
 
     public List<RoleDTO> getAllRoles() {
         return roleRepository.findAll().stream()

@@ -256,7 +256,7 @@ const RapportsInactivitePage: React.FC = () => {
           </Button>
           <Button size="sm" onClick={handleGenerer} disabled={generating}>
             <HiOutlineRefresh size={16} className={generating ? 'animate-spin' : ''} />
-            {generating ? 'Génération...' : 'Générer semaine courante'}
+            {generating ? 'Génération...' : 'Générer les rapports'}
           </Button>
         </div>
       </div>
@@ -484,11 +484,7 @@ const RapportsInactivitePage: React.FC = () => {
             </div>
 
             {/* Stats grid */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
-                <p className="text-lg font-bold text-orange-600">{formatMinutes(selectedRapport.totalInactiviteMinutes)}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Inactivité totale</p>
-              </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="text-center p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
                 <p className="text-lg font-bold text-orange-600">{formatMinutes(selectedRapport.retardCumule || 0)}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Retard cumulé</p>
@@ -498,26 +494,6 @@ const RapportsInactivitePage: React.FC = () => {
                 <p className="text-xs text-gray-500 dark:text-gray-400">Montant déduction</p>
               </div>
             </div>
-
-            {/* Progress bar visual */}
-            {selectedRapport.totalInactiviteMinutes > 0 && (
-              <div>
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  <span>Retard cumulé: {formatMinutes(selectedRapport.retardCumule || 0)}</span>
-                  <span>Inactivité: {formatMinutes(selectedRapport.totalInactiviteMinutes)}</span>
-                </div>
-                <div className="w-full h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      selectedRapport.inactiviteExcedentaire > 0 ? 'bg-red-500' : 'bg-green-500'
-                    }`}
-                    style={{
-                      width: `${Math.min(100, selectedRapport.totalInactiviteMinutes > 0 ? 100 : 0)}%`
-                    }}
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Commentaire */}
             <div>

@@ -29,6 +29,9 @@ public class Tache {
 
     private LocalDate dateEcheance;
 
+    @Column(nullable = false)
+    private boolean urgente = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "projet_id", nullable = false)
     @ToString.Exclude

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { employeService } from '../api/employeService';
 import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
+import { useLocation } from 'react-router-dom';
 import { tacheService } from '../api/tacheService';
 import { projetService } from '../api/projetService';
-import { equipeService } from '../api/equipeService';
-import { Tache, Projet, Employe, StatutTache } from '../types';
+import { Tache, Projet, StatutTache } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -26,8 +28,10 @@ const TachesPage: React.FC = () => {
   const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const [taches, setTaches] = useState<Tache[]>([]);
   const [projets, setProjets] = useState<Projet[]>([]);
-  const [employes, setEmployes] = useState<Employe[]>([]);
-  const [equipeMembers, setEquipeMembers] = useState<Employe[]>([]);
+  const { user } = useAuth();
+  const [mySubordinates, setMySubordinates] = useState<any[]>([]);
+  const location = useLocation();
+  const fromAdminNav = ((location.state || {}) as any).fromAdmin === true;
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filterProjet, setFilterProjet] = useState<string>('');
@@ -44,6 +48,12 @@ const TachesPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    // load subordinates for current user (used to limit assignee choices when user is chef)
+    if (user?.employeId) {
+      employeService.getSubordinates(user.employeId)
+        .then(res => setMySubordinates(res.data.data || []))
+        .catch(err => console.error('Failed to load subordinates', err));
+    }
   }, []);
 
   const loadData = async () => {
@@ -61,30 +71,57 @@ const TachesPage: React.FC = () => {
     }
   };
 
-  // Load equipe members when project changes in form
-  const loadEquipeMembers = async (projetId: number) => {
-    if (!projetId) {
-      setEquipeMembers([]);
-      return;
+  // Compute assignable members for the currently selected project: chef + selected membres
+  const getMembresForProjet = (projetId: number) => {
+    const p = projets.find(pr => pr.id === projetId);
+    if (!p) return [];
+    const map = new Map<number, any>();
+
+    const isCurrentUserChef = user?.employeId && (
+      p.chefDeProjet?.id === user.employeId || (p.chefsDeProjet ?? []).some((c: any) => c.id === user.employeId)
+    );
+
+    // If navigation came from admin page, allow full list (all chefs + membres)
+    if (fromAdminNav) {
+      if (p.chefDeProjet) map.set(p.chefDeProjet.id, p.chefDeProjet);
+      if (p.chefsDeProjet && p.chefsDeProjet.length > 0) {
+        p.chefsDeProjet.forEach((c: any) => { if (!map.has(c.id)) map.set(c.id, c); });
+      }
+      (p.membres ?? []).forEach(m => { if (!map.has(m.id)) map.set(m.id, m); });
+      return Array.from(map.values());
     }
-    try {
-      const res = await equipeService.getMembresByProjet(projetId);
-      setEquipeMembers(res.data.data || []);
-    } catch (err) {
-      console.error('Erreur chargement membres:', err);
-      setEquipeMembers([]);
+
+    if (isCurrentUserChef) {
+      // Only allow assigning to self (chef) and project members who are subordinates of current user
+      if (user?.employeId && !map.has(user.employeId)) {
+        map.set(user.employeId, { id: user.employeId, prenom: user.prenom || '', nom: user.nom || '' });
+      }
+      const memberIds = new Set((p.membres ?? []).map(m => m.id));
+      const subs = mySubordinates || [];
+      const allowed = subs.filter((s: any) => memberIds.has(s.id));
+      allowed.forEach((m: any) => { if (!map.has(m.id)) map.set(m.id, m); });
+      return Array.from(map.values());
     }
+
+    // Default: non-chef view: include all chefs and project members
+    if (p.chefDeProjet) map.set(p.chefDeProjet.id, p.chefDeProjet);
+    if (p.chefsDeProjet && p.chefsDeProjet.length > 0) {
+      p.chefsDeProjet.forEach((c: any) => { if (!map.has(c.id)) map.set(c.id, c); });
+    }
+    (p.membres ?? []).forEach(m => { if (!map.has(m.id)) map.set(m.id, m); });
+    return Array.from(map.values());
   };
 
   const handleSubmit = async () => {
     // Validate dates against project range
     const selectedProjet = projets.find(p => p.id === formData.projetId);
     if (selectedProjet && formData.dateEcheance) {
-      if (formData.dateEcheance < selectedProjet.dateDebut) {
+      // Guard against nullable project dates (dateDebut/dateFin can be null)
+      if (selectedProjet.dateDebut && formData.dateEcheance < selectedProjet.dateDebut) {
         setDateError(`L'échéance ne peut pas être avant le début du projet (${selectedProjet.dateDebut})`);
         return;
       }
-      if (formData.dateEcheance > selectedProjet.dateFin) {
+      if (selectedProjet.dateFin && formData.dateEcheance > selectedProjet.dateFin) {
         setDateError(`L'échéance ne peut pas être après la fin du projet (${selectedProjet.dateFin})`);
         return;
       }
@@ -143,8 +180,13 @@ const TachesPage: React.FC = () => {
   const getProjetNom = (id: number) => projets.find((p) => p.id === id)?.nom || '-';
   const getEmployeNom = (id: number | null) => {
     if (!id) return 'Non assignée';
-    const e = equipeMembers.find((emp) => emp.id === id) || employes.find((emp) => emp.id === id);
-    return e ? `${e.prenom} ${e.nom}` : '-';
+    // Search across all projets' members
+    for (const p of projets) {
+      if (p.chefDeProjet?.id === id) return `${p.chefDeProjet.prenom} ${p.chefDeProjet.nom}`;
+      const m = (p.membres ?? []).find(m => m.id === id);
+      if (m) return `${m.prenom} ${m.nom}`;
+    }
+    return '-';
   };
 
   // Drag & Drop handlers
@@ -184,7 +226,6 @@ const TachesPage: React.FC = () => {
       projetId: tache.projetId,
       assigneeId: tache.assigneeId,
     });
-    loadEquipeMembers(tache.projetId);
     setDateError(null);
     setShowModal(true);
   };
@@ -217,17 +258,12 @@ const TachesPage: React.FC = () => {
     const firstProjetId = projets[0]?.id || 0;
     setEditingTache(null);
     setFormData({ titre: '', dateEcheance: '', projetId: firstProjetId, assigneeId: null });
-    setEquipeMembers([]);
-    if (firstProjetId) {
-      loadEquipeMembers(firstProjetId);
-    }
     setDateError(null);
     setShowModal(true);
   };
 
   const handleProjetChange = (projetId: number) => {
     setFormData({ ...formData, projetId, assigneeId: null });
-    loadEquipeMembers(projetId);
   };
 
   return (
@@ -368,17 +404,17 @@ const TachesPage: React.FC = () => {
               className={inputClass}
             >
               <option value="">Non assignée</option>
-              {equipeMembers.length > 0 ? (
-                equipeMembers.map((e) => (
-                  <option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>
+              {getMembresForProjet(formData.projetId).length > 0 ? (
+                getMembresForProjet(formData.projetId).map((m) => (
+                  <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>
                 ))
               ) : (
-                <option value="" disabled>Aucun membre d'équipe pour ce projet</option>
+                <option value="" disabled>Aucun membre pour ce projet</option>
               )}
             </select>
-            {equipeMembers.length === 0 && formData.projetId > 0 && (
+            {getMembresForProjet(formData.projetId).length === 0 && formData.projetId > 0 && (
               <p className="mt-1 text-theme-xs text-warning-500">
-                Ce projet n'a pas d'équipe assignée. Créez d'abord une équipe.
+                Ce projet n'a pas encore de membres assignés.
               </p>
             )}
           </div>

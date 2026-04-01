@@ -180,8 +180,8 @@ public class EmployeService {
         if (dto.getCin() != null && !dto.getCin().matches("^[0-9]{8}$")) {
             throw new RuntimeException("Le CIN doit contenir exactement 8 chiffres");
         }
-        if (dto.getCnss() != null && !dto.getCnss().matches("^[0-9]{8,12}$")) {
-            throw new RuntimeException("Le CNSS doit contenir entre 8 et 12 chiffres");
+        if (dto.getCnss() != null && !dto.getCnss().matches("^[0-9]{1,12}(-[0-9]+)*$")) {
+            throw new RuntimeException("Le CNSS doit contenir des chiffres (tirets autorisés)");
         }
         if (dto.getRibBancaire() != null && !dto.getRibBancaire().matches("^[0-9]{20}$")) {
             throw new RuntimeException("Le RIB doit contenir exactement 20 chiffres");

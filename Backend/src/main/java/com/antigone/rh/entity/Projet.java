@@ -30,13 +30,34 @@ public class Projet {
 
     private LocalDate dateDebut;
 
+    /** Null when typeProjet = INDETERMINE */
     private LocalDate dateFin;
+
+    /** DETERMINE or INDETERMINE */
+    @Builder.Default
+    @Column(name = "type_projet", columnDefinition = "VARCHAR(50) DEFAULT 'DETERMINE'")
+    private String typeProjet = "DETERMINE";
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chef_projet_id")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Employe chefDeProjet;
+
+    /** Multiple chefs de projet (managers) */
+    @ManyToMany(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @JoinTable(name = "projet_chefs", joinColumns = @JoinColumn(name = "projet_id"), inverseJoinColumns = @JoinColumn(name = "employe_id"))
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Employe> chefsDeProjet = new ArrayList<>();
+
+    /** Fully-validated client linked to this project (optional) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Client client;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "createur_id")
@@ -57,4 +78,11 @@ public class Projet {
     @Builder.Default
     @JsonIgnore
     private List<Tache> taches = new ArrayList<>();
+
+    @ManyToMany(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @JoinTable(name = "projet_membres", joinColumns = @JoinColumn(name = "projet_id"), inverseJoinColumns = @JoinColumn(name = "employe_id"))
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Employe> membres = new ArrayList<>();
 }

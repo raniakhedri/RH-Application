@@ -2,12 +2,10 @@ package com.antigone.rh.service;
 
 import com.antigone.rh.dto.TacheDetailDTO;
 import com.antigone.rh.entity.Employe;
-import com.antigone.rh.entity.Equipe;
 import com.antigone.rh.entity.Projet;
 import com.antigone.rh.entity.Tache;
 import com.antigone.rh.enums.StatutTache;
 import com.antigone.rh.repository.EmployeRepository;
-import com.antigone.rh.repository.EquipeRepository;
 import com.antigone.rh.repository.ProjetRepository;
 import com.antigone.rh.repository.TacheRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +23,6 @@ public class TacheService {
     private final TacheRepository tacheRepository;
     private final ProjetRepository projetRepository;
     private final EmployeRepository employeRepository;
-    private final EquipeRepository equipeRepository;
     private final NotificationService notificationService;
 
     public List<Tache> findAll() {
@@ -118,6 +115,7 @@ public class TacheService {
         Tache tache = findById(id);
         tache.setTitre(tacheDetails.getTitre());
         tache.setDateEcheance(tacheDetails.getDateEcheance());
+        tache.setUrgente(tacheDetails.isUrgente());
         if (tacheDetails.getStatut() != null) {
             tache.setStatut(tacheDetails.getStatut());
         }
@@ -153,27 +151,26 @@ public class TacheService {
             chefId = chef.getId();
         }
 
-        // Load equipes for this project
-        List<TacheDetailDTO.EquipeInfoDTO> equipeInfos = List.of();
+        // Build flat member list: chef first, then selected subordinates
+        java.util.List<TacheDetailDTO.MembreInfoDTO> membresProjet = new java.util.ArrayList<>();
         if (projet != null) {
-            List<Equipe> equipes = equipeRepository.findByProjetId(projet.getId());
-            equipeInfos = equipes.stream().map(eq -> {
-                List<TacheDetailDTO.MembreInfoDTO> membres = eq.getMembres().stream()
-                        .map(m -> TacheDetailDTO.MembreInfoDTO.builder()
-                                .id(m.getId())
-                                .nom(m.getNom())
-                                .prenom(m.getPrenom())
-                                .telephone(m.getTelephone())
-                                .departement(m.getDepartement())
-                                .email(m.getEmail())
-                                .build())
-                        .collect(Collectors.toList());
-                return TacheDetailDTO.EquipeInfoDTO.builder()
-                        .id(eq.getId())
-                        .nom(eq.getNom())
-                        .membres(membres)
-                        .build();
-            }).collect(Collectors.toList());
+            if (projet.getChefDeProjet() != null) {
+                Employe chef = projet.getChefDeProjet();
+                membresProjet.add(TacheDetailDTO.MembreInfoDTO.builder()
+                        .id(chef.getId()).nom(chef.getNom()).prenom(chef.getPrenom())
+                        .telephone(chef.getTelephone()).telephonePro(chef.getTelephonePro())
+                        .departement(chef.getDepartement()).email(chef.getEmail())
+                        .build());
+            }
+            for (Employe m : projet.getMembres()) {
+                if (membresProjet.stream().anyMatch(x -> x.getId().equals(m.getId())))
+                    continue;
+                membresProjet.add(TacheDetailDTO.MembreInfoDTO.builder()
+                        .id(m.getId()).nom(m.getNom()).prenom(m.getPrenom())
+                        .telephone(m.getTelephone()).telephonePro(m.getTelephonePro())
+                        .departement(m.getDepartement()).email(m.getEmail())
+                        .build());
+            }
         }
 
         return TacheDetailDTO.builder()
@@ -187,8 +184,9 @@ public class TacheService {
                 .chefDeProjetNom(chefNom)
                 .chefDeProjetId(chefId)
                 .projetStatut(projet != null ? projet.getStatut() : null)
+                .urgente(tache.isUrgente())
                 .assigneeId(tache.getAssignee() != null ? tache.getAssignee().getId() : null)
-                .equipes(equipeInfos)
+                .membresProjet(membresProjet)
                 .build();
     }
 }
