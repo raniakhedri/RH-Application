@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiOutlineBell, HiOutlineLogout, HiOutlineMenu, HiOutlineLockClosed, HiOutlineUser, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineUserAdd, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineDocumentText, HiOutlineStar, HiOutlinePhotograph, HiOutlineCalendar, HiOutlineInformationCircle } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
@@ -83,11 +83,11 @@ const Header: React.FC = () => {
 
   const handleNotifClick = (notif: NotificationResponse) => {
     if (!notif.lu) handleMarkAsRead(notif.id);
-    if (notif.demandeId) {
+    if (notif.titre.includes('PLANIFICATION_PROJET')) { navigate('/admin/calendrier-projets'); } else if (notif.demandeId) {
       navigate('/mes-demandes');
-    } else if (notif.titre.includes('employé') || notif.titre.includes('subordonné') || notif.titre.includes('Profil')) {
+    } else if (notif.titre.includes('employÃ©') || notif.titre.includes('subordonnÃ©') || notif.titre.includes('Profil')) {
       navigate('/employes');
-    } else if (notif.titre.includes('compétence') || notif.titre.includes('Compétence')) {
+    } else if (notif.titre.includes('compÃ©tence') || notif.titre.includes('CompÃ©tence')) {
       navigate('/employes');
     } else if (notif.titre.includes('document') || notif.titre.includes('Document')) {
       navigate('/employes');
@@ -96,25 +96,25 @@ const Header: React.FC = () => {
   };
 
   const getNotifIcon = (titre: string) => {
-    if (titre.includes('Nouvel employé') || titre.includes('Nouveau subordonné'))
+    if (titre.includes('Nouvel employÃ©') || titre.includes('Nouveau subordonnÃ©'))
       return { icon: HiOutlineUserAdd, bg: 'bg-brand-50 dark:bg-brand-500/10', color: 'text-brand-500' };
-    if (titre.includes('modifié') || titre.includes('mis à jour') || titre.includes('mise à jour'))
+    if (titre.includes('modifiÃ©') || titre.includes('mis Ã  jour') || titre.includes('mise Ã  jour'))
       return { icon: HiOutlinePencilAlt, bg: 'bg-warning-50 dark:bg-warning-500/10', color: 'text-warning-500' };
-    if (titre.includes('supprimé') || titre.includes('retir') || titre.includes('réaffecté'))
+    if (titre.includes('supprimÃ©') || titre.includes('retir') || titre.includes('rÃ©affectÃ©'))
       return { icon: HiOutlineTrash, bg: 'bg-error-50 dark:bg-error-500/10', color: 'text-error-500' };
     if (titre.includes('document') || titre.includes('Document'))
       return { icon: HiOutlineDocumentText, bg: 'bg-info-50 dark:bg-blue-500/10', color: 'text-blue-500' };
-    if (titre.includes('compétence') || titre.includes('Compétence'))
+    if (titre.includes('compÃ©tence') || titre.includes('CompÃ©tence'))
       return { icon: HiOutlineStar, bg: 'bg-purple-50 dark:bg-purple-500/10', color: 'text-purple-500' };
     if (titre.includes('Photo'))
       return { icon: HiOutlinePhotograph, bg: 'bg-cyan-50 dark:bg-cyan-500/10', color: 'text-cyan-500' };
-    if (titre.includes('Solde') || titre.includes('congé'))
+    if (titre.includes('Solde') || titre.includes('congÃ©'))
       return { icon: HiOutlineCalendar, bg: 'bg-teal-50 dark:bg-teal-500/10', color: 'text-teal-500' };
-    if (titre.includes('refusée'))
+    if (titre.includes('refusÃ©e'))
       return { icon: HiOutlineXCircle, bg: 'bg-error-50 dark:bg-error-500/10', color: 'text-error-500' };
-    if (titre.includes('approuvée') || titre.includes('acceptée'))
+    if (titre.includes('approuvÃ©e') || titre.includes('acceptÃ©e'))
       return { icon: HiOutlineCheckCircle, bg: 'bg-success-50 dark:bg-success-500/10', color: 'text-success-500' };
-    if (titre.includes('expiré') || titre.includes('bientôt'))
+    if (titre.includes('expirÃ©') || titre.includes('bientÃ´t'))
       return { icon: HiOutlineInformationCircle, bg: 'bg-orange-50 dark:bg-orange-500/10', color: 'text-orange-500' };
     return { icon: HiOutlineInformationCircle, bg: 'bg-gray-50 dark:bg-gray-500/10', color: 'text-gray-500' };
   };
@@ -124,7 +124,7 @@ const Header: React.FC = () => {
     const d = new Date(dateStr);
     const diffMs = now.getTime() - d.getTime();
     const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return "À l'instant";
+    if (diffMin < 1) return "Ã€ l'instant";
     if (diffMin < 60) return `Il y a ${diffMin}min`;
     const diffH = Math.floor(diffMin / 60);
     if (diffH < 24) return `Il y a ${diffH}h`;
@@ -276,7 +276,7 @@ const Header: React.FC = () => {
                   {user?.prenom} {user?.nom}
                 </p>
                 <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-                  {user?.roles?.[0] || 'Employé'}
+                  {user?.roles?.[0] || 'EmployÃ©'}
                 </p>
               </div>
             </button>
@@ -314,3 +314,4 @@ const Header: React.FC = () => {
 };
 
 export default Header;
+
