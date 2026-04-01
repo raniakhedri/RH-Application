@@ -13,6 +13,8 @@ import { useAuth } from '../context/AuthContext';
 import { clientService, ClientDTO } from '../api/clientService';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { useConfirm } from '../hooks/useConfirm';
 
 /* ─── View-only validation badge ───────────────────────────────────────────── */
 const ValBadge: React.FC<{ checked: boolean; label: string }> = ({ checked, label }) => (
@@ -40,6 +42,7 @@ const ValBtn: React.FC<{ label: string; onClick: () => void; variant?: 'primary'
 /* ─── Page ─────────────────────────────────────────────────────────────────── */
 const ClientsPage: React.FC = () => {
     const { user } = useAuth();
+    const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
     const perms = user?.permissions ?? [];
 
     const canCreate = perms.includes('CREATE_CLIENT');
@@ -119,9 +122,10 @@ const ClientsPage: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm('Supprimer ce client ?')) return;
-        try { await clientService.deleteClient(id); await load(); }
-        catch (e: any) { alert(e?.response?.data?.message ?? 'Erreur.'); }
+        confirm('Supprimer ce client ?', async () => {
+            try { await clientService.deleteClient(id); await load(); }
+            catch (e: any) { alert(e?.response?.data?.message ?? 'Erreur.'); }
+        }, 'Supprimer le client');
     };
 
     /* ── Validation helpers ───────────────────────────────────────────────── */
@@ -382,6 +386,15 @@ const ClientsPage: React.FC = () => {
                     </div>
                 </div>
             </Modal>
+
+            <ConfirmDialog
+                isOpen={confirmState.isOpen}
+                title={confirmState.title}
+                message={confirmState.message}
+                confirmLabel="Supprimer"
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+            />
         </div>
     );
 };

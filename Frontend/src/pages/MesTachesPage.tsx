@@ -89,7 +89,7 @@ const MesTachesPage: React.FC = () => {
     const [dragOverStatut, setDragOverStatut] = useState<string | null>(null);
 
     const [editingTache, setEditingTache] = useState<TacheDetail | null>(null);
-    const [editForm, setEditForm] = useState({ titre: '', dateEcheance: '', statut: 'TODO' as StatutTache });
+    const [editForm, setEditForm] = useState({ titre: '', dateEcheance: '', statut: 'TODO' as StatutTache, urgente: false });
     const [editError, setEditError] = useState<string | null>(null);
     const [editLoading, setEditLoading] = useState(false);
 
@@ -296,7 +296,7 @@ const MesTachesPage: React.FC = () => {
     const openEdit = (tache: TacheDetail, e: React.MouseEvent) => {
         e.stopPropagation();
         setEditingTache(tache);
-        setEditForm({ titre: tache.titre, dateEcheance: tache.dateEcheance || '', statut: tache.statut });
+        setEditForm({ titre: tache.titre, dateEcheance: tache.dateEcheance || '', statut: tache.statut, urgente: tache.urgente ?? false });
         setEditError(null);
     };
 
@@ -309,11 +309,12 @@ const MesTachesPage: React.FC = () => {
                 titre: editForm.titre,
                 dateEcheance: editForm.dateEcheance || undefined,
                 statut: editForm.statut,
+                urgente: editForm.urgente,
             } as any);
             setTaches(prev =>
                 prev.map(t =>
                     t.id === editingTache.id
-                        ? { ...t, titre: editForm.titre, dateEcheance: editForm.dateEcheance, statut: editForm.statut }
+                        ? { ...t, titre: editForm.titre, dateEcheance: editForm.dateEcheance, statut: editForm.statut, urgente: editForm.urgente }
                         : t
                 )
             );
@@ -326,9 +327,9 @@ const MesTachesPage: React.FC = () => {
     };
 
     const grouped = {
-        TODO: taches.filter(t => t.statut === 'TODO'),
-        IN_PROGRESS: taches.filter(t => t.statut === 'IN_PROGRESS'),
-        DONE: taches.filter(t => t.statut === 'DONE'),
+        TODO: [...taches.filter(t => t.statut === 'TODO')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
+        IN_PROGRESS: [...taches.filter(t => t.statut === 'IN_PROGRESS')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
+        DONE: [...taches.filter(t => t.statut === 'DONE')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
     };
 
     return (
@@ -491,13 +492,18 @@ const MesTachesPage: React.FC = () => {
                                                 draggable
                                                 onDragStart={e => handleDragStart(e, tache)}
                                                 onDragEnd={handleDragEnd}
-                                                className="cursor-grab rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 transition-shadow hover:shadow-md active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800"
+                                                className={`cursor-grab rounded-xl border-2 bg-gray-50 px-3 py-2.5 transition-shadow hover:shadow-md active:cursor-grabbing dark:bg-gray-800 ${tache.urgente ? 'border-error-400 dark:border-error-500' : 'border-gray-100 dark:border-gray-700'}`}
                                             >
                                                 <div className="flex items-center justify-between gap-2">
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-theme-sm font-medium text-gray-800 dark:text-white">
-                                                            {tache.titre}
-                                                        </p>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {tache.urgente && (
+                                                                <span className="shrink-0 rounded-full bg-error-50 px-1.5 py-0.5 text-[10px] font-bold text-error-600 dark:bg-error-500/10 dark:text-error-400">🚨 Urgent</span>
+                                                            )}
+                                                            <p className="truncate text-theme-sm font-medium text-gray-800 dark:text-white">
+                                                                {tache.titre}
+                                                            </p>
+                                                        </div>
                                                         {tache.projetNom && (
                                                             <p className="mt-0.5 truncate text-theme-xs text-brand-500 dark:text-brand-400 flex items-center gap-1.5">
                                                                 {tache.projetNom}
@@ -546,6 +552,17 @@ const MesTachesPage: React.FC = () => {
                                 {Object.entries(statutLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                             </select>
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => setEditForm(f => ({ ...f, urgente: !f.urgente }))}
+                            className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${
+                                editForm.urgente
+                                    ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
+                                    : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
+                            }`}
+                        >
+                            🚨 {editForm.urgente ? 'Tâche urgente (actif)' : 'Marquer comme urgente'}
+                        </button>
                         {editError && (
                             <div className="rounded-lg bg-error-50 px-4 py-2 text-theme-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">{editError}</div>
                         )}

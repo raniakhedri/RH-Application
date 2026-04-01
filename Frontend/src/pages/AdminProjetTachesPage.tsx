@@ -36,6 +36,7 @@ interface TacheForm {
     dateEcheance: string;
     statut: StatutTache;
     assigneeIds: string[];
+    urgente: boolean;
 }
 
 const emptyForm = (): TacheForm => ({
@@ -43,6 +44,7 @@ const emptyForm = (): TacheForm => ({
     dateEcheance: '',
     statut: StatutTache.TODO,
     assigneeIds: [],
+    urgente: false,
 });
 
 const AdminProjetTachesPage: React.FC = () => {
@@ -171,6 +173,7 @@ const AdminProjetTachesPage: React.FC = () => {
                         titre: form.titre,
                         statut: form.statut,
                         dateEcheance: form.dateEcheance || undefined,
+                        urgente: form.urgente,
                     } as any);
                     if (form.assigneeIds[0]) {
                         await tacheService.assign(created.data.data.id, Number(form.assigneeIds[0]));
@@ -181,6 +184,7 @@ const AdminProjetTachesPage: React.FC = () => {
                             titre: form.titre,
                             statut: form.statut,
                             dateEcheance: form.dateEcheance || undefined,
+                            urgente: form.urgente,
                         } as any);
                         await tacheService.assign(created.data.data.id, Number(memberId));
                     }
@@ -205,6 +209,7 @@ const AdminProjetTachesPage: React.FC = () => {
             dateEcheance: tache.dateEcheance || '',
             statut: tache.statut,
             assigneeIds: tache.assigneeId ? [String(tache.assigneeId)] : [],
+            urgente: tache.urgente ?? false,
         });
         setEditError(null);
     };
@@ -218,6 +223,7 @@ const AdminProjetTachesPage: React.FC = () => {
                 titre: editForm.titre,
                 dateEcheance: editForm.dateEcheance || undefined,
                 statut: editForm.statut,
+                urgente: editForm.urgente,
             } as any);
             if (editForm.assigneeIds[0]) {
                 await tacheService.assign(editingTache.id, Number(editForm.assigneeIds[0]));
@@ -260,9 +266,9 @@ const AdminProjetTachesPage: React.FC = () => {
     };
 
     const grouped: Record<'TODO' | 'IN_PROGRESS' | 'DONE', Tache[]> = {
-        TODO: taches.filter(t => t.statut === 'TODO'),
-        IN_PROGRESS: taches.filter(t => t.statut === 'IN_PROGRESS'),
-        DONE: taches.filter(t => t.statut === 'DONE'),
+        TODO: [...taches.filter(t => t.statut === 'TODO')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
+        IN_PROGRESS: [...taches.filter(t => t.statut === 'IN_PROGRESS')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
+        DONE: [...taches.filter(t => t.statut === 'DONE')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
     };
 
     const MemberCheckList: React.FC<{
@@ -373,13 +379,18 @@ const AdminProjetTachesPage: React.FC = () => {
                                             key={tache.id}
                                             draggable
                                             onDragStart={e => handleDragStart(e, tache.id)}
-                                            className="cursor-grab rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 shadow-sm transition-shadow active:cursor-grabbing active:shadow-md dark:border-gray-700 dark:bg-gray-800"
+                                            className={`cursor-grab rounded-xl border-2 bg-gray-50 px-3 py-2.5 shadow-sm transition-shadow active:cursor-grabbing active:shadow-md dark:bg-gray-800 ${tache.urgente ? 'border-error-400 dark:border-error-500' : 'border-gray-100 dark:border-gray-700'}`}
                                         >
                                             <div className="mb-1.5 flex items-start justify-between gap-2">
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="truncate text-theme-sm font-medium text-gray-800 dark:text-white">
-                                                        {tache.titre}
-                                                    </p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        {tache.urgente && (
+                                                            <span className="shrink-0 rounded-full bg-error-50 px-1.5 py-0.5 text-[10px] font-bold text-error-600 dark:bg-error-500/10 dark:text-error-400">🚨 Urgent</span>
+                                                        )}
+                                                        <p className="truncate text-theme-sm font-medium text-gray-800 dark:text-white">
+                                                            {tache.titre}
+                                                        </p>
+                                                    </div>
                                                     <p className="mt-0.5 text-theme-xs text-gray-500">
                                                         👤 {getMemberNom(tache.assigneeId)}
                                                     </p>
@@ -476,6 +487,17 @@ const AdminProjetTachesPage: React.FC = () => {
                                     onToggle={id => toggleTaskAssignee(idx, id)}
                                     label={`Assigner à${form.assigneeIds.length > 1 ? ' (crée une tâche par membre)' : ''}`}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => updateTaskForm(idx, 'urgente', !form.urgente)}
+                                    className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${
+                                        form.urgente
+                                            ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
+                                            : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
+                                    }`}
+                                >
+                                    🚨 {form.urgente ? 'Tâche urgente (actif)' : 'Marquer comme urgente'}
+                                </button>
                             </div>
                         </div>
                     ))}
@@ -529,6 +551,17 @@ const AdminProjetTachesPage: React.FC = () => {
                             onToggle={toggleEditAssignee}
                             label="Assigner à (1 membre assigné)"
                         />
+                        <button
+                            type="button"
+                            onClick={() => setEditForm(f => ({ ...f, urgente: !f.urgente }))}
+                            className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${
+                                editForm.urgente
+                                    ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
+                                    : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
+                            }`}
+                        >
+                            🚨 {editForm.urgente ? 'Tâche urgente (actif)' : 'Marquer comme urgente'}
+                        </button>
                         {editError && <div className="rounded-lg bg-error-50 px-4 py-2 text-theme-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">{editError}</div>}
                         <div className="flex justify-end gap-3 pt-2">
                             <Button variant="outline" onClick={() => setEditingTache(null)}>Annuler</Button>
