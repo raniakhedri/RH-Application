@@ -18,4 +18,5 @@ public class NotificationResponse {
     private Boolean lu;
     private LocalDateTime dateCreation;
     private Long demandeId;
+    private boolean urgent;
 }

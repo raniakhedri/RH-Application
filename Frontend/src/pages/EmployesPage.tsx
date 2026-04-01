@@ -1,3 +1,5 @@
+// ...existing code...
+
 import React, { useState, useEffect, useRef } from 'react';
 import { HiOutlinePlus, HiOutlineSearch, HiOutlinePencil, HiOutlineTrash, HiOutlinePhotograph, HiOutlineEye, HiOutlineDownload, HiOutlineFilter, HiOutlineChartBar, HiOutlineX, HiOutlineAcademicCap, HiOutlineDocumentText, HiOutlineUpload, HiOutlineExternalLink, HiOutlineCheck } from 'react-icons/hi';
 import { employeService } from '../api/employeService';
@@ -11,20 +13,67 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
 import Badge from '../components/ui/Badge';
+import { API_BASE } from '../api/axios';
 
 const EmployesPage: React.FC = () => {
   const [employes, setEmployes] = useState<Employe[]>([]);
+    const [civpNotifications, setCivpNotifications] = useState<{ employe: Employe; daysLeft: number }[]>([]);
+
+    // CIVP browser notifications
+    useEffect(() => {
+      if (!('Notification' in window)) return;
+      if (civpNotifications.length === 0) return;
+      civpNotifications.forEach(({ employe, daysLeft }) => {
+        if ((daysLeft === 7 || daysLeft === 30) && Notification.permission === 'granted') {
+          const body = daysLeft === 30
+            ? `Le contrat CIVP de ${employe.prenom} ${employe.nom} se termine dans 1 mois.`
+            : `Le contrat CIVP de ${employe.prenom} ${employe.nom} se termine dans 1 semaine.`;
+          new Notification('Fin de contrat CIVP', { body });
+        }
+      });
+    }, [civpNotifications]);
+
+    // Ask for notification permission on mount
+    useEffect(() => {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }, []);
+  
+
+ useEffect(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const civpList = employes
+    .filter(e => e.typeContrat?.toUpperCase() === 'CIVP' && e.dateFinContrat)
+    .map(e => {
+      const endDate = new Date(e.dateFinContrat as string);
+      endDate.setHours(0, 0, 0, 0);
+      const daysLeft = Math.round((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return { employe: e, daysLeft };
+    })
+    // ✅ Seulement les contrats futurs dans les 30 prochains jours
+    // ✅ Exclut les contrats expirés (daysLeft < 0)
+    .filter((item): item is { employe: Employe; daysLeft: number } =>
+      item.daysLeft >= 0 && item.daysLeft <= 30
+    );
+
+  setCivpNotifications(civpList);
+}, [employes]);
+  // (removed duplicate)
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingEmploye, setEditingEmploye] = useState<Employe | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewingEmploye, setViewingEmploye] = useState<Employe | null>(null);
-
+   const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+ 
   // Referentiel lists
   const [departements, setDepartements] = useState<Referentiel[]>([]);
   const [postes, setPostes] = useState<Referentiel[]>([]);
   const [typesContrat, setTypesContrat] = useState<Referentiel[]>([]);
-  const [dureesCdd, setDureesCdd] = useState<Referentiel[]>([]);
   const [genres, setGenres] = useState<Referentiel[]>([]);
   const [roles, setRoles] = useState<RoleDTO[]>([]);
   const [managers, setManagers] = useState<Employe[]>([]);
@@ -36,6 +85,9 @@ const EmployesPage: React.FC = () => {
     departement: '', ribBancaire: '', managerId: null as number | null,
     useInitialSolde: false, soldeCongeInitial: '' as string | number,
   });
+
+  // Form submission state – errors shown only after the user clicks "Créer"
+  const [submitted, setSubmitted] = useState(false);
 
   // Compte creation (only for new employee)
   const [createCompte, setCreateCompte] = useState(false);
@@ -77,27 +129,28 @@ const EmployesPage: React.FC = () => {
   const [editingDriveLink, setEditingDriveLink] = useState(false);
   const [driveLinkValue, setDriveLinkValue] = useState('');
 
+  // Limite de date: aujourd'hui (pour empêcher une date future)
+  const todayStr = new Date().toISOString().split('T')[0];
+
   useEffect(() => {
     loadAll();
   }, []);
 
   const loadAll = async () => {
     try {
-      const [empRes, depRes, postRes, contratRes, genreRes, rolesRes, dureesCddRes] = await Promise.all([
+      const [empRes, depRes, postRes, contratRes, genreRes, rolesRes] = await Promise.all([
         employeService.getAll(),
         referentielService.getByType('DEPARTEMENT'),
         referentielService.getByType('POSTE'),
         referentielService.getByType('TYPE_CONTRAT'),
         referentielService.getByType('GENRE'),
         roleService.getAll(),
-        referentielService.getActiveByType('DUREE_CDD'),
       ]);
       setEmployes(empRes.data.data || []);
       setDepartements((depRes.data.data || []).filter((r: Referentiel) => r.actif));
       setPostes((postRes.data.data || []).filter((r: Referentiel) => r.actif));
       setTypesContrat((contratRes.data.data || []).filter((r: Referentiel) => r.actif));
       setGenres((genreRes.data.data || []).filter((r: Referentiel) => r.actif));
-      setDureesCdd(dureesCddRes.data.data || []);
       setRoles(rolesRes.data.data || []);
       try {
         const managersRes = await employeService.getByRole('MANAGER');
@@ -116,6 +169,8 @@ const EmployesPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    setSubmitted(true);
+    if (hasErrors) return;
     try {
       // Validate required fields before sending
       if (!formData.nom.trim() || !formData.prenom.trim() || !formData.email.trim()) {
@@ -134,7 +189,6 @@ const EmployesPage: React.FC = () => {
       if (payload.salaire === '' || payload.salaire === null) payload.salaire = null; else payload.salaire = Number(payload.salaire);
       if (!payload.poste) payload.poste = null;
       if (!payload.typeContrat) payload.typeContrat = null;
-      if (!payload.typeContrat || payload.typeContrat.toUpperCase() !== 'CDD') payload.dateFinContrat = null;
       if (!payload.dateFinContrat) payload.dateFinContrat = null;
       if (!payload.departement) payload.departement = null;
       if (!payload.ribBancaire) payload.ribBancaire = null;
@@ -189,6 +243,8 @@ const EmployesPage: React.FC = () => {
       const msg = err?.response?.data?.message || err?.message || 'Erreur inconnue';
       console.error('Erreur sauvegarde:', msg, err?.response?.data);
       alert('Erreur : ' + msg);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -376,7 +432,7 @@ const EmployesPage: React.FC = () => {
       const newLien = driveLinkValue.trim() || null;
       await employeService.updateLienDrive(viewingEmploye.id, newLien);
       setViewingEmploye({ ...viewingEmploye, lienDrive: newLien });
-      setEmployes(prev => prev.map(e => e.id === viewingEmploye.id ? { ...e, lienDrive: newLien } : e));
+      setEmployes((prev: Employe[]) => prev.map((e: Employe) => e.id === viewingEmploye.id ? { ...e, lienDrive: newLien } : e));
       setEditingDriveLink(false);
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Erreur lors de la sauvegarde du lien Drive');
@@ -388,7 +444,7 @@ const EmployesPage: React.FC = () => {
   const docTypes = ['CONTRAT', 'ATTESTATION', 'CERTIFICAT', 'DIPLOME', 'AUTRE'];
 
   const filteredEmployes = employes.filter(
-    (e) => {
+    (e: Employe) => {
       const matchSearch = e.nom.toLowerCase().includes(search.toLowerCase()) ||
         e.prenom.toLowerCase().includes(search.toLowerCase()) ||
         e.matricule.toLowerCase().includes(search.toLowerCase()) ||
@@ -409,6 +465,8 @@ const EmployesPage: React.FC = () => {
       return true;
     }
   );
+ const totalPages = Math.ceil(filteredEmployes.length / pageSize);
+  const paginatedEmployes = filteredEmployes.slice((page - 1) * pageSize, page * pageSize);
 
   const columns = [
     { key: 'matricule', label: 'Matricule' },
@@ -440,9 +498,6 @@ const EmployesPage: React.FC = () => {
       render: (item: Employe) => item.typeContrat ? (
         <div>
           <Badge variant="light" color="primary">{item.typeContrat}</Badge>
-          {item.typeContrat.toUpperCase() === 'CDD' && item.dateFinContrat && (
-            <p className="text-theme-xs text-gray-400 mt-0.5">Fin: {item.dateFinContrat}</p>
-          )}
         </div>
       ) : <span>—</span>,
     },
@@ -488,6 +543,37 @@ const EmployesPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* CIVP contract notifications: only 3 days and less as visible message */}
+    {civpNotifications.length > 0 && (
+  <div className="mb-4 space-y-2">
+    {civpNotifications.map(({ employe, daysLeft }) => {
+      // Urgence selon le seuil
+      const isUrgent = daysLeft <= 3;
+      const isSoon   = daysLeft <= 7 && daysLeft > 3;
+      // Les notifs à 30j sont silencieuses (pas de bandeau, déjà envoyées par le scheduler)
+      if (!isUrgent && !isSoon) return null;
+
+      return (
+        <div
+          key={employe.id}
+          className={`p-3 rounded-lg border flex items-center gap-3 ${
+            isUrgent
+              ? 'border-error-500 bg-error-50 dark:bg-error-500/10'
+              : 'border-warning-400 bg-warning-50 dark:bg-warning-500/10'
+          }`}
+        >
+          <span className={`font-bold ${isUrgent ? 'text-error-600 dark:text-error-400' : 'text-warning-600 dark:text-warning-400'}`}>
+            ⚠️ Attention ! {employe.prenom} {employe.nom} (CIVP) : Fin de contrat dans{' '}
+            {daysLeft === 0 ? "aujourd'hui" : `${daysLeft} jour${daysLeft > 1 ? 's' : ''}`}
+          </span>
+          <span className="ml-auto text-theme-xs text-gray-500">
+            Date fin : {employe.dateFinContrat}
+          </span>
+        </div>
+      );
+    })}
+  </div>
+)}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -551,6 +637,34 @@ const EmployesPage: React.FC = () => {
             </button>
           )}
           <span className="text-theme-sm text-gray-400">{filteredEmployes.length} résultat(s)</span>
+                {/* Pagination controls */}
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-theme-xs text-gray-500">Page</span>
+                  <button
+                    className="px-2 py-1 rounded border border-gray-300 bg-white text-theme-xs disabled:opacity-50"
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
+                  >
+                    Précédent
+                  </button>
+                  <span className="text-theme-xs text-gray-700">{page} / {totalPages || 1}</span>
+                  <button
+                    className="px-2 py-1 rounded border border-gray-300 bg-white text-theme-xs disabled:opacity-50"
+                    onClick={() => setPage(page + 1)}
+                    disabled={page === totalPages || totalPages === 0}
+                  >
+                    Suivant
+                  </button>
+                  <select
+                    className="ml-2 px-2 py-1 rounded border border-gray-300 text-theme-xs"
+                    value={pageSize}
+                    onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  >
+                    {[10, 20, 50, 100].map(size => (
+                      <option key={size} value={size}>{size} / page</option>
+                    ))}
+                  </select>
+                </div>
         </div>
 
         {showFilters && (
@@ -559,28 +673,28 @@ const EmployesPage: React.FC = () => {
               <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Département</label>
               <select value={filters.departement} onChange={e => setFilters({ ...filters, departement: e.target.value })} className={selectClass}>
                 <option value="">Tous</option>
-                {departements.map(d => <option key={d.id} value={d.libelle}>{d.libelle}</option>)}
+                {departements.map((d: Referentiel) => <option key={d.id} value={d.libelle}>{d.libelle}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Type contrat</label>
               <select value={filters.typeContrat} onChange={e => setFilters({ ...filters, typeContrat: e.target.value })} className={selectClass}>
                 <option value="">Tous</option>
-                {typesContrat.map(t => <option key={t.id} value={t.libelle}>{t.libelle}</option>)}
+                {typesContrat.map((t: Referentiel) => <option key={t.id} value={t.libelle}>{t.libelle}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Genre</label>
               <select value={filters.genre} onChange={e => setFilters({ ...filters, genre: e.target.value })} className={selectClass}>
                 <option value="">Tous</option>
-                {genres.map(g => <option key={g.id} value={g.libelle}>{g.libelle}</option>)}
+                {genres.map((g: Referentiel) => <option key={g.id} value={g.libelle}>{g.libelle}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-theme-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Poste</label>
               <select value={filters.poste} onChange={e => setFilters({ ...filters, poste: e.target.value })} className={selectClass}>
                 <option value="">Tous</option>
-                {postes.map(p => <option key={p.id} value={p.libelle}>{p.libelle}</option>)}
+                {postes.map((p: Referentiel) => <option key={p.id} value={p.libelle}>{p.libelle}</option>)}
               </select>
             </div>
             <div>
@@ -607,7 +721,7 @@ const EmployesPage: React.FC = () => {
       {loading ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">Chargement...</div>
       ) : (
-        <DataTable columns={columns} data={filteredEmployes} />
+        <DataTable columns={columns} data={paginatedEmployes} />
       )}
 
       {/* Modal */}
@@ -667,14 +781,14 @@ const EmployesPage: React.FC = () => {
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CNSS</label>
-            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: onlyDigits(e.target.value).slice(0, 12) })} placeholder="8 à 12 chiffres" maxLength={12} className={formErrors.cnss ? inputErrorClass : inputClass} />
-            {formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir entre 8 et 12 chiffres</p>}
+            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: onlyDigits(e.target.value).slice(0, 12) })} placeholder="8 à 12 chiffres" maxLength={12} className={submitted && formErrors.cnss ? inputErrorClass : inputClass} />
+            {submitted && formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir entre 8 et 12 chiffres</p>}
           </div>
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genre</label>
             <select value={formData.genre} onChange={(e) => setFormData({ ...formData, genre: e.target.value })} className={selectClass}>
               <option value="">Sélectionner</option>
-              {genres.map((g) => (
+              {genres.map((g: Referentiel) => (
                 <option key={g.id} value={g.libelle}>{g.libelle}</option>
               ))}
             </select>
@@ -707,7 +821,7 @@ const EmployesPage: React.FC = () => {
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Poste</label>
             <select value={formData.poste} onChange={(e) => setFormData({ ...formData, poste: e.target.value })} className={selectClass}>
               <option value="">Sélectionner un poste</option>
-              {postes.map((p) => (
+              {postes.map((p: Referentiel) => (
                 <option key={p.id} value={p.libelle}>{p.libelle}</option>
               ))}
             </select>
@@ -716,7 +830,7 @@ const EmployesPage: React.FC = () => {
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Département</label>
             <select value={formData.departement} onChange={(e) => setFormData({ ...formData, departement: e.target.value })} className={selectClass}>
               <option value="">Sélectionner un département</option>
-              {departements.map((d) => (
+              {departements.map((d: Referentiel) => (
                 <option key={d.id} value={d.libelle}>{d.libelle}</option>
               ))}
             </select>
@@ -725,10 +839,11 @@ const EmployesPage: React.FC = () => {
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type contrat</label>
             <select value={formData.typeContrat} onChange={(e) => setFormData({ ...formData, typeContrat: e.target.value })} className={selectClass}>
               <option value="">Sélectionner un type</option>
-              {typesContrat.map((t) => (
+              {typesContrat.map((t: Referentiel) => (
                 <option key={t.id} value={t.libelle}>{t.libelle}</option>
               ))}
             </select>
+            {submitted && formErrors.typeContrat && <p className="text-theme-xs text-error-500 mt-1">Le type de contrat est obligatoire</p>}
           </div>
           {formData.typeContrat.toUpperCase() === 'CDD' && (
             <div>
@@ -770,8 +885,9 @@ const EmployesPage: React.FC = () => {
             {formErrors.ribBancaire && <p className="text-theme-xs text-error-500 mt-1">Le RIB doit contenir exactement 20 chiffres</p>}
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date d'embauche</label>
-            <input type="date" value={formData.dateEmbauche} onChange={(e) => setFormData({ ...formData, dateEmbauche: e.target.value })} className={inputClass} />
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date d'embauche *</label>
+            <input type="date" value={formData.dateEmbauche} onChange={(e) => setFormData({ ...formData, dateEmbauche: e.target.value })} max={todayStr} className={submitted && formErrors.dateEmbauche ? inputErrorClass : inputClass} />
+            {submitted && formErrors.dateEmbauche && <p className="text-theme-xs text-error-500 mt-1">{!formData.dateEmbauche ? "La date d'embauche est obligatoire" : "La date d'embauche ne peut pas être dans le futur"}</p>}
           </div>
 
           <div>
@@ -782,7 +898,7 @@ const EmployesPage: React.FC = () => {
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manager</label>
             <select value={formData.managerId ?? ''} onChange={(e) => setFormData({ ...formData, managerId: e.target.value ? Number(e.target.value) : null })} className={selectClass}>
               <option value="">Aucun manager</option>
-              {managers.filter(m => m.id !== editingEmploye?.id).map((m) => (
+              {managers.filter((m: Employe) => m.id !== editingEmploye?.id).map((m: Employe) => (
                 <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>
               ))}
             </select>
@@ -846,7 +962,7 @@ const EmployesPage: React.FC = () => {
                   className={selectClass}
                 >
                   <option value={0}>Sélectionner un rôle</option>
-                  {roles.map((r) => (
+                  {roles.map((r: RoleDTO) => (
                     <option key={r.id} value={r.id}>{r.nom}</option>
                   ))}
                 </select>
@@ -860,7 +976,7 @@ const EmployesPage: React.FC = () => {
 
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="ghost" onClick={() => setShowModal(false)}>Annuler</Button>
-          <Button onClick={handleSave} disabled={hasErrors || (createCompte && !selectedRoleId)}>
+          <Button onClick={handleSave} disabled={submitted && hasErrors || (createCompte && !selectedRoleId)}>
             {editingEmploye ? 'Modifier' : 'Créer'}
           </Button>
         </div>
@@ -917,9 +1033,6 @@ const EmployesPage: React.FC = () => {
                 <InfoRow label="Poste" value={viewingEmploye.poste} />
                 <InfoRow label="Département" value={viewingEmploye.departement} />
                 <InfoRow label="Type de contrat" value={viewingEmploye.typeContrat} />
-                {viewingEmploye.typeContrat?.toUpperCase() === 'CDD' && (
-                  <InfoRow label="Date fin de contrat" value={viewingEmploye.dateFinContrat} />
-                )}
                 <InfoRow label="Date d'embauche" value={viewingEmploye.dateEmbauche} />
                 <InfoRow label="Salaire" value={viewingEmploye.salaire != null ? `${viewingEmploye.salaire} DT` : null} />
                 <InfoRow label="Solde congé" value={`${viewingEmploye.soldeConge} jours`} />
@@ -940,7 +1053,7 @@ const EmployesPage: React.FC = () => {
                   <p className="text-center text-gray-400 dark:text-gray-500 py-8">Aucune compétence enregistrée</p>
                 ) : (
                   <div className="space-y-2">
-                    {competences.map(comp => (
+                    {competences.map((comp: CompetenceDTO) => (
                       <div key={comp.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${niveauColors[comp.niveau]} dark:opacity-80`}>
@@ -1046,7 +1159,7 @@ const EmployesPage: React.FC = () => {
                   <p className="text-center text-gray-400 dark:text-gray-500 py-8">Aucun document enregistré</p>
                 ) : (
                   <div className="space-y-2">
-                    {documents.map(doc => (
+                    {documents.map((doc: DocumentEmployeDTO) => (
                       <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
@@ -1194,7 +1307,7 @@ const EmployesPage: React.FC = () => {
   );
 };
 
-const InfoRow: React.FC<{ label: string; value: string | number | null | undefined }> = ({ label, value }) => (
+const InfoRow: React.FC<{ label: string; value: string | number | null | undefined }> = ({ label, value }: { label: string; value: string | number | null | undefined }) => (
   <div>
     <span className="text-theme-xs text-gray-400 dark:text-gray-500">{label}</span>
     <p className="text-theme-sm font-medium text-gray-800 dark:text-gray-200">{value || '—'}</p>
@@ -1210,7 +1323,7 @@ const colorMap: Record<string, string> = {
   cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-400',
 };
 
-const StatBox: React.FC<{ label: string; value: string | number; color: string }> = ({ label, value, color }) => (
+const StatBox: React.FC<{ label: string; value: string | number; color: string }> = ({ label, value, color }: { label: string; value: string | number; color: string }) => (
   <div className={`rounded-xl p-4 ${colorMap[color] || colorMap.brand}`}>
     <p className="text-2xl font-bold">{value}</p>
     <p className="text-theme-xs opacity-80 mt-1">{label}</p>
@@ -1222,8 +1335,8 @@ const barColors = [
   'bg-cyan-500', 'bg-pink-500', 'bg-yellow-500', 'bg-red-500', 'bg-indigo-500',
 ];
 
-const DistributionCard: React.FC<{ title: string; data: Record<string, number> }> = ({ title, data }) => {
-  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+const DistributionCard: React.FC<{ title: string; data: Record<string, number> }> = ({ title, data }: { title: string; data: Record<string, number> }) => {
+  const entries: [string, number][] = Object.entries(data).sort((a, b) => b[1] - a[1]);
   const max = Math.max(...entries.map(([, v]) => v), 1);
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
@@ -1236,12 +1349,12 @@ const DistributionCard: React.FC<{ title: string; data: Record<string, number> }
             <div key={key} className="space-y-1">
               <div className="flex justify-between text-theme-xs">
                 <span className="text-gray-600 dark:text-gray-400">{key}</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">{val}</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">{val as number}</span>
               </div>
               <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full ${barColors[i % barColors.length]}`}
-                  style={{ width: `${(val / max) * 100}%` }}
+                  style={{ width: `${((val as number) / max) * 100}%` }}
                 />
               </div>
             </div>
@@ -1251,5 +1364,6 @@ const DistributionCard: React.FC<{ title: string; data: Record<string, number> }
     </div>
   );
 };
+
 
 export default EmployesPage;

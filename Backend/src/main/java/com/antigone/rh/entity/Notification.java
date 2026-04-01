@@ -23,9 +23,14 @@ public class Notification {
     @Column(columnDefinition = "TEXT")
     private String message;
 
+    // ✅ primitif boolean partout — plus de NullPointerException possible
     @Column(nullable = false)
     @Builder.Default
-    private Boolean lu = false;
+    private boolean lu = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean urgent = false;
 
     @Column(nullable = false)
     private LocalDateTime dateCreation;
@@ -46,9 +51,6 @@ public class Notification {
     public void prePersist() {
         if (dateCreation == null) {
             dateCreation = LocalDateTime.now();
-        }
-        if (lu == null) {
-            lu = false;
         }
     }
 }
