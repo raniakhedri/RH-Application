@@ -295,6 +295,7 @@ export interface Tache {
   dateEcheance: string;
   projetId: number;
   assigneeId: number | null;
+  urgente?: boolean;
 }
 
 export interface TacheMembreInfo {
@@ -329,6 +330,7 @@ export interface TacheDetail {
   chefDeProjetId: number | null;
   chefsDeProjetIds?: number[];
   assigneeId: number | null;
+  urgente?: boolean;
   membresProjet?: TacheMembreInfo[];
 }
 

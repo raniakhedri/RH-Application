@@ -29,6 +29,8 @@ public class TacheDetailDTO {
     private Long chefDeProjetId;
     private StatutProjet projetStatut;
 
+    private boolean urgente;
+
     // Assignee
     private Long assigneeId;
 

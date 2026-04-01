@@ -115,6 +115,7 @@ public class TacheService {
         Tache tache = findById(id);
         tache.setTitre(tacheDetails.getTitre());
         tache.setDateEcheance(tacheDetails.getDateEcheance());
+        tache.setUrgente(tacheDetails.isUrgente());
         if (tacheDetails.getStatut() != null) {
             tache.setStatut(tacheDetails.getStatut());
         }
@@ -183,6 +184,7 @@ public class TacheService {
                 .chefDeProjetNom(chefNom)
                 .chefDeProjetId(chefId)
                 .projetStatut(projet != null ? projet.getStatut() : null)
+                .urgente(tache.isUrgente())
                 .assigneeId(tache.getAssignee() != null ? tache.getAssignee().getId() : null)
                 .membresProjet(membresProjet)
                 .build();
