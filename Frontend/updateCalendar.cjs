@@ -31,7 +31,7 @@ const modalHtml = `        {/* Validation Modal */}
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
               <h3 className="text-base font-bold text-gray-900 mb-1">Validation de planification</h3>
               <p className="text-sm text-gray-600 mb-6">
-                Le Social Manager a planifié le projet <strong>{validateTarget.projectName}</strong> le <strong>{validateTarget.date}</strong>.<br/>
+                Le Social Media Manager a planifié le projet <strong>{validateTarget.projectName}</strong> le <strong>{validateTarget.date}</strong>.<br/>
                 Souhaitez-vous le valider ?
               </p>
               <div className="flex gap-2">

@@ -27,7 +27,6 @@ const PLACEHOLDERS: Record<string, { libelle: string; description: string }> = {
   [TypeReferentiel.TYPE_CONGE]: { libelle: 'Ex: Annuel, Maladie, Maternité...', description: 'Décrivez le type de congé...' },
   [TypeReferentiel.TYPE_DEMANDE]: { libelle: 'Ex: Attestation de travail, Ordre de mission...', description: 'Décrivez le type de demande...' },
   [TypeReferentiel.GENRE]: { libelle: 'Ex: Masculin, Féminin...', description: 'Décrivez le genre...' },
-  [TypeReferentiel.DUREE_CDD]: { libelle: 'Ex: 6 mois, 12 mois, 24 mois...', description: 'Décrivez la durée du CDD...' },
   [TypeReferentiel.PARAMETRE_SYSTEME]: { libelle: 'Ex: Solde congé initial, Délai validation...', description: 'Décrivez le paramètre système...' },
 };
 

@@ -71,7 +71,7 @@ public class CalendrierProjetService {
         slot = repository.save(slot);
 
         // Envoyer une notification au manager
-        String socialManagerName = socialManager != null ? socialManager.getPrenom() + " " + socialManager.getNom() : "Un Social Manager";
+        String socialManagerName = socialManager != null ? socialManager.getPrenom() + " " + socialManager.getNom() : "Un Social Media Manager";
         String message = socialManagerName + " a planifié le projet '" + dto.getProjectName() + "' le " + dto.getDateSlot() + ". Veuillez valider.";
         if (dto.isUrgent()) {
             notificationService.createUrgent(manager, "PLANIFICATION_PROJET", message, null);

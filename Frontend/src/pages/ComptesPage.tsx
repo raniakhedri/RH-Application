@@ -23,8 +23,8 @@ const ComptesPage: React.FC = () => {
   const [accessLogs, setAccessLogs] = useState<AccessLogDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [createForm, setCreateForm] = useState({ employeId: 0, roleId: 0 });
-  const [editForm, setEditForm] = useState({ roleId: 0 });
+  const [createForm, setCreateForm] = useState({ employeId: 0, roleIds: [] as number[] });
+  const [editForm, setEditForm] = useState({ roleIds: [] as number[] });
 
   useEffect(() => {
     loadData();
@@ -53,12 +53,12 @@ const ComptesPage: React.FC = () => {
   );
 
   const handleCreate = async () => {
-    if (!createForm.employeId || !createForm.roleId) return;
+    if (!createForm.employeId || createForm.roleIds.length === 0) return;
     try {
       const res = await compteService.create(createForm);
       const newCompte = res.data.data;
       setShowCreateModal(false);
-      setCreateForm({ employeId: 0, roleId: 0 });
+      setCreateForm({ employeId: 0, roleIds: [] });
       // Show credentials popup
       if (newCompte) {
         setCredentials({
@@ -76,15 +76,14 @@ const ComptesPage: React.FC = () => {
 
   const handleEdit = (compte: CompteDTO) => {
     setEditingCompte(compte);
-    const firstRole = compte.roles?.[0];
-    setEditForm({ roleId: firstRole?.id || 0 });
+    setEditForm({ roleIds: compte.roles?.map(r => r.id) || [] });
     setShowEditModal(true);
   };
 
   const handleUpdate = async () => {
     if (!editingCompte) return;
     try {
-      await compteService.update(editingCompte.id, { employeId: editingCompte.employeId, roleId: editForm.roleId });
+      await compteService.update(editingCompte.id, { employeId: editingCompte.employeId, roleIds: editForm.roleIds });
       setShowEditModal(false);
       setEditingCompte(null);
       loadData();
@@ -208,7 +207,7 @@ const ComptesPage: React.FC = () => {
           <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Gestion des Comptes</h1>
           <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">Créer et gérer les comptes utilisateurs</p>
         </div>
-        <Button onClick={() => { setCreateForm({ employeId: 0, roleId: 0 }); setShowCreateModal(true); }}>
+        <Button onClick={() => { setCreateForm({ employeId: 0, roleIds: [] }); setShowCreateModal(true); }}>
           <HiOutlinePlus size={18} /> Créer un compte
         </Button>
       </div>
@@ -252,27 +251,33 @@ const ComptesPage: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rôle</label>
-            <select
-              value={createForm.roleId}
-              onChange={(e) => setCreateForm({ ...createForm, roleId: Number(e.target.value) })}
-              className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-800"
-            >
-              <option value={0}>Sélectionner un rôle</option>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rôles</label>
+            <div className="space-y-2 max-h-48 overflow-y-auto p-2 border border-gray-300 rounded-lg dark:border-gray-600 bg-white dark:bg-gray-800">
               {roles.map((r) => (
-                <option key={r.id} value={r.id}>{r.nom}</option>
+                <label key={r.id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createForm.roleIds.includes(r.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setCreateForm({ ...createForm, roleIds: [...createForm.roleIds, r.id] });
+                      else setCreateForm({ ...createForm, roleIds: createForm.roleIds.filter(id => id !== r.id) });
+                    }}
+                    className="h-4 w-4 rounded text-brand-500 focus:ring-brand-500 border-gray-300"
+                  />
+                  <span className="text-theme-sm text-gray-700 dark:text-gray-300">{r.nom}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="ghost" onClick={() => setShowCreateModal(false)}>Annuler</Button>
-          <Button onClick={handleCreate} disabled={!createForm.employeId || !createForm.roleId}>Créer le compte</Button>
+          <Button onClick={handleCreate} disabled={!createForm.employeId || createForm.roleIds.length === 0}>Créer le compte</Button>
         </div>
       </Modal>
 
       {/* Edit Modal */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Modifier le rôle" size="md">
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Modifier les rôles" size="md">
         {editingCompte && (
           <>
             <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -284,17 +289,23 @@ const ComptesPage: React.FC = () => {
               </p>
             </div>
             <div>
-              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nouveau rôle</label>
-              <select
-                value={editForm.roleId}
-                onChange={(e) => setEditForm({ roleId: Number(e.target.value) })}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-800"
-              >
-                <option value={0}>Sélectionner un rôle</option>
+              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nouveaux rôles</label>
+              <div className="space-y-2 max-h-48 overflow-y-auto p-2 border border-gray-300 rounded-lg dark:border-gray-600 bg-white dark:bg-gray-800">
                 {roles.map((r) => (
-                  <option key={r.id} value={r.id}>{r.nom}</option>
+                  <label key={r.id} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editForm.roleIds.includes(r.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setEditForm({ roleIds: [...editForm.roleIds, r.id] });
+                        else setEditForm({ roleIds: editForm.roleIds.filter(id => id !== r.id) });
+                      }}
+                      className="h-4 w-4 rounded text-brand-500 focus:ring-brand-500 border-gray-300"
+                    />
+                    <span className="text-theme-sm text-gray-700 dark:text-gray-300">{r.nom}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="ghost" onClick={() => setShowEditModal(false)}>Annuler</Button>

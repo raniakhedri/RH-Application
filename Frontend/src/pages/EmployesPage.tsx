@@ -98,7 +98,7 @@ const EmployesPage: React.FC = () => {
 
   // Compte creation (only for new employee)
   const [createCompte, setCreateCompte] = useState(false);
-  const [selectedRoleId, setSelectedRoleId] = useState<number>(0);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [credentials, setCredentials] = useState<{ username: string; password: string; email: string } | null>(null);
 
@@ -218,9 +218,9 @@ const EmployesPage: React.FC = () => {
         }
 
         // If "create account" is checked, create a compte + assign role
-        if (createCompte && selectedRoleId && newEmploye?.id) {
+        if (createCompte && selectedRoleIds.length > 0 && newEmploye?.id) {
           try {
-            const compteRes = await compteService.create({ employeId: newEmploye.id, roleId: selectedRoleId });
+            const compteRes = await compteService.create({ employeId: newEmploye.id, roleIds: selectedRoleIds });
             const newCompte = compteRes.data.data;
             if (newCompte) {
               setCredentials({
@@ -263,7 +263,7 @@ const EmployesPage: React.FC = () => {
       useInitialSolde: employe.soldeCongeInitial != null, soldeCongeInitial: employe.soldeCongeInitial ?? '',
     });
     setCreateCompte(false);
-    setSelectedRoleId(0);
+    setSelectedRoleIds([]);
     setShowModal(true);
   };
 
@@ -307,7 +307,7 @@ const EmployesPage: React.FC = () => {
       useInitialSolde: false, soldeCongeInitial: '',
     });
     setCreateCompte(false);
-    setSelectedRoleId(0);
+    setSelectedRoleIds([]);
     setImageFile(null);
     setImagePreview(null);
     setSubmitted(false);
@@ -795,11 +795,6 @@ const EmployesPage: React.FC = () => {
             {submitted && formErrors.cin && <p className="text-theme-xs text-error-500 mt-1">Le CIN doit contenir exactement 8 chiffres</p>}
           </div>
           <div>
-            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CNSS</label>
-            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: e.target.value.replace(/[^0-9-]/g, '') })} placeholder="Ex: 1234-567890" maxLength={20} className={submitted && formErrors.cnss ? inputErrorClass : inputClass} />
-            {submitted && formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir des chiffres (tirets autorisés)</p>}
-          </div>
-          <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genre *</label>
             <select value={formData.genre} onChange={(e) => setFormData({ ...formData, genre: e.target.value })} className={submitted && formErrors.genre ? inputErrorClass : selectClass}>
               <option value="">Sélectionner</option>
@@ -877,11 +872,11 @@ const EmployesPage: React.FC = () => {
           </div>
 
            {formData.typeContrat && formData.typeContrat.toUpperCase() === 'CDI' && (
-            <div>
-              <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CNSS</label>
-              <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: onlyDigits(e.target.value).slice(0, 12) })} placeholder="8 à 12 chiffres" maxLength={12} className={submitted && formErrors.cnss ? inputErrorClass : inputClass} />
-              {submitted && formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir entre 8 et 12 chiffres</p>}
-            </div>
+          <div>
+            <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CNSS</label>
+            <input type="text" value={formData.cnss} onChange={(e) => setFormData({ ...formData, cnss: e.target.value.replace(/[^0-9-]/g, '') })} placeholder="Ex: 1234-567890" maxLength={20} className={submitted && formErrors.cnss ? inputErrorClass : inputClass} />
+            {submitted && formErrors.cnss && <p className="text-theme-xs text-error-500 mt-1">Le CNSS doit contenir des chiffres (tirets autorisés)</p>}
+          </div>
           )}
           <div>
             <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RIB Bancaire</label>
@@ -969,26 +964,35 @@ const EmployesPage: React.FC = () => {
               <input
                 type="checkbox"
                 checked={createCompte}
-                onChange={(e) => { setCreateCompte(e.target.checked); if (!e.target.checked) setSelectedRoleId(0); }}
+                onChange={(e) => { setCreateCompte(e.target.checked); if (!e.target.checked) setSelectedRoleIds([]); }}
                 className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 dark:border-gray-600"
               />
               <span className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
-                Créer un compte utilisateur et lui affecter un rôle
+                Créer un compte utilisateur et lui affecter des rôles
               </span>
             </label>
             {createCompte && (
               <div className="mt-3">
-                <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rôle à affecter *</label>
-                <select
-                  value={selectedRoleId}
-                  onChange={(e) => setSelectedRoleId(Number(e.target.value))}
-                  className={selectClass}
-                >
-                  <option value={0}>Sélectionner un rôle</option>
+                <label className="block text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rôles à affecter *</label>
+                <div className="space-y-2 max-h-48 overflow-y-auto p-2 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800">
                   {roles.map((r: RoleDTO) => (
-                    <option key={r.id} value={r.id}>{r.nom}</option>
+                    <label key={r.id} className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        checked={selectedRoleIds.includes(r.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedRoleIds(prev => [...prev, r.id]);
+                          } else {
+                            setSelectedRoleIds(prev => prev.filter(id => id !== r.id));
+                          }
+                        }}
+                        className="h-4 w-4 rounded text-brand-500 focus:ring-brand-500 border-gray-300"
+                      />
+                      <span className="text-theme-sm text-gray-700 dark:text-gray-300">{r.nom}</span>
+                    </label>
                   ))}
-                </select>
+                </div>
                 <p className="text-theme-xs text-gray-400 mt-1">
                   Le matricule (généré automatiquement à partir du département) sera utilisé comme login. Le mot de passe sera généré et envoyé par email.
                 </p>
@@ -999,7 +1003,7 @@ const EmployesPage: React.FC = () => {
 
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="ghost" onClick={() => setShowModal(false)}>Annuler</Button>
-          <Button onClick={handleSave} disabled={submitted && hasErrors || (createCompte && !selectedRoleId) || saving}>
+          <Button onClick={handleSave} disabled={(submitted && hasErrors) || (createCompte && selectedRoleIds.length === 0) || saving}>
             {saving ? (
               <span className="flex items-center gap-2">
                 <svg className="animate-spin h-5 w-5 text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
