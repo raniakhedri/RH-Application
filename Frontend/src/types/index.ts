@@ -148,7 +148,7 @@ export interface CompteDTO {
 
 export interface CompteRequest {
   employeId: number;
-  roleId: number;
+  roleIds: number[];
 }
 
 export interface AccessLogDTO {
@@ -352,7 +352,6 @@ export enum TypeReferentiel {
   TYPE_CONGE = 'TYPE_CONGE',
   TYPE_DEMANDE = 'TYPE_DEMANDE',
   GENRE = 'GENRE',
-  DUREE_CDD = 'DUREE_CDD',
   PARAMETRE_SYSTEME = 'PARAMETRE_SYSTEME',
   FORMAT_MEDIA_PLAN = 'FORMAT_MEDIA_PLAN',
   TYPE_MEDIA_PLAN = 'TYPE_MEDIA_PLAN',
@@ -368,7 +367,6 @@ export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
   [TypeReferentiel.TYPE_CONGE]: 'Type congé',
   [TypeReferentiel.TYPE_DEMANDE]: 'Type demande',
   [TypeReferentiel.GENRE]: 'Genre',
-  [TypeReferentiel.DUREE_CDD]: 'Durée CDD',
   [TypeReferentiel.PARAMETRE_SYSTEME]: 'Paramètre système',
   [TypeReferentiel.FORMAT_MEDIA_PLAN]: 'Format Media Plan',
   [TypeReferentiel.TYPE_MEDIA_PLAN]: 'Type Media Plan',

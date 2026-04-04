@@ -106,8 +106,11 @@ public class CompteService {
             throw new RuntimeException("Cet employé a déjà un compte");
         }
 
-        Role role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new RuntimeException("Rôle non trouvé"));
+        List<Role> rolesList = roleRepository.findAllById(request.getRoleIds());
+        if (rolesList.isEmpty()) {
+            throw new RuntimeException("Aucun rôle valide trouvé");
+        }
+        Set<Role> roles = new HashSet<>(rolesList);
 
         // Le matricule de l'employé est utilisé comme login
         String username = employe.getMatricule();
@@ -121,7 +124,7 @@ public class CompteService {
                 .enabled(true)
                 .mustChangePassword(true)
                 .employe(employe)
-                .roles(new HashSet<>(Set.of(role)))
+                .roles(roles)
                 .build();
 
         Compte saved = compteRepository.save(compte);
@@ -144,11 +147,13 @@ public class CompteService {
         Compte compte = compteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Compte non trouvé"));
 
-        if (request.getRoleId() != null) {
-            Role role = roleRepository.findById(request.getRoleId())
-                    .orElseThrow(() -> new RuntimeException("Rôle non trouvé"));
+        if (request.getRoleIds() != null && !request.getRoleIds().isEmpty()) {
+            List<Role> rolesList = roleRepository.findAllById(request.getRoleIds());
+            if (rolesList.isEmpty()) {
+                throw new RuntimeException("Aucun rôle valide trouvé");
+            }
             compte.getRoles().clear();
-            compte.getRoles().add(role);
+            compte.getRoles().addAll(rolesList);
         }
 
         return toDTO(compteRepository.save(compte));
