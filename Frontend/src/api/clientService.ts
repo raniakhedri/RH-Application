@@ -8,9 +8,6 @@ export interface ClientDTO {
     responsable?: string;
     fileName?: string;
     fileUrl?: string;
-    ceoValidated: boolean;
-    cooValidated: boolean;
-    daValidated: boolean;
     dateCreation: string;
 }
 
@@ -45,27 +42,10 @@ const updateClient = (id: number, nom: string, description: string, telephone: s
 
 const deleteClient = (id: number) => api.delete(`${BASE}/${id}`);
 
-// ── Validation ────────────────────────────────────────────────────────────────
-const validateCeo = (id: number, validated: boolean) =>
-    api.patch<{ data: ClientDTO }>(`${BASE}/${id}/validate-ceo?validated=${validated}`);
-const validateCeoAll = (id: number) =>
-    api.patch<{ data: ClientDTO }>(`${BASE}/${id}/validate-ceo-all`);
-const validateCoo = (id: number, validated: boolean) =>
-    api.patch<{ data: ClientDTO }>(`${BASE}/${id}/validate-coo?validated=${validated}`);
-const validateCooAll = (id: number) =>
-    api.patch<{ data: ClientDTO }>(`${BASE}/${id}/validate-coo-all`);
-const validateDa = (id: number, validated: boolean) =>
-    api.patch<{ data: ClientDTO }>(`${BASE}/${id}/validate-da?validated=${validated}`);
-
 export const clientService = {
     getAllClients,
     getClientById,
     createClient,
     updateClient,
     deleteClient,
-    validateCeo,
-    validateCeoAll,
-    validateCoo,
-    validateCooAll,
-    validateDa,
 };

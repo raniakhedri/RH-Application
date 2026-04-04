@@ -47,7 +47,10 @@ public class RoleService {
             Map.entry("DELETE_CLIENT", "Clients - Supprimer"),
             Map.entry("VALIDATE_CLIENT_CEO", "Clients - Validation CEO"),
             Map.entry("VALIDATE_CLIENT_COO", "Clients - Validation COO"),
-            Map.entry("VALIDATE_CLIENT_DA", "Clients - Validation DA"));
+            Map.entry("VALIDATE_CLIENT_DA", "Clients - Validation DA"),
+            // ── Media Plan ──────────────────────────────────────────────────
+            Map.entry("VIEW_MEDIA_PLAN", "Media Plan"),
+            Map.entry("VIEW_TOUS_MEDIA_PLAN", "Tous les Media Plan"));
 
     public List<RoleDTO> getAllRoles() {
         return roleRepository.findAll().stream()

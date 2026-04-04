@@ -20,11 +20,13 @@ import {
   HiOutlineDocumentReport,
   HiOutlineDownload,
   HiOutlineChartBar,
+  HiOutlinePhotograph,
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
 import { useAuth } from '../../context/AuthContext';
 import { demandeService } from '../../api/demandeService';
 import { agentDashboardService } from '../../api/agentDashboardService';
+import { mediaPlanAssignmentService } from '../../api/mediaPlanAssignmentService';
 import Logo3D from '../ui/Logo3D';
 
 interface NavItemDef {
@@ -108,6 +110,12 @@ const menuGroups = [
     ] as NavItemDef[],
   },
   {
+    title: 'SOCIAL MEDIA',
+    items: [
+      { key: 'media-plan', label: 'Media Plan', path: '/media-plan', icon: <HiOutlinePhotograph size={20} />, permission: 'VIEW_MEDIA_PLAN', children: [] },
+    ] as NavItemDef[],
+  },
+  {
     title: 'ADMINISTRATION',
     items: [
       { key: 'comptes', label: 'Comptes', path: '/comptes', icon: <HiOutlineKey size={20} />, permission: 'VIEW_COMPTES' },
@@ -118,6 +126,7 @@ const menuGroups = [
       { key: 'dashboard-rh', label: 'Dashboard RH', path: '/dashboard-rh', icon: <HiOutlineChartBar size={20} />, permission: 'VIEW_DASHBOARD_RH' },
       { key: 'departements', label: 'Départements', path: '/admin/departements', icon: <HiOutlineUserGroup size={20} />, permission: 'VIEW_EMPLOYES' },
       { key: 'clients', label: 'Clients', path: '/admin/clients', icon: <HiOutlineUsers size={20} />, permission: 'VIEW_CLIENTS' },
+      { key: 'tous-media-plan', label: 'Tous les Media Plan', path: '/admin/media-plans', icon: <HiOutlinePhotograph size={20} />, permission: 'VIEW_TOUS_MEDIA_PLAN' },
     ] as NavItemDef[],
   },
   {
@@ -135,7 +144,8 @@ const Sidebar: React.FC = () => {
   const { user } = useAuth();
   const { isExpanded, isMobileOpen, isHovered, openSubmenu, setIsHovered, setOpenSubmenu, toggleMobileSidebar } = useSidebar();
   const [pendingCount, setPendingCount] = useState(0);
-  const [agentActive, setAgentActive] = useState(true); // hide button by default until checked
+  const [agentActive, setAgentActive] = useState(true);
+  const [assignedClients, setAssignedClients] = useState<{ id: number; nom: string }[]>([]);
 
   const userPermissions = user?.permissions || [];
   const canViewValidations = userPermissions.includes('VIEW_VALIDATIONS');
@@ -170,13 +180,39 @@ const Sidebar: React.FC = () => {
     return () => clearInterval(interval);
   }, [user?.employeId]);
 
-  // Filter menu groups by user permissions
+  // Fetch assigned clients for sidebar sub-items
+  useEffect(() => {
+    if (!user?.employeId || !userPermissions.includes('VIEW_MEDIA_PLAN')) return;
+    const fetchClients = async () => {
+      try {
+        const res = await mediaPlanAssignmentService.getByEmploye(user.employeId);
+        const assignments = res.data.data || [];
+        const clientMap = new Map<number, string>();
+        assignments.forEach((a: any) => clientMap.set(a.clientId, a.clientNom));
+        setAssignedClients(Array.from(clientMap, ([id, nom]) => ({ id, nom })));
+      } catch { /* ignore */ }
+    };
+    fetchClients();
+  }, [user?.employeId, userPermissions]);
+
+  // Filter menu groups by user permissions + inject dynamic client children
   const filteredMenuGroups = menuGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) =>
-        !item.permission || userPermissions.includes(item.permission)
-      ),
+      items: group.items
+        .filter((item) => !item.permission || userPermissions.includes(item.permission))
+        .map((item) => {
+          if (item.key === 'media-plan' && assignedClients.length > 0) {
+            return {
+              ...item,
+              children: assignedClients.map((c) => ({
+                label: c.nom,
+                path: `/media-plan/${c.id}`,
+              })),
+            };
+          }
+          return item;
+        }),
     }))
     .filter((group) => group.items.length > 0);
 
@@ -296,7 +332,7 @@ const SidebarItem: React.FC<{
         {showText && (
           <div
             className="overflow-hidden transition-all duration-200"
-            style={{ maxHeight: isOpen ? '200px' : '0px' }}
+            style={{ maxHeight: isOpen ? '500px' : '0px' }}
           >
             <ul className="mt-1 ml-3 space-y-0.5 border-l border-gray-200 pl-3 dark:border-gray-700">
               {item.children.map((child) => (

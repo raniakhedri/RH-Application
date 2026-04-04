@@ -9,8 +9,10 @@ public enum TypeReferentiel {
     TYPE_CONGE("Type congé"),
     TYPE_DEMANDE("Type demande"),
     GENRE("Genre"),
-    PARAMETRE_SYSTEME("Paramètre système");
-    
+    PARAMETRE_SYSTEME("Paramètre système"),
+    FORMAT_MEDIA_PLAN("Format Media Plan"),
+    TYPE_MEDIA_PLAN("Type Media Plan"),
+    PLATFORME_MEDIA_PLAN("Platforme Media Plan");
 
     private final String label;
 

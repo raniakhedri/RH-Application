@@ -34,19 +34,6 @@ public class Client {
     /** Responsible person name (free text) */
     private String responsable;
 
-    // ── Validation flags ──────────────────────────────────────────────────────
-    @Builder.Default
-    @Column(nullable = false)
-    private Boolean ceoValidated = false;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private Boolean cooValidated = false;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private Boolean daValidated = false;
-
     @Column(nullable = false, updatable = false)
     private LocalDateTime dateCreation;
 

@@ -31,18 +31,11 @@ public class ClientService {
 
     // ── CRUD ──────────────────────────────────────────────────────────────────
 
-    /** Returns clients filtered by the caller's permissions. */
-    public List<ClientDTO> getAll(Set<String> permissions) {
-        List<Client> clients;
-        if (permissions.contains("CREATE_CLIENT")) {
-            clients = clientRepository.findAll();
-        } else if (permissions.contains("VALIDATE_CLIENT_DA")
-                && !permissions.contains("VALIDATE_CLIENT_COO")) {
-            clients = clientRepository.findByCeoValidatedTrueAndCooValidatedTrue();
-        } else {
-            clients = clientRepository.findAll();
-        }
-        return clients.stream().map(this::toDTO).collect(Collectors.toList());
+    /** Returns all clients. */
+    public List<ClientDTO> getAll() {
+        return clientRepository.findAll().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     public ClientDTO getById(Long id) {
@@ -91,58 +84,6 @@ public class ClientService {
         Client client = findOrThrow(id);
         deleteFile(client.getFilePath());
         clientRepository.delete(client);
-    }
-
-    // ── Validation steps ──────────────────────────────────────────────────────
-
-    /** CEO validates only → COO + DA still required */
-    public ClientDTO validateCeo(Long id, boolean validated) {
-        Client client = findOrThrow(id);
-        client.setCeoValidated(validated);
-        if (!validated) {
-            client.setCooValidated(false);
-            client.setDaValidated(false);
-        }
-        return toDTO(clientRepository.save(client));
-    }
-
-    /** CEO validates all → skips COO + DA */
-    public ClientDTO validateCeoAll(Long id) {
-        Client client = findOrThrow(id);
-        client.setCeoValidated(true);
-        client.setCooValidated(true);
-        client.setDaValidated(true);
-        return toDTO(clientRepository.save(client));
-    }
-
-    /** COO validates only → DA still required */
-    public ClientDTO validateCoo(Long id, boolean validated) {
-        Client client = findOrThrow(id);
-        if (!client.getCeoValidated())
-            throw new RuntimeException("Le client doit d'abord être validé par le CEO.");
-        client.setCooValidated(validated);
-        if (!validated)
-            client.setDaValidated(false);
-        return toDTO(clientRepository.save(client));
-    }
-
-    /** COO validates all → skips DA */
-    public ClientDTO validateCooAll(Long id) {
-        Client client = findOrThrow(id);
-        if (!client.getCeoValidated())
-            throw new RuntimeException("Le client doit d'abord être validé par le CEO.");
-        client.setCooValidated(true);
-        client.setDaValidated(true);
-        return toDTO(clientRepository.save(client));
-    }
-
-    /** DA validates */
-    public ClientDTO validateDa(Long id, boolean validated) {
-        Client client = findOrThrow(id);
-        if (!client.getCeoValidated() || !client.getCooValidated())
-            throw new RuntimeException("Le client doit d'abord être validé par CEO et COO.");
-        client.setDaValidated(validated);
-        return toDTO(clientRepository.save(client));
     }
 
     // ── File ─────────────────────────────────────────────────────────────────
@@ -199,9 +140,6 @@ public class ClientService {
                 .responsable(c.getResponsable())
                 .fileName(c.getFileName())
                 .fileUrl(fileUrl)
-                .ceoValidated(c.getCeoValidated())
-                .cooValidated(c.getCooValidated())
-                .daValidated(c.getDaValidated())
                 .dateCreation(c.getDateCreation())
                 .build();
     }

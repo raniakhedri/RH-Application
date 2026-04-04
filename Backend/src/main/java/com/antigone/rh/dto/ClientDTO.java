@@ -19,9 +19,5 @@ public class ClientDTO {
     /** URL to download/preview the attached file */
     private String fileUrl;
 
-    private Boolean ceoValidated;
-    private Boolean cooValidated;
-    private Boolean daValidated;
-
     private LocalDateTime dateCreation;
 }
