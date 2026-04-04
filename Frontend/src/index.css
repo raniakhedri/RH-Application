@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap')
-  layer(base);
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap') layer(base);
 
 @import 'tailwindcss';
 
@@ -153,6 +152,7 @@
 }
 
 @layer base {
+
   *,
   ::after,
   ::before,
@@ -160,10 +160,12 @@
   ::file-selector-button {
     border-color: var(--color-gray-200, currentColor);
   }
+
   button:not(:disabled),
   [role='button']:not(:disabled) {
     cursor: pointer;
   }
+
   body {
     @apply relative font-normal font-outfit z-1 bg-gray-50 text-gray-700;
   }
@@ -205,6 +207,7 @@
   &::-webkit-scrollbar {
     display: none;
   }
+
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -213,9 +216,11 @@
   &::-webkit-scrollbar {
     @apply size-1.5;
   }
+
   &::-webkit-scrollbar-track {
     @apply rounded-full;
   }
+
   &::-webkit-scrollbar-thumb {
     @apply bg-gray-200 rounded-full dark:bg-gray-700;
   }

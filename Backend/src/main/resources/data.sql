@@ -7,3 +7,19 @@ ALTER TABLE presence_confirmations DROP COLUMN IF EXISTS created_at;
 -- Corriger les heures avec des fractions de secondes qui causent des erreurs JDBC
 UPDATE pointages SET heure_entree = date_trunc('second', heure_entree) WHERE heure_entree IS NOT NULL;
 UPDATE pointages SET heure_sortie = date_trunc('second', heure_sortie) WHERE heure_sortie IS NOT NULL;
+
+-- Drop the PostgreSQL check constraint on type_referentiel so new enum values work
+ALTER TABLE referentiels DROP CONSTRAINT IF EXISTS referentiels_type_referentiel_check;
+
+-- Media Plan permissions
+INSERT INTO permissions (permission) SELECT 'VIEW_MEDIA_PLAN' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'VIEW_MEDIA_PLAN');
+INSERT INTO permissions (permission) SELECT 'VIEW_TOUS_MEDIA_PLAN' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'VIEW_TOUS_MEDIA_PLAN');
+
+-- Remove old client validation columns
+ALTER TABLE clients DROP COLUMN IF EXISTS ceo_validated;
+ALTER TABLE clients DROP COLUMN IF EXISTS coo_validated;
+ALTER TABLE clients DROP COLUMN IF EXISTS da_validated;
+
+-- Project permissions
+INSERT INTO permissions (permission) SELECT 'MANAGE_PROJETS' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'MANAGE_PROJETS');
+INSERT INTO permissions (permission) SELECT 'CREATION_DES_TACHES' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'CREATION_DES_TACHES');

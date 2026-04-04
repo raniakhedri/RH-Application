@@ -5,8 +5,6 @@ import {
     HiOutlinePencil,
     HiOutlineTrash,
     HiOutlineDocumentText,
-    HiOutlineCheckCircle,
-    HiOutlineXCircle,
     HiOutlineDownload,
 } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
@@ -16,41 +14,16 @@ import Button from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useConfirm } from '../hooks/useConfirm';
 
-/* ─── View-only validation badge ───────────────────────────────────────────── */
-const ValBadge: React.FC<{ checked: boolean; label: string }> = ({ checked, label }) => (
-    <div className="flex items-center justify-center gap-1">
-        {checked
-            ? <HiOutlineCheckCircle className="text-success-500" size={18} />
-            : <HiOutlineXCircle className="text-gray-300 dark:text-gray-600" size={18} />}
-        {label && <span className={`text-[10px] font-semibold ${checked ? 'text-success-600' : 'text-gray-400'}`}>{label}</span>}
-    </div>
-);
-
-/* ─── Action button ─────────────────────────────────────────────────────────── */
-const ValBtn: React.FC<{ label: string; onClick: () => void; variant?: 'primary' | 'success' }> = ({ label, onClick, variant = 'primary' }) => (
-    <button
-        onClick={onClick}
-        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${variant === 'success'
-            ? 'bg-success-500 hover:bg-success-600 text-white'
-            : 'bg-brand-500 hover:bg-brand-600 text-white'
-            }`}
-    >
-        {label}
-    </button>
-);
-
 /* ─── Page ─────────────────────────────────────────────────────────────────── */
 const ClientsPage: React.FC = () => {
     const { user } = useAuth();
     const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
     const perms = user?.permissions ?? [];
 
-    const canCreate = perms.includes('CREATE_CLIENT');
-    const canEdit = perms.includes('EDIT_CLIENT');
-    const canDelete = perms.includes('DELETE_CLIENT');
-    const canValCeo = perms.includes('VALIDATE_CLIENT_CEO');
-    const canValCoo = perms.includes('VALIDATE_CLIENT_COO');
-    const canValDa = perms.includes('VALIDATE_CLIENT_DA');
+    const canManage = perms.includes('MANAGE_CLIENTS') || perms.includes('CREATE_CLIENT') || perms.includes('EDIT_CLIENT');
+    const canCreate = canManage || perms.includes('CREATE_CLIENT');
+    const canEdit = canManage || perms.includes('EDIT_CLIENT');
+    const canDelete = canManage || perms.includes('DELETE_CLIENT');
 
     const [clients, setClients] = useState<ClientDTO[]>([]);
     const [loading, setLoading] = useState(true);
@@ -128,17 +101,6 @@ const ClientsPage: React.FC = () => {
         }, 'Supprimer le client');
     };
 
-    /* ── Validation helpers ───────────────────────────────────────────────── */
-    const applyUpdate = async (fn: () => Promise<any>) => {
-        try {
-            const res = await fn();
-            const updated: ClientDTO = (res.data as any).data ?? res.data;
-            setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
-        } catch (e: any) {
-            alert(e?.response?.data?.message ?? 'Erreur de validation.');
-        }
-    };
-
     /* ── File open ───────────────────────────────────────────────────────── */
     const openFile = (c: ClientDTO) => {
         if (c.fileUrl) {
@@ -156,7 +118,7 @@ const ClientsPage: React.FC = () => {
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                     <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Clients</h1>
-                    <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">Gestion des clients et validation multi-étapes</p>
+                    <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">Gestion des clients</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="rounded-full bg-brand-50 px-3 py-1 text-theme-sm font-semibold text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
@@ -195,9 +157,7 @@ const ClientsPage: React.FC = () => {
                                 <th className="px-5 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Client</th>
                                 <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Description</th>
                                 <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Fichier</th>
-                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300 text-center">CEO</th>
-                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300 text-center">COO</th>
-                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300 text-center">DA</th>
+                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Date création</th>
                                 <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -232,62 +192,33 @@ const ClientsPage: React.FC = () => {
                                         )}
                                     </td>
 
-                                    {/* CEO — view-only badge */}
-                                    <td className="px-4 py-3.5 text-center">
-                                        <ValBadge checked={c.ceoValidated} label="" />
+                                    {/* Date creation */}
+                                    <td className="px-4 py-3.5">
+                                        <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                                            {c.dateCreation ? new Date(c.dateCreation).toLocaleDateString('fr-FR') : '—'}
+                                        </span>
                                     </td>
 
-                                    {/* COO — view-only badge */}
-                                    <td className="px-4 py-3.5 text-center">
-                                        <ValBadge checked={c.cooValidated} label="" />
-                                    </td>
-
-                                    {/* DA — view-only badge */}
-                                    <td className="px-4 py-3.5 text-center">
-                                        <ValBadge checked={c.daValidated} label="" />
-                                    </td>
-
-                                    {/* Actions — edit, delete + validation buttons for the current role */}
+                                    {/* Actions */}
                                     <td className="px-4 py-3.5 text-right">
-                                        <div className="flex flex-col items-end gap-1.5">
-                                            {/* Edit / Delete */}
-                                            <div className="flex items-center gap-2">
-                                                {canEdit && (
-                                                    <button
-                                                        onClick={() => openEdit(c)}
-                                                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-gray-700 transition-colors"
-                                                        title="Modifier"
-                                                    >
-                                                        <HiOutlinePencil size={16} />
-                                                    </button>
-                                                )}
-                                                {canDelete && (
-                                                    <button
-                                                        onClick={() => handleDelete(c.id)}
-                                                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10 transition-colors"
-                                                        title="Supprimer"
-                                                    >
-                                                        <HiOutlineTrash size={16} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                            {/* CEO validation buttons */}
-                                            {canValCeo && !c.ceoValidated && (
-                                                <div className="flex gap-1">
-                                                    <ValBtn label="Valider" onClick={() => applyUpdate(() => clientService.validateCeo(c.id, true))} />
-                                                    <ValBtn label="Valider tout" variant="success" onClick={() => applyUpdate(() => clientService.validateCeoAll(c.id))} />
-                                                </div>
+                                        <div className="flex items-center justify-end gap-2">
+                                            {canEdit && (
+                                                <button
+                                                    onClick={() => openEdit(c)}
+                                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-gray-700 transition-colors"
+                                                    title="Modifier"
+                                                >
+                                                    <HiOutlinePencil size={16} />
+                                                </button>
                                             )}
-                                            {/* COO validation buttons */}
-                                            {canValCoo && c.ceoValidated && !c.cooValidated && (
-                                                <div className="flex gap-1">
-                                                    <ValBtn label="Valider" onClick={() => applyUpdate(() => clientService.validateCoo(c.id, true))} />
-                                                    <ValBtn label="Valider tout" variant="success" onClick={() => applyUpdate(() => clientService.validateCooAll(c.id))} />
-                                                </div>
-                                            )}
-                                            {/* DA validation button */}
-                                            {canValDa && c.ceoValidated && c.cooValidated && !c.daValidated && (
-                                                <ValBtn label="Valider" onClick={() => applyUpdate(() => clientService.validateDa(c.id, true))} />
+                                            {canDelete && (
+                                                <button
+                                                    onClick={() => handleDelete(c.id)}
+                                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10 transition-colors"
+                                                    title="Supprimer"
+                                                >
+                                                    <HiOutlineTrash size={16} />
+                                                </button>
                                             )}
                                         </div>
                                     </td>

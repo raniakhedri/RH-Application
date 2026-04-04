@@ -16,6 +16,8 @@ public interface ProjetRepository extends JpaRepository<Projet, Long> {
 
     List<Projet> findByCreateurId(Long createurId);
 
+    boolean existsByNomAndClientId(String nom, Long clientId);
+
     /**
      * Projects where the given employee is a member of one of the project's equipes
      */

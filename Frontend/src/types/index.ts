@@ -353,6 +353,9 @@ export enum TypeReferentiel {
   TYPE_DEMANDE = 'TYPE_DEMANDE',
   GENRE = 'GENRE',
   PARAMETRE_SYSTEME = 'PARAMETRE_SYSTEME',
+  FORMAT_MEDIA_PLAN = 'FORMAT_MEDIA_PLAN',
+  TYPE_MEDIA_PLAN = 'TYPE_MEDIA_PLAN',
+  PLATFORME_MEDIA_PLAN = 'PLATFORME_MEDIA_PLAN',
 }
 
 export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
@@ -365,6 +368,9 @@ export const TypeReferentielLabels: Record<TypeReferentiel, string> = {
   [TypeReferentiel.TYPE_DEMANDE]: 'Type demande',
   [TypeReferentiel.GENRE]: 'Genre',
   [TypeReferentiel.PARAMETRE_SYSTEME]: 'Paramètre système',
+  [TypeReferentiel.FORMAT_MEDIA_PLAN]: 'Format Media Plan',
+  [TypeReferentiel.TYPE_MEDIA_PLAN]: 'Type Media Plan',
+  [TypeReferentiel.PLATFORME_MEDIA_PLAN]: 'Platforme Media Plan',
 };
 
 export interface Referentiel {
@@ -615,4 +621,91 @@ export interface HistoriqueEmploye {
   departement: string;
   imageUrl: string | null;
   jours: JourDetail[];
+}
+
+// =====================
+// MEDIA PLAN
+// =====================
+export enum StatutMediaPlan {
+  EN_ATTENTE = 'EN_ATTENTE',
+  APPROUVE = 'APPROUVE',
+  DESAPPROUVE = 'DESAPPROUVE',
+}
+
+export enum EtatPublication {
+  SM = 'SM',
+  PUBLIEE = 'PUBLIEE',
+  EN_COURS = 'EN_COURS',
+  PAS_ENCORE = 'PAS_ENCORE',
+}
+
+export const EtatPublicationLabels: Record<EtatPublication, string> = {
+  [EtatPublication.SM]: 'SM',
+  [EtatPublication.PUBLIEE]: 'Publiée',
+  [EtatPublication.EN_COURS]: 'En cours',
+  [EtatPublication.PAS_ENCORE]: 'Pas encore',
+};
+
+export const StatutMediaPlanLabels: Record<StatutMediaPlan, string> = {
+  [StatutMediaPlan.EN_ATTENTE]: 'En attente',
+  [StatutMediaPlan.APPROUVE]: 'Approuvé',
+  [StatutMediaPlan.DESAPPROUVE]: 'Désapprouvé',
+};
+
+export interface MediaPlan {
+  id: number;
+  datePublication: string | null;
+  heure: string | null;
+  format: string | null;
+  type: string | null;
+  titre: string;
+  texteSurVisuel: string | null;
+  inspiration: string | null;
+  autresElements: string | null;
+  platforme: string | null;
+  lienDrive: string | null;
+  etatPublication: string | null;
+  rectifs: string | null;
+  remarques: string | null;
+  statut: string;
+  clientId: number;
+  clientNom: string | null;
+  createurId: number;
+  createurNom: string | null;
+  createurPrenom: string | null;
+  dateCreation: string | null;
+}
+
+export interface MediaPlanRequest {
+  datePublication?: string;
+  heure?: string;
+  format?: string;
+  type?: string;
+  titre: string;
+  texteSurVisuel?: string;
+  inspiration?: string;
+  autresElements?: string;
+  platforme?: string;
+  lienDrive?: string;
+  etatPublication?: string;
+  rectifs?: string;
+  remarques?: string;
+  clientId: number;
+  createurId: number;
+}
+
+export interface MediaPlanAssignment {
+  id: number;
+  employeId: number;
+  employeNom: string;
+  employePrenom: string;
+  employeDepartement: string;
+  clientId: number;
+  clientNom: string;
+  dateAssignment: string | null;
+}
+
+export interface MediaPlanAssignmentRequest {
+  clientId: number;
+  employeIds: number[];
 }
