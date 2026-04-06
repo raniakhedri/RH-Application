@@ -44,8 +44,8 @@ const ProjetsPage: React.FC = () => {
   const { user } = useAuth();
   const { confirmState, confirm, handleConfirm, handleCancel } = useConfirm();
   const perms = user?.permissions ?? [];
-  const canManageProjets = perms.includes('MANAGE_PROJETS');
-  const canCreationTaches = perms.includes('CREATION_DES_TACHES');
+  const canManageAllProjets = perms.includes('MANAGE_ALL_PROJETS');
+  const canViewProjetsCreateTaches = perms.includes('VIEW_PROJETS_CREATE_TACHES');
   const [projets, setProjets] = useState<Projet[]>([]);
   const [allClients, setAllClients] = useState<ClientDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -464,24 +464,24 @@ const ProjetsPage: React.FC = () => {
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <div className="flex justify-end gap-1">
-                                  {canManageProjets && p.statut === 'PLANIFIE' && (
+                                  {canManageAllProjets && p.statut === 'PLANIFIE' && (
                                     <button onClick={() => handleChangeStatut(p.id, StatutProjet.EN_COURS)} className="rounded-lg p-1.5 text-success-500 hover:bg-success-50" title="Démarrer">
                                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     </button>
                                   )}
-                                  {canManageProjets && p.statut === 'EN_COURS' && (
+                                  {canManageAllProjets && p.statut === 'EN_COURS' && (
                                     <button onClick={() => handleChangeStatut(p.id, StatutProjet.CLOTURE)} className="rounded-lg p-1.5 text-success-500 hover:bg-success-50" title="Clôturer">
                                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     </button>
                                   )}
-                                  {canCreationTaches && (
+                                  {(canManageAllProjets || canViewProjetsCreateTaches) && (
                                     <button onClick={() => navigate(`/projets/${p.id}/taches`)} className="rounded-lg p-1.5 text-secondary-500 hover:bg-secondary-50" title="Tâches"><HiOutlineClipboardList size={16} /></button>
                                   )}
-                                  {canCreationTaches && ((p.chefsDeProjet && p.chefsDeProjet.some(c => c.id === user?.employeId)) || p.chefDeProjet?.id === user?.employeId) && (
+                                  {canManageAllProjets && ((p.chefsDeProjet && p.chefsDeProjet.some(c => c.id === user?.employeId)) || p.chefDeProjet?.id === user?.employeId) && (
                                     <button onClick={() => handleAffectMembers(p)} className="rounded-lg p-1.5 text-warning-500 hover:bg-warning-50" title="Affecter des membres">👥</button>
                                   )}
-                                  {canManageProjets && <button onClick={() => handleEdit(p)} className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50" title="Modifier"><HiOutlinePencil size={16} /></button>}
-                                  {canManageProjets && <button onClick={() => handleDelete(p.id)} className="rounded-lg p-1.5 text-error-500 hover:bg-error-50"><HiOutlineTrash size={16} /></button>}
+                                  {canManageAllProjets && <button onClick={() => handleEdit(p)} className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50" title="Modifier"><HiOutlinePencil size={16} /></button>}
+                                  {canManageAllProjets && <button onClick={() => handleDelete(p.id)} className="rounded-lg p-1.5 text-error-500 hover:bg-error-50"><HiOutlineTrash size={16} /></button>}
                                 </div>
                               </td>
                             </tr>
@@ -494,7 +494,7 @@ const ProjetsPage: React.FC = () => {
                   )}
 
                   {/* ── Add project button (opens popup) ── */}
-                  {canManageProjets && (
+                  {canManageAllProjets && (
                     <div className="border-t border-dashed border-orange-300 dark:border-orange-500/30">
                       <button
                         onClick={() => openCreateModal(key)}

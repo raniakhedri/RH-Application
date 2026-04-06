@@ -21,5 +21,5 @@ ALTER TABLE clients DROP COLUMN IF EXISTS coo_validated;
 ALTER TABLE clients DROP COLUMN IF EXISTS da_validated;
 
 -- Project permissions
-INSERT INTO permissions (permission) SELECT 'MANAGE_PROJETS' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'MANAGE_PROJETS');
-INSERT INTO permissions (permission) SELECT 'CREATION_DES_TACHES' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'CREATION_DES_TACHES');
+INSERT INTO permissions (permission) SELECT 'MANAGE_ALL_PROJETS' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'MANAGE_ALL_PROJETS');
+INSERT INTO permissions (permission) SELECT 'VIEW_PROJETS_CREATE_TACHES' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'VIEW_PROJETS_CREATE_TACHES');
