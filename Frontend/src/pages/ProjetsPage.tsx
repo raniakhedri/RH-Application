@@ -464,12 +464,12 @@ const ProjetsPage: React.FC = () => {
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <div className="flex justify-end gap-1">
-                                  {canManageAllProjets && p.statut === 'PLANIFIE' && (
+                                  {(canManageAllProjets || canViewProjetsCreateTaches) && p.statut === 'PLANIFIE' && (
                                     <button onClick={() => handleChangeStatut(p.id, StatutProjet.EN_COURS)} className="rounded-lg p-1.5 text-success-500 hover:bg-success-50" title="Démarrer">
                                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     </button>
                                   )}
-                                  {canManageAllProjets && p.statut === 'EN_COURS' && (
+                                  {(canManageAllProjets || canViewProjetsCreateTaches) && p.statut === 'EN_COURS' && (
                                     <button onClick={() => handleChangeStatut(p.id, StatutProjet.CLOTURE)} className="rounded-lg p-1.5 text-success-500 hover:bg-success-50" title="Clôturer">
                                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     </button>
@@ -477,7 +477,7 @@ const ProjetsPage: React.FC = () => {
                                   {(canManageAllProjets || canViewProjetsCreateTaches) && (
                                     <button onClick={() => navigate(`/projets/${p.id}/taches`)} className="rounded-lg p-1.5 text-secondary-500 hover:bg-secondary-50" title="Tâches"><HiOutlineClipboardList size={16} /></button>
                                   )}
-                                  {canManageAllProjets && ((p.chefsDeProjet && p.chefsDeProjet.some(c => c.id === user?.employeId)) || p.chefDeProjet?.id === user?.employeId) && (
+                                  {(canManageAllProjets || canViewProjetsCreateTaches) && ((p.chefsDeProjet && p.chefsDeProjet.some(c => c.id === user?.employeId)) || p.chefDeProjet?.id === user?.employeId) && (
                                     <button onClick={() => handleAffectMembers(p)} className="rounded-lg p-1.5 text-warning-500 hover:bg-warning-50" title="Affecter des membres">👥</button>
                                   )}
                                   {canManageAllProjets && <button onClick={() => handleEdit(p)} className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50" title="Modifier"><HiOutlinePencil size={16} /></button>}
