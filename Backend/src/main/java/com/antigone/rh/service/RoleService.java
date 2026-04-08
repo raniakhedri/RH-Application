@@ -46,9 +46,9 @@ public class RoleService {
             Map.entry("CREATE_CLIENT", "Clients - Créer"),
             Map.entry("EDIT_CLIENT", "Clients - Modifier"),
             Map.entry("DELETE_CLIENT", "Clients - Supprimer"),
-            Map.entry("VALIDATE_CLIENT_CEO", "Clients - Validation CEO"),
-            Map.entry("VALIDATE_CLIENT_COO", "Clients - Validation COO"),
-            Map.entry("VALIDATE_CLIENT_DA", "Clients - Validation DA"),
+            // ── Projets ─────────────────────────────────────────────────────
+            Map.entry("MANAGE_ALL_PROJETS", "Projets - Gestion complète (Voir, Créer, Modifier, Supprimer, Tâches)"),
+            Map.entry("VIEW_PROJETS_CREATE_TACHES", "Projets - Consultation et Création de tâches"),
             // ── Media Plan ──────────────────────────────────────────────────
             Map.entry("VIEW_MEDIA_PLAN", "Media Plan"),
             Map.entry("VIEW_TOUS_MEDIA_PLAN", "Tous les Media Plan"));
