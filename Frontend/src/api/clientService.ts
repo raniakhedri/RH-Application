@@ -3,8 +3,22 @@ import api from './axios';
 export interface ClientDTO {
     id: number;
     nom: string;
-    description?: string;
+    email?: string;
     telephone?: string;
+    adresse?: string;
+    notes?: string;
+    // Contact principal
+    contactNom?: string;
+    contactPoste?: string;
+    contactEmail?: string;
+    contactTelephone?: string;
+    // Account
+    hasAccount?: boolean;
+    loginClient?: string;
+    /** Only returned once at creation */
+    generatedPassword?: string;
+    // Legacy
+    description?: string;
     responsable?: string;
     fileName?: string;
     fileUrl?: string;
@@ -16,25 +30,61 @@ const BASE = '/clients';
 const getAllClients = () => api.get<{ data: ClientDTO[] }>(BASE);
 const getClientById = (id: number) => api.get<{ data: ClientDTO }>(`${BASE}/${id}`);
 
-const createClient = (nom: string, description: string, telephone: string, responsable: string, file?: File) => {
+const createClient = (data: {
+    nom: string;
+    email?: string;
+    telephone?: string;
+    adresse?: string;
+    notes?: string;
+    contactNom?: string;
+    contactPoste?: string;
+    contactEmail?: string;
+    contactTelephone?: string;
+    createAccount?: boolean;
+    file?: File;
+}) => {
     const form = new FormData();
-    form.append('nom', nom);
-    if (description) form.append('description', description);
-    if (telephone) form.append('telephone', telephone);
-    if (responsable) form.append('responsable', responsable);
-    if (file) form.append('file', file);
+    form.append('nom', data.nom);
+    if (data.email) form.append('email', data.email);
+    if (data.telephone) form.append('telephone', data.telephone);
+    if (data.adresse) form.append('adresse', data.adresse);
+    if (data.notes) form.append('notes', data.notes);
+    if (data.contactNom) form.append('contactNom', data.contactNom);
+    if (data.contactPoste) form.append('contactPoste', data.contactPoste);
+    if (data.contactEmail) form.append('contactEmail', data.contactEmail);
+    if (data.contactTelephone) form.append('contactTelephone', data.contactTelephone);
+    form.append('createAccount', String(data.createAccount ?? false));
+    if (data.file) form.append('file', data.file);
     return api.post<{ data: ClientDTO }>(BASE, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
 };
 
-const updateClient = (id: number, nom: string, description: string, telephone: string, responsable: string, file?: File) => {
+const updateClient = (id: number, data: {
+    nom?: string;
+    email?: string;
+    telephone?: string;
+    adresse?: string;
+    notes?: string;
+    contactNom?: string;
+    contactPoste?: string;
+    contactEmail?: string;
+    contactTelephone?: string;
+    regeneratePassword?: boolean;
+    file?: File;
+}) => {
     const form = new FormData();
-    if (nom) form.append('nom', nom);
-    if (description) form.append('description', description);
-    form.append('telephone', telephone ?? '');
-    form.append('responsable', responsable ?? '');
-    if (file) form.append('file', file);
+    if (data.nom) form.append('nom', data.nom);
+    form.append('email', data.email ?? '');
+    form.append('telephone', data.telephone ?? '');
+    form.append('adresse', data.adresse ?? '');
+    form.append('notes', data.notes ?? '');
+    form.append('contactNom', data.contactNom ?? '');
+    form.append('contactPoste', data.contactPoste ?? '');
+    form.append('contactEmail', data.contactEmail ?? '');
+    form.append('contactTelephone', data.contactTelephone ?? '');
+    form.append('regeneratePassword', String(data.regeneratePassword ?? false));
+    if (data.file) form.append('file', data.file);
     return api.put<{ data: ClientDTO }>(`${BASE}/${id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });

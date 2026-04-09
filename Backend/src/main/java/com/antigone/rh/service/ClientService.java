@@ -4,9 +4,11 @@ import com.antigone.rh.dto.ClientDTO;
 import com.antigone.rh.entity.Client;
 import com.antigone.rh.repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,24 +16,28 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.*;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class ClientService {
 
     private final ClientRepository clientRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${app.upload.dir:uploads/justificatifs}")
     private String uploadDir;
 
     private static final String CLIENTS_SUBDIR = "clients";
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%";
 
     // ── CRUD ──────────────────────────────────────────────────────────────────
 
-    /** Returns all clients. */
     public List<ClientDTO> getAll() {
         return clientRepository.findAll().stream()
                 .map(this::toDTO)
@@ -42,42 +48,89 @@ public class ClientService {
         return toDTO(findOrThrow(id));
     }
 
-    public ClientDTO create(String nom, String description, String telephone,
-            String responsable, MultipartFile file) throws IOException {
+    public ClientDTO create(String nom, String email, String telephone, String adresse,
+            String notes, String contactNom, String contactPoste, String contactEmail,
+            String contactTelephone, boolean createAccount,
+            MultipartFile file) throws IOException {
+
         String filePath = null;
         String fileName = null;
         if (file != null && !file.isEmpty()) {
             fileName = file.getOriginalFilename();
             filePath = saveFile(file);
         }
+
+        // Auto-generate credentials if requested
+        String rawPassword = null;
+        String loginClient = null;
+        String passwordHash = null;
+        if (createAccount) {
+            loginClient = generateLogin(nom);
+            rawPassword = generatePassword(10);
+            passwordHash = passwordEncoder.encode(rawPassword);
+            log.info("Compte client créé - login={}", loginClient);
+        }
+
         Client client = Client.builder()
                 .nom(nom)
-                .description(description)
+                .email(email)
                 .telephone(telephone)
-                .responsable(responsable)
+                .adresse(adresse)
+                .notes(notes)
+                .contactNom(contactNom)
+                .contactPoste(contactPoste)
+                .contactEmail(contactEmail)
+                .contactTelephone(contactTelephone)
+                .loginClient(loginClient)
+                .passwordClient(passwordHash)
                 .filePath(filePath)
                 .fileName(fileName)
                 .build();
-        return toDTO(clientRepository.save(client));
+
+        ClientDTO dto = toDTO(clientRepository.save(client));
+        // Return raw password only at creation time
+        if (rawPassword != null) {
+            dto.setGeneratedPassword(rawPassword);
+        }
+        return dto;
     }
 
-    public ClientDTO update(Long id, String nom, String description, String telephone,
-            String responsable, MultipartFile file) throws IOException {
+    public ClientDTO update(Long id, String nom, String email, String telephone, String adresse,
+            String notes, String contactNom, String contactPoste, String contactEmail,
+            String contactTelephone, boolean regeneratePassword,
+            MultipartFile file) throws IOException {
+
         Client client = findOrThrow(id);
-        if (nom != null)
-            client.setNom(nom);
-        if (description != null)
-            client.setDescription(description);
-        if (telephone != null)
-            client.setTelephone(telephone.isBlank() ? null : telephone);
-        if (responsable != null)
-            client.setResponsable(responsable.isBlank() ? null : responsable);
+
+        if (nom != null && !nom.isBlank()) client.setNom(nom);
+        if (email != null) client.setEmail(email.isBlank() ? null : email);
+        if (telephone != null) client.setTelephone(telephone.isBlank() ? null : telephone);
+        if (adresse != null) client.setAdresse(adresse.isBlank() ? null : adresse);
+        if (notes != null) client.setNotes(notes.isBlank() ? null : notes);
+        if (contactNom != null) client.setContactNom(contactNom.isBlank() ? null : contactNom);
+        if (contactPoste != null) client.setContactPoste(contactPoste.isBlank() ? null : contactPoste);
+        if (contactEmail != null) client.setContactEmail(contactEmail.isBlank() ? null : contactEmail);
+        if (contactTelephone != null) client.setContactTelephone(contactTelephone.isBlank() ? null : contactTelephone);
+
+        // Regenerate password if requested (and account already exists)
+        String rawPassword = null;
+        if (regeneratePassword && client.getLoginClient() != null) {
+            rawPassword = generatePassword(10);
+            client.setPasswordClient(passwordEncoder.encode(rawPassword));
+            log.info("Mot de passe client régénéré - login={}", client.getLoginClient());
+        }
+
         if (file != null && !file.isEmpty()) {
             deleteFile(client.getFilePath());
             client.setFileName(file.getOriginalFilename());
             client.setFilePath(saveFile(file));
         }
-        return toDTO(clientRepository.save(client));
+
+        ClientDTO dto = toDTO(clientRepository.save(client));
+        if (rawPassword != null) {
+            dto.setGeneratedPassword(rawPassword);
+        }
+        return dto;
     }
 
     public void delete(Long id) {
@@ -130,13 +183,44 @@ public class ClientService {
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
     }
 
+    /** Generate login from client name: lowercase, alphanumeric only, max 15 chars + numeric suffix if collision */
+    private String generateLogin(String nom) {
+        String cleaned = nom.toLowerCase().replaceAll("[^a-z0-9]", "");
+        String base = cleaned.isEmpty() ? "client" : cleaned.substring(0, Math.min(cleaned.length(), 15));
+        // Ensure uniqueness
+        String candidate = base;
+        int attempt = 0;
+        while (clientRepository.existsByLoginClient(candidate)) {
+            candidate = base + (++attempt);
+        }
+        return candidate;
+    }
+
+    private String generatePassword(int length) {
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            sb.append(PASSWORD_CHARS.charAt(RANDOM.nextInt(PASSWORD_CHARS.length())));
+        }
+        return sb.toString();
+    }
+
     public ClientDTO toDTO(Client c) {
         String fileUrl = (c.getFilePath() != null) ? "/api/clients/" + c.getId() + "/file" : null;
         return ClientDTO.builder()
                 .id(c.getId())
                 .nom(c.getNom())
-                .description(c.getDescription())
+                .email(c.getEmail())
                 .telephone(c.getTelephone())
+                .adresse(c.getAdresse())
+                .notes(c.getNotes())
+                .contactNom(c.getContactNom())
+                .contactPoste(c.getContactPoste())
+                .contactEmail(c.getContactEmail())
+                .contactTelephone(c.getContactTelephone())
+                .hasAccount(c.getLoginClient() != null)
+                .loginClient(c.getLoginClient())
+                // passwordClient is hashed — never expose it in DTO except generatedPassword
+                .description(c.getDescription())
                 .responsable(c.getResponsable())
                 .fileName(c.getFileName())
                 .fileUrl(fileUrl)
