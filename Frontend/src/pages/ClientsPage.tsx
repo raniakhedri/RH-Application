@@ -139,8 +139,31 @@ const ClientsPage: React.FC = () => {
         (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
             setForm(prev => ({ ...prev, [key]: e.target.value }));
 
+    // Phone handler: allow international format (+, digits, spaces, hyphens, parentheses)
+    const handlePhone = (key: 'telephone' | 'contactTelephone') =>
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            const raw = e.target.value.replace(/[^0-9+\s\-()]/g, '');
+            setForm(prev => ({ ...prev, [key]: raw }));
+        };
+
+    const isValidEmail = (email: string) =>
+        !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+    const countDigits = (phone: string) => (phone.replace(/\D/g, '')).length;
+
+    // International phone: 7–15 digits
+    const isValidPhone = (phone: string) => {
+        if (!phone) return true;
+        const digits = countDigits(phone);
+        return digits >= 7 && digits <= 15;
+    };
+
     const handleSave = async () => {
         if (!form.nom.trim()) { setError('Le nom est obligatoire.'); return; }
+        if (!isValidEmail(form.email)) { setError('L\'adresse email du client est invalide.'); return; }
+        if (!isValidEmail(form.contactEmail)) { setError('L\'adresse email du contact est invalide.'); return; }
+        if (!isValidPhone(form.telephone)) { setError('Le numéro de téléphone du client est invalide (7 à 15 chiffres).'); return; }
+        if (!isValidPhone(form.contactTelephone)) { setError('Le numéro de téléphone du contact est invalide (7 à 15 chiffres).'); return; }
         setSaving(true); setError(null);
         try {
             if (editing) {
@@ -401,15 +424,21 @@ const ClientsPage: React.FC = () => {
                                 <label className={labelClass}>Email</label>
                                 <div className="relative">
                                     <HiOutlineMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
-                                    <input type="email" value={form.email} onChange={f('email')} className={inputClass + ' pl-10'} placeholder="email@client.com" />
+                                    <input type="email" value={form.email} onChange={f('email')} className={inputClass + ' pl-10' + (form.email && !isValidEmail(form.email) ? ' border-error-400 focus:border-error-400 focus:ring-error-500/10' : '')} placeholder="email@client.com" />
                                 </div>
+                                {form.email && !isValidEmail(form.email) && (
+                                    <p className="mt-1 text-theme-xs text-error-500">Format d'email invalide.</p>
+                                )}
                             </div>
                             <div>
                                 <label className={labelClass}>Téléphone</label>
                                 <div className="relative">
                                     <HiOutlinePhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
-                                    <input type="tel" value={form.telephone} onChange={f('telephone')} className={inputClass + ' pl-10'} placeholder="Ex: +216 xx xxx xxx" />
+                                    <input type="tel" value={form.telephone} onChange={handlePhone('telephone')} className={inputClass + ' pl-10' + (form.telephone && !isValidPhone(form.telephone) ? ' border-error-400 focus:border-error-400 focus:ring-error-500/10' : '')} placeholder="Ex: +33 6 12 34 56 78" />
                                 </div>
+                                {form.telephone && !isValidPhone(form.telephone) && (
+                                    <p className="mt-1 text-theme-xs text-error-500">Numéro invalide (7 à 15 chiffres, format international accepté).</p>
+                                )}
                             </div>
                             <div className="col-span-2">
                                 <label className={labelClass}>Adresse</label>
@@ -466,15 +495,21 @@ const ClientsPage: React.FC = () => {
                                     <label className={labelClass}>Email</label>
                                     <div className="relative">
                                         <HiOutlineMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
-                                        <input type="email" value={form.contactEmail} onChange={f('contactEmail')} className={inputClass + ' pl-10'} placeholder="email@contact.com" />
+                                        <input type="email" value={form.contactEmail} onChange={f('contactEmail')} className={inputClass + ' pl-10' + (form.contactEmail && !isValidEmail(form.contactEmail) ? ' border-error-400 focus:border-error-400 focus:ring-error-500/10' : '')} placeholder="email@contact.com" />
                                     </div>
+                                    {form.contactEmail && !isValidEmail(form.contactEmail) && (
+                                        <p className="mt-1 text-theme-xs text-error-500">Format d'email invalide.</p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className={labelClass}>Téléphone</label>
                                     <div className="relative">
                                         <HiOutlinePhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
-                                        <input type="tel" value={form.contactTelephone} onChange={f('contactTelephone')} className={inputClass + ' pl-10'} placeholder="Ex: +216 xx xxx xxx" />
+                                        <input type="tel" value={form.contactTelephone} onChange={handlePhone('contactTelephone')} className={inputClass + ' pl-10' + (form.contactTelephone && !isValidPhone(form.contactTelephone) ? ' border-error-400 focus:border-error-400 focus:ring-error-500/10' : '')} placeholder="Ex: +1 202 555 0100" />
                                     </div>
+                                    {form.contactTelephone && !isValidPhone(form.contactTelephone) && (
+                                        <p className="mt-1 text-theme-xs text-error-500">Numéro invalide (7 à 15 chiffres, format international accepté).</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
