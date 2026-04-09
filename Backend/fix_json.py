@@ -1,0 +1,20 @@
+import json
+
+data = {
+  "type": "service_account",
+  "project_id": "antigone-drive-bot",
+  "private_key_id": "8e131de62c2c8db2a7fd120b467654aacd44b6ff",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCvr3V0j1cCeTLn\nZ6lnF+nutDRijsmoD4CN9KsqzfMPyXuXRMajIj0UVI/73lgp9zE0R+iiceHSZiec\nh+8p6LYSNixb7/nNh990o9geiHr0HxRZ7RZHsH6qDfVzdAnXzobFtWJYwncWHEAI\nj9G+uZWq8KDTKbn0tKXlzA+yrtbriBB5wFkdj+OpIvUkcODSZsxY7nkdPQ8XRovp\nfeFtCTBhnJ1RKbe4u+otuBbAVJ3wAj+gCLb39FzIqHyC36XZrvPgR2k7Cp+YpZEC\nT+WHPAK5r3aPbuv2QpfwWZS9w6KCHXnx3ruo1EwDyrzoPkEbsm2F3x2Ut/xKFV0I\n652KUYqBAgMBAAECggEAIAlUFwr7cBtHRczQppjFAw8P3WgRzEh1Zg13eBEBsX+J\nfsJfIYjhD/fCoMiBFbf6nEC/on23Uv1nXEMqgN8rcmM4EBTQ3eKYxCWLh7fWCfWv\n6Z0S+sQruNleSK0gjV6fE2b51dsySZEhuR32vruLWBZUkWUSwJV/igm91BTPYrgK\nBWWT+vx2AuCrbj86CxUDgmu85V4eXf4pRT/IH8o9L2wSRUU/UltCQfmB8KELTHeS\nP+74rIXF592a92y83XzDlkm63DOknMoqZofkaDbK3KaM9wk3SbFE/mRpSNh4tJ2h\nn5oRiez32FRzChwGKunD8XZ4ccwRrTTfz3wTqgGppQKBgQDWjGaNjmO3/D6vdipR\nCuykU2Gpg5PBkoKC3DGVicoEPQIwLyJD3G5BF0ddwWzc071i0159qBDCHyqXSOhW\nl1PMAkiWhbKiGw1S4grTpy0dHVjOMqkvZ04fC4xWZe6R835IzcezYlcnxpIg9Frv\n+krU9lO2Y8Yhtx5AOOfycJMwvQKBgQDRoOKvVztxqtpQvyLZ/0n9Gwkd9PgXKkgj\n0dj7s3g3vpb5LX/zU1LN9Dg0WjgUiQWo6WhTD3942H1hKe2JCcegQOP5RgBYAe3h\neZW0wpgm5gYs8SdNrFwZUcNQ/Bs6mC3hDtjAnFWXlhCXfC9FTqtRIyvCWrMnhMcp\nJLzfkJTnFQKBgQCR5iJrSxRG7rNWML4wJISubsFwPDkDnvU/tivF7FDDtxVA3Ryp\nF0Km4wS2Hi5AsYENrn2IZ/0VdYpKHNta30et6TOhoMPMdycFYRBJxFrqfKWCe3MP\n+GlotTq3GlQ1TmdnbQDL3Sk1tFR1MpaQsR2oWuaslocLMHLS65/X/3Qo5QKBgQDJ\nYrZjnHoPCQQS7oycwRRjg8WOcfikyInlX4QEyrWDWCXR3FQ/fpzeHvCf2sxlbf1x\n+EmxAgKEJfbNkWoRbMPKwIxCvW03HyNYqWWY8hkZxYHJSyNnC16vNE1fT9MYx3nL\n7GdvIsFXj2MBJNyEyL7sg81WOaxDGtv6OsD4Rf3GwQKBgFa65iZYLytdCg5lwgd9\nX+u7tR+YgWF2YqpcAqotYwHbuMka0PJ0e9/0TkL/DuU7VovJEwIzYAWPdHIBk9W2\n+jezWw14wixHRNJjtaGl4cbxkD7HUztW99Xj8IQMQllxHJO+Cuh3QzHqtn4ajWrZ\nbVXy2nzYGgjfA0HmKfyYUaLb\n-----END PRIVATE KEY-----\n",
+  "client_email": "antigone-drive-bot@antigone-drive-bot.iam.gserviceaccount.com",
+  "client_id": "117246726741897887413",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/antigone-drive-bot%40antigone-drive-bot.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
+
+with open('service-account.json', 'w') as f:
+    json.dump(data, f, indent=2)
+
+print("service-account.json written successfully!")

@@ -16,9 +16,11 @@ import com.antigone.rh.repository.MediaPlanAssignmentRepository;
 import com.antigone.rh.repository.MediaPlanRepository;
 import com.antigone.rh.repository.ProjetRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class MediaPlanService {
 
     private final MediaPlanRepository mediaPlanRepository;
@@ -35,6 +38,7 @@ public class MediaPlanService {
     private final EmployeRepository employeRepository;
     private final ProjetService projetService;
     private final ProjetRepository projetRepository;
+    private final GoogleDriveService googleDriveService;
 
     // =============================================
     // QUERIES
@@ -107,6 +111,99 @@ public class MediaPlanService {
                 .build();
 
         return toDTO(mediaPlanRepository.save(mp));
+    }
+
+    public List<MediaPlanDTO> createBulk(List<MediaPlanRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+
+        String driveLink = null;
+        try {
+            // Get client name for folder naming
+            Long firstClientId = requests.get(0).getClientId();
+            if (firstClientId == null) {
+                throw new RuntimeException("ClientId manquant pour le premier media plan du lot");
+            }
+            Client client = clientRepository.findById(firstClientId).orElse(null);
+            String clientName = client != null ? client.getNom() : "Inconnu";
+
+            // Use the publication date of the first item to determine the month folder
+            // (fall back to today if no date provided)
+            LocalDate folderDate = LocalDate.now();
+            String firstDatePub = requests.get(0).getDatePublication();
+            if (firstDatePub != null && !firstDatePub.isBlank()) {
+                try {
+                    folderDate = LocalDate.parse(firstDatePub);
+                } catch (Exception ignored) {
+                    log.warn("Could not parse datePublication '{}', using today for folder name.", firstDatePub);
+                }
+            }
+
+            // Create or reuse: [parent] / [clientName] / [Month Year]
+            driveLink = googleDriveService.getOrCreateClientMonthFolder(clientName, folderDate);
+        } catch (IOException e) {
+            log.error("Failed to create Google Drive folder: {}", e.getMessage());
+            throw new RuntimeException("Erreur Google Drive: " + e.getMessage());
+        }
+
+        List<MediaPlan> savedPlans = new ArrayList<>();
+        for (MediaPlanRequest req : requests) {
+            Client client = clientRepository.findById(req.getClientId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Client", req.getClientId()));
+            Employe createur = employeRepository.findById(req.getCreateurId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Employe", req.getCreateurId()));
+
+            // Parse date Publication safely
+            LocalDate datePub = null;
+            if (req.getDatePublication() != null && !req.getDatePublication().isBlank()) {
+                try {
+                    datePub = LocalDate.parse(req.getDatePublication());
+                } catch (Exception e) {
+                    throw new RuntimeException("Format de date invalide pour '"
+                            + (req.getTitre() != null ? req.getTitre() : "ligne sans titre") + "': "
+                            + req.getDatePublication());
+                }
+            }
+
+            // Parse EtatPublication safely
+            EtatPublication etatPub = EtatPublication.PAS_ENCORE;
+            if (req.getEtatPublication() != null && !req.getEtatPublication().isBlank()) {
+                try {
+                    etatPub = EtatPublication.valueOf(req.getEtatPublication());
+                } catch (IllegalArgumentException e) {
+                    log.warn("Unknown EtatPublication value: {}, falling back to PAS_ENCORE", req.getEtatPublication());
+                }
+            }
+
+            MediaPlan mp = MediaPlan.builder()
+                    .datePublication(datePub)
+                    .heure(req.getHeure())
+                    .format(req.getFormat())
+                    .type(req.getType())
+                    .titre(req.getTitre() != null ? req.getTitre() : "Sans titre")
+                    .texteSurVisuel(req.getTexteSurVisuel())
+                    .inspiration(req.getInspiration())
+                    .autresElements(req.getAutresElements())
+                    .platforme(req.getPlatforme())
+                    .lienDrive(driveLink != null ? driveLink : req.getLienDrive())
+                    .etatPublication(etatPub)
+                    .rectifs(req.getRectifs())
+                    .remarques(req.getRemarques())
+                    .statut(StatutMediaPlan.EN_ATTENTE)
+                    .client(client)
+                    .createur(createur)
+                    .build();
+
+            try {
+                savedPlans.add(mediaPlanRepository.save(mp));
+            } catch (Exception e) {
+                log.error("Failed to save media plan row: {}", e.getMessage(), e);
+                throw new RuntimeException("Erreur lors de la sauvegarde d'une ligne du media plan: " + e.getMessage());
+            }
+        }
+
+        return savedPlans.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     public MediaPlanDTO update(Long id, MediaPlanRequest request) {
@@ -223,6 +320,25 @@ public class MediaPlanService {
                 .orElseThrow(() -> new ResourceNotFoundException("MediaPlan", mediaPlanId));
         mp.setStatut(StatutMediaPlan.DESAPPROUVE);
         return toDTO(mediaPlanRepository.save(mp));
+    }
+
+    // ── Google Drive Auth Bridges ────────────────────────────────────────────
+    public String getGoogleAuthUrl() throws IOException {
+        return googleDriveService.getAuthorizationUrl();
+    }
+
+    public void storeGoogleToken(String code) throws IOException {
+        // This is a bit simplified, usually we'd need another step to exchange code for
+        // token
+        // But GoogleAuthorizationCodeFlow handled by AuthorizationCodeInstalledApp does
+        // it.
+        // I'll need to manually implement the exchange if I want it purely backend.
+        // For now, I'll update GoogleDriveService to handle the exchange.
+        googleDriveService.exchangeCodeForToken(code);
+    }
+
+    public boolean isGoogleAuthorized() {
+        return googleDriveService.isAuthorized();
     }
 
     // =============================================

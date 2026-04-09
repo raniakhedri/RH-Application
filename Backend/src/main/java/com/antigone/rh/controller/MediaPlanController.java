@@ -42,6 +42,11 @@ public class MediaPlanController {
         return ResponseEntity.ok(ApiResponse.ok("Media plan créé", mediaPlanService.create(request)));
     }
 
+    @PostMapping("/bulk")
+    public ResponseEntity<ApiResponse<List<MediaPlanDTO>>> createBulk(@RequestBody List<MediaPlanRequest> requests) {
+        return ResponseEntity.ok(ApiResponse.ok("Media plans créés", mediaPlanService.createBulk(requests)));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MediaPlanDTO>> update(@PathVariable Long id,
             @RequestBody MediaPlanRequest request) {
@@ -63,5 +68,22 @@ public class MediaPlanController {
     @PatchMapping("/{id}/disapprove")
     public ResponseEntity<ApiResponse<MediaPlanDTO>> disapprove(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok("Media plan désapprouvé", mediaPlanService.disapprove(id)));
+    }
+
+    // ── Google Drive Auth ────────────────────────────────────────────────────
+    @GetMapping("/google-drive/auth-url")
+    public ResponseEntity<ApiResponse<String>> getGoogleAuthUrl() throws java.io.IOException {
+        return ResponseEntity.ok(ApiResponse.ok(mediaPlanService.getGoogleAuthUrl()));
+    }
+
+    @GetMapping("/google-drive/callback")
+    public ResponseEntity<String> googleCallback(@RequestParam("code") String code) throws java.io.IOException {
+        mediaPlanService.storeGoogleToken(code);
+        return ResponseEntity.ok("Autorisation Google Drive réussie ! Vous pouvez fermer cet onglet.");
+    }
+
+    @GetMapping("/google-drive/status")
+    public ResponseEntity<ApiResponse<Boolean>> getGoogleAuthStatus() {
+        return ResponseEntity.ok(ApiResponse.ok(mediaPlanService.isGoogleAuthorized()));
     }
 }
