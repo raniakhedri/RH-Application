@@ -39,6 +39,27 @@ interface TacheForm {
     statut: StatutTache;
     assigneeIds: string[];
     urgente: boolean;
+    typeDriveTypes: string[]; // subset of ['Post','Video','Documentation']
+}
+
+const DRIVE_TYPES = ['Post', 'Video', 'Documentation'] as const;
+const DRIVE_TYPE_ICON: Record<string, string> = { Post: '📸', Video: '🎬', Documentation: '📄' };
+
+/**
+ * Toggle a drive type on/off with constraints:
+ * - Post and Video are mutually exclusive
+ * - Documentation can combine with either
+ */
+function toggleDriveType(current: string[], type: string): string[] {
+    if (current.includes(type)) {
+        // Deselect
+        return current.filter(t => t !== type);
+    }
+    // Select — enforce mutual exclusion between Post and Video
+    let next = [...current, type];
+    if (type === 'Post') next = next.filter(t => t !== 'Video');
+    if (type === 'Video') next = next.filter(t => t !== 'Post');
+    return next;
 }
 
 const emptyForm = (): TacheForm => ({
@@ -47,6 +68,7 @@ const emptyForm = (): TacheForm => ({
     statut: StatutTache.TODO,
     assigneeIds: [],
     urgente: false,
+    typeDriveTypes: [],
 });
 
 const ProjetTachesPage: React.FC = () => {
@@ -208,6 +230,7 @@ const ProjetTachesPage: React.FC = () => {
                         statut: form.statut,
                         dateEcheance: form.dateEcheance || undefined,
                         urgente: form.urgente,
+                        typeDrive: form.typeDriveTypes.length > 0 ? form.typeDriveTypes.join(',') : undefined,
                     } as any);
                     if (form.assigneeIds[0]) {
                         await tacheService.assign(created.data.data.id, Number(form.assigneeIds[0]));
@@ -220,6 +243,7 @@ const ProjetTachesPage: React.FC = () => {
                             statut: form.statut,
                             dateEcheance: form.dateEcheance || undefined,
                             urgente: form.urgente,
+                            typeDrive: form.typeDriveTypes.length > 0 ? form.typeDriveTypes.join(',') : undefined,
                         } as any);
                         await tacheService.assign(created.data.data.id, Number(memberId));
                     }
@@ -245,6 +269,7 @@ const ProjetTachesPage: React.FC = () => {
             statut: tache.statut,
             assigneeIds: tache.assigneeId ? [String(tache.assigneeId)] : [],
             urgente: tache.urgente ?? false,
+            typeDriveTypes: (tache as any).typeDrive ? (tache as any).typeDrive.split(',') : [],
         });
         setEditError(null);
     };
@@ -259,6 +284,7 @@ const ProjetTachesPage: React.FC = () => {
                 dateEcheance: editForm.dateEcheance || undefined,
                 statut: editForm.statut,
                 urgente: editForm.urgente,
+                typeDrive: editForm.typeDriveTypes.join(','),
             } as any);
             // Assign the first selected member (or clear)
             if (editForm.assigneeIds[0]) {
@@ -279,6 +305,15 @@ const ProjetTachesPage: React.FC = () => {
                 ? f.assigneeIds.filter(id => id !== memberId)
                 : [...f.assigneeIds, memberId];
             return { ...f, assigneeIds: ids };
+        });
+    };
+
+    const toggleEditDriveType = (type: string) => {
+        setEditForm(f => {
+            const types = f.typeDriveTypes.includes(type)
+                ? f.typeDriveTypes.filter(t => t !== type)
+                : [...f.typeDriveTypes, type];
+            return { ...f, typeDriveTypes: types };
         });
     };
 
@@ -434,6 +469,24 @@ const ProjetTachesPage: React.FC = () => {
                                                     {tache.dateEcheance && (
                                                         <p className="text-theme-xs text-gray-400">⏰ {tache.dateEcheance}</p>
                                                     )}
+                                                    {/* Drive info on card */}
+                                                    {(tache as any).driveLink && (() => {
+                                                        const links = ((tache as any).driveLink as string).split(',');
+                                                        const types = ((tache as any).typeDrive as string || '').split(',');
+                                                        return links.map((link, i) => (
+                                                            <a
+                                                                key={i}
+                                                                href={link}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="mt-0.5 flex items-center gap-1 text-[11px] text-brand-500 hover:text-brand-600 hover:underline"
+                                                                onMouseDown={e => e.stopPropagation()}
+                                                                onClick={e => e.stopPropagation()}
+                                                            >
+                                                                📁 Drive{types[i] ? ` · ${types[i]}` : ''} ↗
+                                                            </a>
+                                                        ));
+                                                    })()}
                                                 </div>
                                                 <div className="flex gap-1 flex-shrink-0">
                                                     <button
@@ -525,14 +578,37 @@ const ProjetTachesPage: React.FC = () => {
                                     onToggle={id => toggleTaskAssignee(idx, id)}
                                     label={`Assigner à${form.assigneeIds.length > 1 ? ' (crée une tâche par membre)' : ''}`}
                                 />
+                                {/* Drive type multi-select (Post/Video mutually exclusive, Documentation can combine) */}
+                                <div>
+                                    <p className="mb-1.5 text-theme-xs font-medium text-gray-600 dark:text-gray-400">📁 Dossier Drive (optionnel)</p>
+                                    <div className="flex gap-2">
+                                        {DRIVE_TYPES.map(type => (
+                                            <button
+                                                key={type}
+                                                type="button"
+                                                onClick={() => updateTaskForm(idx, 'typeDriveTypes', toggleDriveType(form.typeDriveTypes, type))}
+                                                className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-2 py-2 text-theme-xs font-medium transition-colors ${form.typeDriveTypes.includes(type)
+                                                    ? 'border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400'
+                                                    : 'border-gray-200 text-gray-500 hover:border-brand-200 dark:border-gray-700'
+                                                    }`}
+                                            >
+                                                {DRIVE_TYPE_ICON[type]} {type}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {form.typeDriveTypes.length > 0 && (
+                                        <p className="mt-1 text-theme-xs text-brand-500">
+                                            Dossiers Drive : {form.typeDriveTypes.join(' + ')}
+                                        </p>
+                                    )}
+                                </div>
                                 <button
                                     type="button"
                                     onClick={() => updateTaskForm(idx, 'urgente', !form.urgente)}
-                                    className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${
-                                        form.urgente
-                                            ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
-                                            : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
-                                    }`}
+                                    className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${form.urgente
+                                        ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
+                                        : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
+                                        }`}
                                 >
                                     🚨 {form.urgente ? 'Tâche urgente (actif)' : 'Marquer comme urgente'}
                                 </button>
@@ -592,11 +668,10 @@ const ProjetTachesPage: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setEditForm(f => ({ ...f, urgente: !f.urgente }))}
-                            className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${
-                                editForm.urgente
-                                    ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
-                                    : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
-                            }`}
+                            className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${editForm.urgente
+                                ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
+                                : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
+                                }`}
                         >
                             🚨 {editForm.urgente ? 'Tâche urgente (actif)' : 'Marquer comme urgente'}
                         </button>
@@ -631,6 +706,22 @@ const ProjetTachesPage: React.FC = () => {
                                 <p className="text-theme-sm text-gray-700 dark:text-gray-300">{viewingTache.dateEcheance || '-'}</p>
                             </div>
                         </div>
+                        {/* Drive link */}
+                        {(viewingTache as any).driveLink && (
+                            <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 dark:border-brand-500/30 dark:bg-brand-500/10">
+                                <p className="text-theme-xs font-medium text-brand-600 dark:text-brand-400 mb-1">
+                                    📁 Dossier Drive — {(viewingTache as any).typeDrive}
+                                </p>
+                                <a
+                                    href={(viewingTache as any).driveLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-theme-sm text-brand-600 underline hover:text-brand-700 dark:text-brand-400 break-all"
+                                >
+                                    Ouvrir le dossier Drive ↗
+                                </a>
+                            </div>
+                        )}
                         <div className="flex justify-end pt-2 gap-3">
                             <Button variant="outline" onClick={() => { setViewingTache(null); openEdit(viewingTache); }}>Modifier</Button>
                             <Button onClick={() => setViewingTache(null)}>Fermer</Button>

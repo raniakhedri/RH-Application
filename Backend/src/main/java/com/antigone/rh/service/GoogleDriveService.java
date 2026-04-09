@@ -75,13 +75,51 @@ public class GoogleDriveService {
         // Step 2: Get or create the month folder inside the client folder
         String monthFolderId = getOrCreateFolder(monthName, clientFolderId);
 
-        // Fetch and return the webViewLink of the month folder
-        File monthFolder = driveService.files().get(monthFolderId)
+        // Step 3: Get or create "MediaPlan" folder inside the month folder
+        String mediaPlanFolderId = getOrCreateFolder("MediaPlan", monthFolderId);
+
+        // Fetch and return the webViewLink of the MediaPlan folder
+        File mediaPlanFolder = driveService.files().get(mediaPlanFolderId)
                 .setFields("id, webViewLink")
                 .execute();
 
-        log.info("Drive path resolved. Month folder link: {}", monthFolder.getWebViewLink());
-        return monthFolder.getWebViewLink();
+        log.info("Drive path resolved. MediaPlan folder link: {}", mediaPlanFolder.getWebViewLink());
+        return mediaPlanFolder.getWebViewLink();
+    }
+
+    /**
+     * For Tâches: gets or creates [parent] / [clientName] / [Month Year] / [type]
+     * where type is "Post", "Video", or "Documentation"
+     * Returns the webViewLink of the type folder.
+     */
+    public String getOrCreateTacheTypeFolder(String clientName, LocalDate date, String type) throws IOException {
+        ensureInitialized();
+
+        String monthRaw = date.getMonth().getDisplayName(TextStyle.FULL, Locale.FRENCH);
+        String monthName = Character.toUpperCase(monthRaw.charAt(0)) + monthRaw.substring(1)
+                + " " + date.getYear();
+
+        String safeClientName = clientName.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+
+        log.info("Resolving Tâche Drive path: [root:{}] / [{}] / [{}] / [{}]", parentFolderId, safeClientName,
+                monthName, type);
+
+        // Step 1: Get or create client folder inside parent
+        String clientFolderId = getOrCreateFolder(safeClientName, parentFolderId);
+
+        // Step 2: Get or create month folder inside client
+        String monthFolderId = getOrCreateFolder(monthName, clientFolderId);
+
+        // Step 3: Get or create type folder (Post/Video/Documentation) inside month
+        String typeFolderId = getOrCreateFolder(type, monthFolderId);
+
+        // Fetch and return the webViewLink
+        File typeFolder = driveService.files().get(typeFolderId)
+                .setFields("id, webViewLink")
+                .execute();
+
+        log.info("Tâche Drive path resolved. Type folder link: {}", typeFolder.getWebViewLink());
+        return typeFolder.getWebViewLink();
     }
 
     /**

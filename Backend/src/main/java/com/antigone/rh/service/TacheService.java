@@ -9,21 +9,25 @@ import com.antigone.rh.repository.EmployeRepository;
 import com.antigone.rh.repository.ProjetRepository;
 import com.antigone.rh.repository.TacheRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class TacheService {
 
     private final TacheRepository tacheRepository;
     private final ProjetRepository projetRepository;
     private final EmployeRepository employeRepository;
     private final NotificationService notificationService;
+    private final GoogleDriveService googleDriveService;
 
     public List<Tache> findAll() {
         return tacheRepository.findAll();
@@ -58,6 +62,39 @@ public class TacheService {
         tache.setProjet(projet);
         validateTacheDate(tache, projet);
         tache.setStatut(StatutTache.TODO);
+
+        // Auto-create Drive folder(s) when typeDrive is provided (can be
+        // comma-separated e.g. "Post,Documentation")
+        if (tache.getTypeDrive() != null && !tache.getTypeDrive().isBlank()) {
+            try {
+                LocalDate folderDate = tache.getDateEcheance() != null
+                        ? tache.getDateEcheance()
+                        : LocalDate.now();
+                // Get client name from the project (fall back to project name or "Inconnu")
+                String clientName = (projet.getClient() != null && projet.getClient().getNom() != null)
+                        ? projet.getClient().getNom()
+                        : (projet.getNom() != null ? projet.getNom() : "Inconnu");
+
+                // Support multiple types (comma-separated) — create one folder per type
+                String[] types = tache.getTypeDrive().split(",");
+                java.util.List<String> links = new java.util.ArrayList<>();
+                for (String type : types) {
+                    String trimmedType = type.trim();
+                    if (!trimmedType.isEmpty()) {
+                        String link = googleDriveService.getOrCreateTacheTypeFolder(clientName, folderDate,
+                                trimmedType);
+                        links.add(link);
+                        log.info("Drive folder created for tache '{}' type '{}': {}", tache.getTitre(), trimmedType,
+                                link);
+                    }
+                }
+                tache.setDriveLink(String.join(",", links));
+            } catch (Exception e) {
+                log.error("Failed to create Drive folder for tache: {}", e.getMessage());
+                // Don't block creation — just skip Drive link
+            }
+        }
+
         Tache saved = tacheRepository.save(tache);
 
         // Notify assignee of the new task
@@ -185,6 +222,8 @@ public class TacheService {
                 .chefDeProjetId(chefId)
                 .projetStatut(projet != null ? projet.getStatut() : null)
                 .urgente(tache.isUrgente())
+                .typeDrive(tache.getTypeDrive())
+                .driveLink(tache.getDriveLink())
                 .assigneeId(tache.getAssignee() != null ? tache.getAssignee().getId() : null)
                 .membresProjet(membresProjet)
                 .build();
