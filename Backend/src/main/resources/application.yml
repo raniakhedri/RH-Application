@@ -9,6 +9,14 @@ app:
     enabled: true
   upload:
     dir: uploads/justificatifs
+  google:
+    drive:
+      service-account-key-path: ${GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_PATH:service-account.json}
+      tokens-directory-path: tokens
+      # Optional: Parent folder ID where all media plan folders will be created
+      parent-folder-id: ${GOOGLE_DRIVE_PARENT_FOLDER_ID:1Rk6jabDXelPFK_P1jkvABVhwf-hwnQdC}
+      # Must match the redirect URI registered in Google Cloud Console
+      redirect-uri: ${GOOGLE_DRIVE_REDIRECT_URI:http://localhost:8080/api/media-plans/google-drive/callback}
 
 spring:
   datasource:

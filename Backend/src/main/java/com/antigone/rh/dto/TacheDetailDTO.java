@@ -31,6 +31,9 @@ public class TacheDetailDTO {
 
     private boolean urgente;
 
+    private String typeDrive;
+    private String driveLink;
+
     // Assignee
     private Long assigneeId;
 

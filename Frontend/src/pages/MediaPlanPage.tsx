@@ -10,6 +10,7 @@ import {
     HiOutlineChevronDown,
     HiOutlineChevronRight,
 } from 'react-icons/hi';
+import { SiGoogledrive } from 'react-icons/si';
 import { useAuth } from '../context/AuthContext';
 import { mediaPlanService } from '../api/mediaPlanService';
 import { referentielService } from '../api/referentielService';
@@ -237,6 +238,7 @@ const MediaPlanPage: React.FC = () => {
     // Accordion states: track which batch accordions are open by batch key
     const [openBatches, setOpenBatches] = useState<Set<string>>(new Set());
     const [newPlanOpen, setNewPlanOpen] = useState(false);
+    const [isGoogleAuthorized, setIsGoogleAuthorized] = useState<boolean | null>(null);
 
     const toggleBatch = (batchKey: string) => {
         setOpenBatches(prev => {
@@ -260,7 +262,7 @@ const MediaPlanPage: React.FC = () => {
 
     const selectedClientId = clientIdParam ? Number(clientIdParam) : null;
 
-    useEffect(() => { loadReferentiels(); }, []);
+    useEffect(() => { loadReferentiels(); checkGoogleAuth(); }, []);
     useEffect(() => { loadData(); }, [selectedClientId]);
 
     // ── Column resize ──
@@ -295,6 +297,13 @@ const MediaPlanPage: React.FC = () => {
         resizeStartX.current = e.clientX;
         resizeStartW.current = colWidths[colIndex];
         setResizingCol(colIndex);
+    };
+
+    const checkGoogleAuth = async () => {
+        try {
+            const statusRes = await mediaPlanService.getGoogleAuthStatus();
+            setIsGoogleAuthorized(!!statusRes.data.data);
+        } catch (e) { console.error(e); }
     };
 
     const loadData = async () => {
@@ -454,6 +463,27 @@ const MediaPlanPage: React.FC = () => {
         return base + 'bg-white text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700';
     };
 
+    const handleGoogleAuth = async () => {
+        try {
+            const res = await mediaPlanService.getGoogleAuthUrl();
+            if (res.data.data) {
+                const url = res.data.data as string;
+                window.open(url, '_blank');
+                // Poll for status change
+                const interval = setInterval(async () => {
+                    const status = await mediaPlanService.getGoogleAuthStatus();
+                    if (status.data.data) {
+                        setIsGoogleAuthorized(true);
+                        clearInterval(interval);
+                    }
+                }, 3000);
+                setTimeout(() => clearInterval(interval), 60000);
+            }
+        } catch (e: any) {
+            alert('Erreur lors de la récupération de l\'URL d\'autorisation');
+        }
+    };
+
     // ===== CELL EDIT =====
     const handleCellChange = async (mp: MediaPlan, field: string, value: string) => {
         if (mp.statut === 'EN_ATTENTE' || mp.statut === 'APPROUVE') return;
@@ -496,26 +526,26 @@ const MediaPlanPage: React.FC = () => {
 
         confirm(`Confirmer et envoyer ${filledDrafts.length} ligne(s) remplie(s) au manager ?`, async () => {
             try {
-                for (const draft of filledDrafts) {
-                    const req: MediaPlanRequest = {
-                        titre: draft.titre || 'Sans titre',
-                        datePublication: draft.datePublication || undefined,
-                        heure: draft.heure || undefined,
-                        format: draft.format || undefined,
-                        type: draft.type || undefined,
-                        texteSurVisuel: draft.texteSurVisuel || undefined,
-                        inspiration: draft.inspiration || undefined,
-                        autresElements: draft.autresElements || undefined,
-                        platforme: draft.platforme || undefined,
-                        lienDrive: draft.lienDrive || undefined,
-                        etatPublication: draft.etatPublication || undefined,
-                        rectifs: draft.rectifs || undefined,
-                        remarques: draft.remarques || undefined,
-                        clientId: selectedClientId,
-                        createurId: user?.employeId || 0,
-                    };
-                    await mediaPlanService.create(req);
-                }
+                const requests: MediaPlanRequest[] = filledDrafts.map(draft => ({
+                    titre: draft.titre || 'Sans titre',
+                    datePublication: draft.datePublication || undefined,
+                    heure: draft.heure || undefined,
+                    format: draft.format || undefined,
+                    type: draft.type || undefined,
+                    texteSurVisuel: draft.texteSurVisuel || undefined,
+                    inspiration: draft.inspiration || undefined,
+                    autresElements: draft.autresElements || undefined,
+                    platforme: draft.platforme || undefined,
+                    lienDrive: draft.lienDrive || undefined,
+                    etatPublication: draft.etatPublication || undefined,
+                    rectifs: draft.rectifs || undefined,
+                    remarques: draft.remarques || undefined,
+                    clientId: selectedClientId,
+                    createurId: user?.employeId || 0,
+                }));
+
+                await mediaPlanService.createBulk(requests);
+
                 if (selectedClientId) clearDraftsFromStorage(selectedClientId, selectedMonth);
                 setNewPlanOpen(false);
                 await loadData();
@@ -770,9 +800,20 @@ const MediaPlanPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Media Plan</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Client : <span className="text-brand-500 font-medium">{clientName}</span>
-                    </p>
+                    <div className="flex items-center gap-4 mt-1">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Client : <span className="text-brand-500 font-medium">{clientName}</span>
+                        </p>
+                        <div
+                            className={`text-xs flex items-center gap-1.5 px-2 py-1 rounded ${isGoogleAuthorized
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                }`}
+                        >
+                            <SiGoogledrive size={14} className={isGoogleAuthorized ? 'text-green-600' : 'text-brand-500'} />
+                            {isGoogleAuthorized === null ? 'Vérification...' : isGoogleAuthorized ? 'Drive (Bot Connecté)' : 'Drive (Non configuré)'}
+                        </div>
+                    </div>
                 </div>
             </div>
 

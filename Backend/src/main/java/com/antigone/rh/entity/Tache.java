@@ -32,6 +32,14 @@ public class Tache {
     @Column(nullable = false)
     private boolean urgente = false;
 
+    /** Optional: Post, Video, Documentation */
+    @Column
+    private String typeDrive;
+
+    /** Auto-generated Google Drive folder link */
+    @Column(length = 512)
+    private String driveLink;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "projet_id", nullable = false)
     @ToString.Exclude

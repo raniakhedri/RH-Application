@@ -522,6 +522,25 @@ const MesTachesPage: React.FC = () => {
                                                         {tache.dateEcheance && (
                                                             <p className="mt-0.5 text-theme-xs text-gray-400">⏰ {tache.dateEcheance}</p>
                                                         )}
+                                                        {/* Drive links */}
+                                                        {(tache as any).driveLink && (() => {
+                                                            const links = ((tache as any).driveLink as string).split(',');
+                                                            const types = ((tache as any).typeDrive as string || '').split(',');
+                                                            return links.map((link: string, i: number) => (
+                                                                <a
+                                                                    key={i}
+                                                                    href={link}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="mt-0.5 flex items-center gap-1 text-[11px] text-brand-500 hover:text-brand-600 hover:underline"
+                                                                    onMouseDown={e => e.stopPropagation()}
+                                                                    onClick={e => e.stopPropagation()}
+                                                                    draggable={false}
+                                                                >
+                                                                    📁 Drive{types[i] ? ` · ${types[i]}` : ''} ↗
+                                                                </a>
+                                                            ));
+                                                        })()}
                                                     </div>
                                                 </div>
                                             </div>
@@ -555,11 +574,10 @@ const MesTachesPage: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setEditForm(f => ({ ...f, urgente: !f.urgente }))}
-                            className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${
-                                editForm.urgente
+                            className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${editForm.urgente
                                     ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
                                     : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
-                            }`}
+                                }`}
                         >
                             🚨 {editForm.urgente ? 'Tâche urgente (actif)' : 'Marquer comme urgente'}
                         </button>
