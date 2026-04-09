@@ -32,12 +32,20 @@ public class ClientController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ClientDTO>> create(
             @RequestParam("nom") String nom,
-            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "email", required = false) String email,
             @RequestParam(value = "telephone", required = false) String telephone,
-            @RequestParam(value = "responsable", required = false) String responsable,
+            @RequestParam(value = "adresse", required = false) String adresse,
+            @RequestParam(value = "notes", required = false) String notes,
+            @RequestParam(value = "contactNom", required = false) String contactNom,
+            @RequestParam(value = "contactPoste", required = false) String contactPoste,
+            @RequestParam(value = "contactEmail", required = false) String contactEmail,
+            @RequestParam(value = "contactTelephone", required = false) String contactTelephone,
+            @RequestParam(value = "createAccount", defaultValue = "false") boolean createAccount,
             @RequestParam(value = "file", required = false) MultipartFile file) {
         try {
-            ClientDTO dto = clientService.create(nom, description, telephone, responsable, file);
+            ClientDTO dto = clientService.create(nom, email, telephone, adresse, notes,
+                    contactNom, contactPoste, contactEmail, contactTelephone,
+                    createAccount, file);
             return ResponseEntity.ok(ApiResponse.ok("Client créé", dto));
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -49,12 +57,20 @@ public class ClientController {
     public ResponseEntity<ApiResponse<ClientDTO>> update(
             @PathVariable Long id,
             @RequestParam(value = "nom", required = false) String nom,
-            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "email", required = false) String email,
             @RequestParam(value = "telephone", required = false) String telephone,
-            @RequestParam(value = "responsable", required = false) String responsable,
+            @RequestParam(value = "adresse", required = false) String adresse,
+            @RequestParam(value = "notes", required = false) String notes,
+            @RequestParam(value = "contactNom", required = false) String contactNom,
+            @RequestParam(value = "contactPoste", required = false) String contactPoste,
+            @RequestParam(value = "contactEmail", required = false) String contactEmail,
+            @RequestParam(value = "contactTelephone", required = false) String contactTelephone,
+            @RequestParam(value = "regeneratePassword", defaultValue = "false") boolean regeneratePassword,
             @RequestParam(value = "file", required = false) MultipartFile file) {
         try {
-            ClientDTO dto = clientService.update(id, nom, description, telephone, responsable, file);
+            ClientDTO dto = clientService.update(id, nom, email, telephone, adresse, notes,
+                    contactNom, contactPoste, contactEmail, contactTelephone,
+                    regeneratePassword, file);
             return ResponseEntity.ok(ApiResponse.ok("Client modifié", dto));
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
