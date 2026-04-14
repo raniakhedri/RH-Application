@@ -21,6 +21,10 @@ public class ProjetDTO {
     private LocalDate dateFin;
     /** DETERMINE or INDETERMINE */
     private String typeProjet;
+
+    private Boolean isMediaPlanProject;
+    private Long mediaPlanLigneId;
+
     private EmployeDTO chefDeProjet;
     /** All chefs de projet (managers) */
     private List<EmployeDTO> chefsDeProjet;

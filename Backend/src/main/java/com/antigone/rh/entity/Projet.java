@@ -38,6 +38,12 @@ public class Projet {
     @Column(name = "type_projet", columnDefinition = "VARCHAR(50) DEFAULT 'DETERMINE'")
     private String typeProjet = "DETERMINE";
 
+    @Column(name = "is_media_plan_project")
+    private Boolean isMediaPlanProject;
+
+    @Column(name = "media_plan_ligne_id")
+    private Long mediaPlanLigneId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chef_projet_id")
     @ToString.Exclude

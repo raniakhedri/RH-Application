@@ -11,6 +11,7 @@ import com.antigone.rh.repository.ClientRepository;
 import com.antigone.rh.repository.EmployeRepository;
 import com.antigone.rh.repository.ProjetRepository;
 import com.antigone.rh.repository.EquipeRepository;
+import com.antigone.rh.repository.TacheRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class ProjetService {
     private final EquipeRepository equipeRepository;
     private final ClientRepository clientRepository;
     private final EmployeService employeService;
+    private final TacheRepository tacheRepository;
 
     public List<ProjetDTO> findAll() {
         return projetRepository.findAll().stream()
@@ -81,6 +83,8 @@ public class ProjetService {
         projet.setDateDebut(request.getDateDebut());
         projet.setDateFin(isIndetermine ? null : request.getDateFin());
         projet.setTypeProjet(type);
+        projet.setIsMediaPlanProject(Boolean.TRUE.equals(request.getIsMediaPlanProject()));
+        projet.setMediaPlanLigneId(request.getMediaPlanLigneId());
         projet.setStatut(StatutProjet.PLANIFIE);
 
         // Primary chef de projet (first in chefDeProjetIds or legacy single field)
@@ -152,6 +156,10 @@ public class ProjetService {
         projet.setDateDebut(request.getDateDebut());
         projet.setDateFin(isIndetermine ? null : request.getDateFin());
         projet.setTypeProjet(type);
+        if (request.getIsMediaPlanProject() != null)
+            projet.setIsMediaPlanProject(request.getIsMediaPlanProject());
+        if (request.getMediaPlanLigneId() != null)
+            projet.setMediaPlanLigneId(request.getMediaPlanLigneId());
 
         if (request.getStatut() != null && !request.getStatut().isBlank()) {
             try {
@@ -215,6 +223,20 @@ public class ProjetService {
                     : employeRepository.findAllById(request.getMembreIds());
             savedProjet.getMembres().clear();
             savedProjet.getMembres().addAll(newMembres);
+
+            // Auto-assign tasks for Media Plan Projects
+            if (Boolean.TRUE.equals(savedProjet.getIsMediaPlanProject()) && !savedProjet.getMembres().isEmpty()) {
+                Employe targetAssignee = savedProjet.getMembres().get(0);
+                List<com.antigone.rh.entity.Tache> tasks = tacheRepository.findByProjetId(savedProjet.getId());
+                if (tasks != null) {
+                    for (com.antigone.rh.entity.Tache t : tasks) {
+                        if (t.getAssignee() == null) {
+                            t.setAssignee(targetAssignee);
+                            tacheRepository.save(t);
+                        }
+                    }
+                }
+            }
         }
 
         return toDTO(projetRepository.save(savedProjet));
@@ -297,6 +319,8 @@ public class ProjetService {
                 .dateDebut(projet.getDateDebut())
                 .dateFin(projet.getDateFin())
                 .typeProjet(projet.getTypeProjet() != null ? projet.getTypeProjet() : "DETERMINE")
+                .isMediaPlanProject(projet.getIsMediaPlanProject())
+                .mediaPlanLigneId(projet.getMediaPlanLigneId())
                 .chefDeProjet(chefDTO)
                 .chefsDeProjet(chefsDTO)
                 .createurId(createurId)

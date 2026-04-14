@@ -262,6 +262,8 @@ export interface Projet {
   dateFin: string | null;
   /** 'DETERMINE' | 'INDETERMINE' */
   typeProjet?: string;
+  isMediaPlanProject?: boolean;
+  mediaPlanLigneId?: number;
   chefDeProjet?: Employe | null;
   /** All chefs de projet (managers) */
   chefsDeProjet?: Employe[];

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown, HiOutlineArrowLeft, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineCalendar } from 'react-icons/hi';
 import { projetService } from '../api/projetService';
 import { employeService } from '../api/employeService';
 import { demandeService } from '../api/demandeService';
 import { clientService } from '../api/clientService';
+import { mediaPlanService } from '../api/mediaPlanService';
 import type { ClientDTO } from '../api/clientService';
 import { useAuth } from '../context/AuthContext';
-import { Projet, StatutProjet, Employe, StatutDemande } from '../types';
+import { Projet, StatutProjet, Employe, StatutDemande, MediaPlan } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -52,8 +53,31 @@ const ProjetsPage: React.FC = () => {
   const [managers, setManagers] = useState<Employe[]>([]);
   const [congeAujourdhuiIds, setCongeAujourdhuiIds] = useState<Set<number>>(new Set());
 
-  // Accordion open states – key = clientId or 'none'
-  const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());
+  type ViewState = 'CLIENTS' | 'PROJECTS' | 'PROJECT_DETAILS';
+  const [viewState, setViewState] = useState<ViewState>('CLIENTS');
+  const [selectedClientKey, setSelectedClientKey] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Projet | null>(null);
+  const [mediaPlanDetails, setMediaPlanDetails] = useState<MediaPlan | null>(null);
+  const [loadingMediaPlan, setLoadingMediaPlan] = useState(false);
+
+  useEffect(() => {
+    if (viewState === 'PROJECT_DETAILS' && selectedProject?.isMediaPlanProject && selectedProject?.mediaPlanLigneId) {
+      const fetchMp = async () => {
+        setLoadingMediaPlan(true);
+        try {
+          const res = await mediaPlanService.getById(selectedProject.mediaPlanLigneId!);
+          setMediaPlanDetails(res.data.data);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoadingMediaPlan(false);
+        }
+      };
+      fetchMp();
+    } else {
+      setMediaPlanDetails(null);
+    }
+  }, [viewState, selectedProject]);
 
   // Multi-project creation modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -143,14 +167,7 @@ const ProjetsPage: React.FC = () => {
     return map;
   }, [projets, allClients]);
 
-  /* ── Toggle accordion ──────────────────────────────────────────────────── */
-  const toggleAccordion = (key: string) => {
-    setOpenAccordions(prev => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
-  };
+
 
   /* ── Open multi-project creation modal ─────────────────────────────────── */
   const openCreateModal = (clientKey: string) => {
@@ -353,165 +370,366 @@ const ProjetsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Client accordions ── */}
-      <div className="space-y-3">
-        {sortedEntries.map(([key, { client, projects }]) => {
-          const isOpen = openAccordions.has(key);
-
-          return (
-            <div key={key} className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-dark overflow-hidden">
-              {/* ── Accordion Header ── */}
-              <button
-                onClick={() => toggleAccordion(key)}
-                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <HiOutlineChevronDown
-                    size={18}
-                    className={`shrink-0 text-gray-400 transition-transform ${isOpen ? 'rotate-0' : '-rotate-90'}`}
-                  />
-                  {client ? (
-                    <div className="flex items-center gap-3 flex-wrap min-w-0 text-left">
-                      <span className="font-semibold text-gray-800 dark:text-white text-theme-sm">
-                        projet de {client.nom}
-                      </span>
-                      <span className="text-gray-400 dark:text-gray-500">___</span>
-                      <span className="text-theme-xs text-gray-500 dark:text-gray-400 max-w-[200px] truncate">
-                        {client.description || <span className="italic">pas de description</span>}
-                      </span>
-                      <span className="text-gray-400 dark:text-gray-500">___</span>
-                      {client.fileName ? (
-                        <span
-                          onClick={(e) => { e.stopPropagation(); openFile(client); }}
-                          className="flex items-center gap-1 text-brand-600 dark:text-brand-400 text-theme-xs font-medium hover:underline cursor-pointer"
-                        >
-                          <HiOutlineDocumentText size={14} />
-                          <span className="max-w-[80px] truncate">{client.fileName}</span>
-                          <HiOutlineDownload size={12} />
-                        </span>
-                      ) : (
-                        <span className="text-theme-xs text-gray-300 italic">aucun fichier</span>
-                      )}
-                      <span className="text-gray-400 dark:text-gray-500">___</span>
-                      <span className="text-theme-xs text-gray-400">
-                        {client.dateCreation ? new Date(client.dateCreation).toLocaleDateString('fr-FR') : '—'}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="font-semibold text-gray-500 dark:text-gray-400 text-theme-sm">Aucun client</span>
-                  )}
+      {/* ── CLIENTS VIEW ── */}
+      {viewState === 'CLIENTS' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sortedEntries.map(([key, { client, projects }]) => (
+            <div
+              key={key}
+              onClick={() => { setSelectedClientKey(key); setViewState('PROJECTS'); }}
+              className="group cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 hover:border-brand-300 hover:shadow-md transition-all dark:border-gray-700 dark:bg-gray-dark dark:hover:border-brand-500/50"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
+                    <HiOutlineBriefcase size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-theme-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
+                      {client ? client.nom : 'Sans Client'}
+                    </h3>
+                    <p className="text-theme-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
+                      {client?.description || 'Projets internes / Non assignés'}
+                    </p>
+                  </div>
                 </div>
-                <span className="shrink-0 ml-3 rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-bold text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
-                  {projects.length}
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 dark:border-gray-700/50">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
+                  {projects.length} projet{projects.length !== 1 ? 's' : ''}
                 </span>
+                <span className="text-theme-xs font-medium text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity dark:text-brand-400">
+                  Voir les projets →
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── PROJECTS VIEW ── */}
+      {viewState === 'PROJECTS' && (
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <button
+                onClick={() => setViewState('CLIENTS')}
+                className="mb-4 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#f29f44] transition-colors hover:text-[#d98b36]"
+              >
+                <HiOutlineArrowLeft size={14} />
+                Retour aux clients
               </button>
+              <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white">
+                {getClientForKey(selectedClientKey || 'none')?.nom || 'Sans Client'}
+                <span className="font-normal text-gray-400 dark:text-gray-500"> / Projets</span>
+              </h1>
+              <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">
+                {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).length} projets actifs pour ce client.
+              </p>
+            </div>
 
-              {/* ── Accordion Body ── */}
-              {isOpen && (
-                <div className="border-t border-gray-100 dark:border-gray-700">
-                  {projects.length > 0 ? (
-                    <table className="w-full text-left text-theme-sm">
-                      <thead className="bg-gray-50/60 dark:bg-gray-800/30">
-                        <tr>
-                          <th className="px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400 text-[11px] uppercase tracking-wide">Nom</th>
-                          <th className="px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400 text-[11px] uppercase tracking-wide">Statut</th>
-                          <th className="px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400 text-[11px] uppercase tracking-wide">Department Manager</th>
-                          <th className="px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400 text-[11px] uppercase tracking-wide">Membres</th>
-                          <th className="px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400 text-[11px] uppercase tracking-wide">Début</th>
-                          <th className="px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400 text-[11px] uppercase tracking-wide">Fin</th>
-                          <th className="px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400 text-[11px] uppercase tracking-wide text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                        {projects.map(p => {
-                          const chefs = getChefs(p);
-                          return (
-                            <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors">
-                              <td className="px-5 py-3">
-                                <span className="font-medium text-gray-800 dark:text-white">{p.nom}</span>
-                                {p.typeProjet === 'INDETERMINE' && (
-                                  <span className="ml-2 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">Indéterminé</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3"><Badge text={p.statut} variant={statutBadgeMap[p.statut] || 'neutral'} /></td>
-                              <td className="px-4 py-3">
-                                {chefs.length === 0 ? '-' : (
-                                  <div className="flex flex-wrap gap-1">
-                                    {chefs.map(c => (
-                                      <span key={c.id} className="flex items-center gap-1 rounded-full bg-warning-50 px-2 py-0.5 text-[11px] font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
-                                        {c.prenom} {c.nom}
-                                        {congeAujourdhuiIds.has(c.id) && <span className="text-[9px]">🏖️</span>}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-4 py-3">
-                                {!(p.membres ?? []).length ? <span className="text-gray-400">-</span> : (
-                                  <div className="flex flex-wrap gap-1">
-                                    {(p.membres ?? []).map(m => (
-                                      <span key={m.id} className="inline-flex items-center gap-1 rounded-full bg-secondary-50 px-2 py-0.5 text-[11px] font-medium text-secondary-700 dark:bg-secondary-500/10 dark:text-secondary-400">
-                                        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary-200 text-[9px] font-bold dark:bg-secondary-500/30">{m.prenom?.[0]}{m.nom?.[0]}</span>
-                                        {m.prenom} {m.nom}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{formatDate(p.dateDebut)}</td>
-                              <td className="px-4 py-3">
-                                {p.dateFin ? formatDate(p.dateFin) : <span className="text-purple-500 text-xs font-medium">Indéterminé</span>}
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex justify-end gap-1">
-                                  {(canManageAllProjets || canViewProjetsCreateTaches) && p.statut === 'PLANIFIE' && (
-                                    <button onClick={() => handleChangeStatut(p.id, StatutProjet.EN_COURS)} className="rounded-lg p-1.5 text-success-500 hover:bg-success-50" title="Démarrer">
-                                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    </button>
-                                  )}
-                                  {(canManageAllProjets || canViewProjetsCreateTaches) && p.statut === 'EN_COURS' && (
-                                    <button onClick={() => handleChangeStatut(p.id, StatutProjet.CLOTURE)} className="rounded-lg p-1.5 text-success-500 hover:bg-success-50" title="Clôturer">
-                                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    </button>
-                                  )}
-                                  {(canManageAllProjets || canViewProjetsCreateTaches) && (
-                                    <button onClick={() => navigate(`/projets/${p.id}/taches`)} className="rounded-lg p-1.5 text-secondary-500 hover:bg-secondary-50" title="Tâches"><HiOutlineClipboardList size={16} /></button>
-                                  )}
-                                  {(canManageAllProjets || canViewProjetsCreateTaches) && ((p.chefsDeProjet && p.chefsDeProjet.some(c => c.id === user?.employeId)) || p.chefDeProjet?.id === user?.employeId) && (
-                                    <button onClick={() => handleAffectMembers(p)} className="rounded-lg p-1.5 text-warning-500 hover:bg-warning-50" title="Affecter des membres">👥</button>
-                                  )}
-                                  {canManageAllProjets && <button onClick={() => handleEdit(p)} className="rounded-lg p-1.5 text-brand-500 hover:bg-brand-50" title="Modifier"><HiOutlinePencil size={16} /></button>}
-                                  {canManageAllProjets && <button onClick={() => handleDelete(p.id)} className="rounded-lg p-1.5 text-error-500 hover:bg-error-50"><HiOutlineTrash size={16} /></button>}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="px-5 py-6 text-center text-gray-400 text-theme-sm">Aucun projet pour ce client</div>
-                  )}
+            {canManageAllProjets && (
+              <button
+                onClick={() => openCreateModal(selectedClientKey || 'none')}
+                className="flex h-11 items-center gap-2 rounded-xl bg-[#f29f44] px-5 text-[13px] font-bold text-black shadow-lg shadow-orange-500/20 transition-all hover:bg-[#e0892f] hover:shadow-orange-500/30"
+              >
+                <HiOutlinePlus size={16} /> Nouveau Projet
+              </button>
+            )}
+          </div>
 
-                  {/* ── Add project button (opens popup) ── */}
-                  {canManageAllProjets && (
-                    <div className="border-t border-dashed border-orange-300 dark:border-orange-500/30">
-                      <button
-                        onClick={() => openCreateModal(key)}
-                        className="w-full flex items-center justify-center gap-2 px-5 py-3 text-theme-sm font-medium text-orange-600 hover:bg-orange-50/60 dark:text-orange-400 dark:hover:bg-orange-500/5 transition-colors"
-                      >
-                        <HiOutlinePlus size={16} /> Ajouter un nouveau projet
-                      </button>
-                    </div>
-                  )}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).map(p => {
+              const chefs = getChefs(p);
+
+              let statusBadgeClass = 'bg-[#292c35] text-gray-300 border-[#3e424e]';
+              if (p.statut === 'EN_COURS') statusBadgeClass = 'bg-[#1b3d3e] text-[#4dbfa2] border-[#2b5956]';
+              else if (p.statut === 'CLOTURE') statusBadgeClass = 'bg-[#1b3e24] text-[#4dbf6a] border-[#2b5936]';
+              else if (p.statut === 'ANNULE') statusBadgeClass = 'bg-[#3e1b1b] text-[#bf4d4d] border-[#592b2b]';
+
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => { setSelectedProject(p); setViewState('PROJECT_DETAILS'); }}
+                  className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[20px] border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 dark:border-[#272a35] dark:bg-[#1a1c22] dark:shadow-xl dark:shadow-black/20 dark:hover:border-[#3a3e4d]"
+                >
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <h3 className="line-clamp-2 flex-1 text-[17px] font-bold leading-snug text-gray-900 dark:text-gray-100">
+                      {p.nom}
+                    </h3>
+                    <span className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusBadgeClass}`}>
+                      {p.statut.replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  <div className="mb-6 flex items-center gap-2 text-[12px] font-medium text-gray-500 dark:text-gray-400">
+                    <HiOutlineCalendar size={15} className="text-gray-400 dark:text-gray-500" />
+                    <span>{formatDate(p.dateDebut)} — {p.dateFin ? formatDate(p.dateFin) : 'Indéterminé'}</span>
+                  </div>
+
+                  <div className="flex-1">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                      Managers
+                    </p>
+                    {chefs.length === 0 ? (
+                      <span className="text-[12px] font-medium text-gray-400 dark:text-gray-600">-</span>
+                    ) : (
+                      <div className="flex -space-x-2">
+                        {chefs.slice(0, 3).map((c, i) => (
+                          <div key={c.id} className="relative h-7 w-7 overflow-hidden rounded-full ring-2 ring-white dark:ring-[#1a1c22]">
+                            {congeAujourdhuiIds.has(c.id) && (
+                              <div className="absolute right-0 top-0 h-2 w-2 rounded-full border border-[#1a1c22] bg-orange-500 z-10" title="En congé"></div>
+                            )}
+                            {c.imageUrl ? (
+                              <img src={c.imageUrl} alt={c.nom} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-gray-200 dark:bg-[#2c303c] text-[9px] font-bold text-gray-700 dark:text-gray-300">
+                                {c.prenom?.[0]}{c.nom?.[0]}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {chefs.length > 3 && (
+                          <div className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 ring-2 ring-white dark:bg-[#292c35] dark:text-gray-300 dark:ring-[#1a1c22] text-[10px] font-bold">
+                            +{chefs.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4 dark:border-white/5">
+                    <span className="text-[11px] font-medium text-gray-500 dark:text-gray-500">
+                      {(p.membres || []).length} membres actifs
+                    </span>
+                    <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-hover:text-[#f29f44] dark:text-gray-500">
+                      Détails <span className="text-lg leading-none translate-y-[-1px]">→</span>
+                    </span>
+                  </div>
                 </div>
+              );
+            })}
+
+            {/* Nouveau Projet Card */}
+            {canManageAllProjets && (
+              <div
+                onClick={() => openCreateModal(selectedClientKey || 'none')}
+                className="group flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border-2 border-dashed border-gray-200 bg-transparent transition-all hover:border-gray-300 hover:bg-gray-50 dark:border-[#272a35] dark:hover:border-[#3a3e4d] dark:hover:bg-white/5"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors group-hover:bg-gray-200 group-hover:text-gray-600 dark:bg-[#1f222b] dark:text-gray-500 dark:group-hover:bg-[#2a2e3a] dark:group-hover:text-gray-300">
+                  <HiOutlinePlus size={20} />
+                </div>
+                <div className="text-center">
+                  <p className="text-[14px] font-bold text-gray-900 dark:text-gray-200">Nouveau Projet</p>
+                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-500">Lancer une nouvelle initiative pour ce client</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── PROJECT DETAILS VIEW ── */}
+      {viewState === 'PROJECT_DETAILS' && selectedProject && (
+        <div className="space-y-6 lg:space-y-8">
+          {/* Top Header Back Button */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setViewState('PROJECTS')}
+              className="flex items-center gap-2 text-[14px] font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            >
+              <HiOutlineArrowLeft size={18} />
+              Détails du Projet
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            {/* Info Block (Left) */}
+            <div className="max-w-2xl">
+              <h1 className="mb-4 text-4xl font-black tracking-tight text-gray-900 dark:text-white">
+                {selectedProject.nom}
+              </h1>
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-gray-600 dark:bg-[#252834] dark:text-[#a0a8c2]">
+                  {selectedProject.statut.replace('_', ' ')}
+                </span>
+                {selectedProject.typeProjet === 'INDETERMINE' && (
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-gray-600 dark:bg-[#252834] dark:text-[#a0a8c2]">
+                    Projet Indéterminé
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-[13px] font-medium text-gray-500 dark:text-gray-400">
+                <HiOutlineCalendar size={16} />
+                <span>{formatDate(selectedProject.dateDebut)} au {selectedProject.dateFin ? formatDate(selectedProject.dateFin) : 'Non défini'}</span>
+              </div>
+            </div>
+
+            {/* Actions Block (Right) */}
+            <div className="flex shrink-0 flex-wrap gap-3">
+              {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'PLANIFIE' && (
+                <button
+                  onClick={() => {
+                    handleChangeStatut(selectedProject.id, StatutProjet.EN_COURS);
+                    setSelectedProject({ ...selectedProject, statut: StatutProjet.EN_COURS });
+                  }}
+                  className="flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0ed96f] px-5 text-[13px] font-bold text-[#10301a] shadow-lg shadow-green-500/20 transition-colors hover:bg-[#0bc061]"
+                >
+                  Démarrer
+                </button>
+              )}
+              {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'EN_COURS' && (
+                <button
+                  onClick={() => {
+                    handleChangeStatut(selectedProject.id, StatutProjet.CLOTURE);
+                    setSelectedProject({ ...selectedProject, statut: StatutProjet.CLOTURE });
+                  }}
+                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#333745] bg-[#242731] px-4 text-[13px] font-medium text-gray-200 transition-colors hover:bg-[#2d313c]"
+                >
+                  Clôturer
+                </button>
+              )}
+              {(canManageAllProjets || canViewProjetsCreateTaches) && (
+                <button
+                  onClick={() => navigate(`/projets/${selectedProject.id}/taches`)}
+                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#333745] bg-[#242731] px-4 text-[13px] font-medium text-gray-200 transition-colors hover:bg-[#2d313c]"
+                >
+                  <HiOutlineClipboardList size={16} /> Tâches
+                </button>
+              )}
+              {(canManageAllProjets || canViewProjetsCreateTaches) && ((selectedProject.chefsDeProjet && selectedProject.chefsDeProjet.some(c => c.id === user?.employeId)) || selectedProject.chefDeProjet?.id === user?.employeId) && (
+                <button
+                  onClick={() => handleAffectMembers(selectedProject)}
+                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#333745] bg-[#242731] px-4 text-[13px] font-medium text-gray-200 transition-colors hover:bg-[#2d313c]"
+                >
+                  <HiOutlineUserGroup size={16} /> Affecter
+                </button>
+              )}
+              {canManageAllProjets && (
+                <button
+                  onClick={() => handleEdit(selectedProject)}
+                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#333745] bg-[#242731] px-4 text-[13px] font-medium text-gray-200 transition-colors hover:bg-[#2d313c]"
+                >
+                  <HiOutlinePencil size={16} /> Modifier
+                </button>
+              )}
+              {canManageAllProjets && (
+                <button
+                  onClick={() => handleDelete(selectedProject.id)}
+                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#4a2e30] bg-[#2d1b1c] px-4 text-[13px] font-medium text-[#e06c75] transition-colors hover:bg-[#3d2425]"
+                >
+                  <HiOutlineTrash size={16} /> Supprimer
+                </button>
               )}
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
+          {/* Media Plan Details Panel */}
+          {selectedProject.isMediaPlanProject && mediaPlanDetails && (
+            <div className="mb-6 rounded-[20px] border border-brand-200 bg-brand-50 p-6 dark:border-[#2d251d] dark:bg-[#1a1612]">
+              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-[#f29f44] dark:text-[#f29f44]">
+                <HiOutlineDocumentText size={16} /> Détails Media Plan
+              </h4>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Format</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.format}</span></div>
+                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Type</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.type || '-'}</span></div>
+                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Publication</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.datePublication ? formatDate(mediaPlanDetails.datePublication) : '-'}</span></div>
+                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Lien Drive</span>
+                  {mediaPlanDetails.lienDrive ? <a href={mediaPlanDetails.lienDrive} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#f29f44] underline hover:text-[#e0892f]">Ouvrir Drive</a> : <span className="text-sm text-gray-500">-</span>}</div>
+              </div>
+              <div className="mt-4 border-t border-brand-200/50 pt-4 dark:border-[#2d251d]">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <span className="block text-[10px] font-bold uppercase text-gray-500">Texte sur Visuel</span>
+                    <p className="mt-1 text-[13px] text-gray-700 dark:text-gray-300">{mediaPlanDetails.texteSurVisuel || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold uppercase text-gray-500">Inspiration / Autres</span>
+                    <div className="mt-1 flex flex-wrap gap-2 text-[13px] text-gray-700 dark:text-gray-300">
+                      {mediaPlanDetails.inspiration ? (
+                        mediaPlanDetails.inspiration.startsWith('http') || mediaPlanDetails.inspiration.startsWith('www') ?
+                          <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer" className="text-[#f29f44] hover:underline">Inspiration (Lien)</a>
+                          : <span>{mediaPlanDetails.inspiration}</span>
+                      ) : '-'}
+                      {mediaPlanDetails.autresElements && <span className="ml-2 border-l border-gray-300 pl-2 dark:border-gray-700">{mediaPlanDetails.autresElements}</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Managers Panel */}
+            <div>
+              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-gray-800 dark:text-gray-100">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-[#f29f44]">&starf;</span>
+                Department Managers
+              </h4>
+              <div className="rounded-[20px] border border-gray-100 bg-gray-50/50 p-6 dark:border-[#1e212b] dark:bg-[#14161d] min-h-[160px]">
+                <div className="flex flex-col gap-3">
+                  {getChefs(selectedProject).length === 0 ? (
+                    <p className="py-4 text-center text-[13px] font-medium italic text-gray-400 dark:text-[#4d5265]">Aucun manager assigné</p>
+                  ) : (
+                    getChefs(selectedProject).map(m => (
+                      <div key={m.id} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#262a36] dark:bg-[#1a1c23]">
+                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-[14px] font-bold text-brand-600 dark:bg-[#eb9d47] dark:text-white">
+                          {congeAujourdhuiIds.has(m.id) && (
+                            <div className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-white bg-error-500 dark:border-[#1a1c23] z-10" title="En congé"></div>
+                          )}
+                          {m.imageUrl ? (
+                            <img src={m.imageUrl} alt={m.nom} className="h-full w-full object-cover" />
+                          ) : (
+                            <span>{m.prenom?.[0]}{m.nom?.[0]}</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{m.prenom} {m.nom}</p>
+                          <p className="text-[12px] font-medium text-gray-500 dark:text-[#8b93a8]">Manager</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Members Panel */}
+            <div>
+              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-gray-800 dark:text-gray-100">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-[#f29f44]"><HiOutlineUserGroup size={12} /></span>
+                Membres du projet
+              </h4>
+              <div className="rounded-[20px] border border-gray-100 bg-gray-50/50 p-6 dark:border-[#1e212b] dark:bg-[#14161d] min-h-[160px]">
+                <div className="flex flex-col gap-3">
+                  {!(selectedProject.membres ?? []).length ? (
+                    <p className="flex h-[80px] items-center justify-center text-[13px] font-medium italic text-gray-400 dark:text-[#4d5265]">Aucun membre assigné</p>
+                  ) : (
+                    (selectedProject.membres ?? []).map(m => (
+                      <div key={m.id} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#262a36] dark:bg-[#1a1c23]">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-[14px] font-bold text-gray-600 dark:bg-[#2c303c] dark:text-[#a5acbe]">
+                          {m.imageUrl ? (
+                            <img src={m.imageUrl} alt={m.nom} className="h-full w-full object-cover" />
+                          ) : (
+                            <span>{m.prenom?.[0]}{m.nom?.[0]}</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{m.prenom} {m.nom}</p>
+                          <p className="text-[12px] font-medium text-gray-500 dark:text-[#8b93a8]">{m.departement || 'Membre'}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}     {/* ══════════════════════════════════════════════════════════════════════
           MULTI-PROJECT CREATION MODAL
          ══════════════════════════════════════════════════════════════════════ */}
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Créer des projets" size="lg">
