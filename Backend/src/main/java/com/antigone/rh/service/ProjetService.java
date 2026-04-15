@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -254,6 +255,9 @@ public class ProjetService {
     public ProjetDTO changeStatut(Long id, StatutProjet statut) {
         Projet projet = findEntityById(id);
         projet.setStatut(statut);
+        if (statut == StatutProjet.CLOTURE && projet.getDateCloture() == null) {
+            projet.setDateCloture(LocalDateTime.now());
+        }
         return toDTO(projetRepository.save(projet));
     }
 

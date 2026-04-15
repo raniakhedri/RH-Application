@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,4 +92,21 @@ public class Projet {
     @EqualsAndHashCode.Exclude
     @Builder.Default
     private List<Employe> membres = new ArrayList<>();
+
+    // ── Lifecycle timestamps ───────────────────────────────────────────────────
+
+    /** Precise timestamp of project creation (opening by Admin) */
+    @Column(name = "date_creation")
+    private LocalDateTime dateCreation;
+
+    /** Precise timestamp of project closure */
+    @Column(name = "date_cloture")
+    private LocalDateTime dateCloture;
+
+    @PrePersist
+    public void prePersist() {
+        if (dateCreation == null) {
+            dateCreation = LocalDateTime.now();
+        }
+    }
 }

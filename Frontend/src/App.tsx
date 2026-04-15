@@ -40,6 +40,7 @@ import DepartementsPage from './pages/DepartementsPage';
 import ClientsPage from './pages/ClientsPage';
 import MediaPlanPage from './pages/MediaPlanPage';
 import TousLesMediaPlanPage from './pages/TousLesMediaPlanPage';
+import RapportProjetPage from './pages/RapportProjetPage';
 import { NotificationProvider } from './context/NotificationContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -107,6 +108,7 @@ const App: React.FC = () => {
           <Route path="media-plan" element={<PermissionRoute permission="VIEW_MEDIA_PLAN"><MediaPlanPage /></PermissionRoute>} />
           <Route path="media-plan/:clientId" element={<PermissionRoute permission="VIEW_MEDIA_PLAN"><MediaPlanPage /></PermissionRoute>} />
           <Route path="admin/media-plans" element={<PermissionRoute permission="VIEW_TOUS_MEDIA_PLAN"><TousLesMediaPlanPage /></PermissionRoute>} />
+          <Route path="rapport-projet" element={<PermissionRoute permission="VIEW_PROJETS"><RapportProjetPage /></PermissionRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

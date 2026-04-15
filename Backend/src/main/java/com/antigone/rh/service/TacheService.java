@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -116,6 +117,7 @@ public class TacheService {
                 .orElseThrow(() -> new RuntimeException("Employé non trouvé"));
 
         tache.setAssignee(employe);
+        tache.setDateAssignation(LocalDateTime.now());
         Tache saved = tacheRepository.save(tache);
 
         // Notify the newly assigned employee
@@ -131,6 +133,17 @@ public class TacheService {
     public Tache changeStatut(Long tacheId, StatutTache statut) {
         Tache tache = findById(tacheId);
         tache.setStatut(statut);
+
+        // Record lifecycle timestamps
+        if (statut == StatutTache.IN_PROGRESS && tache.getDateDebutExecution() == null) {
+            tache.setDateDebutExecution(LocalDateTime.now());
+        } else if (statut == StatutTache.DONE) {
+            if (tache.getDateDebutExecution() == null) {
+                tache.setDateDebutExecution(LocalDateTime.now());
+            }
+            tache.setDateFinExecution(LocalDateTime.now());
+        }
+
         Tache saved = tacheRepository.save(tache);
 
         // Notify chef de projet when task is marked as DONE
