@@ -1,20 +1,21 @@
 const fs = require('fs');
-const path = 'c:/Users/alaou/OneDrive/Documents/test-merge-ala-antigonerh/RH-Application/Frontend/src/pages/ProjetsPage.tsx';
+const pathLib = require('path');
+const path = pathLib.join(__dirname, 'src', 'pages', 'ProjetsPage.tsx');
 
 let content = fs.readFileSync(path, 'utf8');
 
 // 1. Update Imports
 if (!content.includes('HiOutlineArrowLeft')) {
-    content = content.replace(
-        "import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown } from 'react-icons/hi';",
-        "import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown, HiOutlineArrowLeft, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineCalendar } from 'react-icons/hi';"
-    );
+  content = content.replace(
+    "import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown } from 'react-icons/hi';",
+    "import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown, HiOutlineArrowLeft, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineCalendar } from 'react-icons/hi';"
+  );
 }
 
 // 2. Replace Accordion state with View state
 content = content.replace(
-    "// Accordion open states – key = clientId or 'none'\n  const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());",
-    `type ViewState = 'CLIENTS' | 'PROJECTS' | 'PROJECT_DETAILS';
+  "// Accordion open states – key = clientId or 'none'\n  const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());",
+  `type ViewState = 'CLIENTS' | 'PROJECTS' | 'PROJECT_DETAILS';
   const [viewState, setViewState] = useState<ViewState>('CLIENTS');
   const [selectedClientKey, setSelectedClientKey] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Projet | null>(null);`
@@ -288,9 +289,9 @@ const startIndex = content.indexOf('{/* ── Client accordions ── */}');
 const endIndex = content.indexOf('      {/* ══════════════════════════════════════════════════════════════════════');
 
 if (startIndex !== -1 && endIndex !== -1) {
-    const newContent = content.substring(0, startIndex) + newRenderContent.trim() + '\\n\\n      ' + content.substring(endIndex);
-    fs.writeFileSync(path, newContent);
-    console.log('Successfully updated ProjetsPage.tsx');
+  const newContent = content.substring(0, startIndex) + newRenderContent.trim() + '\\n\\n      ' + content.substring(endIndex);
+  fs.writeFileSync(path, newContent);
+  console.log('Successfully updated ProjetsPage.tsx');
 } else {
-    console.error('Could not find injection boundaries.');
+  console.error('Could not find injection boundaries.');
 }

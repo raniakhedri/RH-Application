@@ -1,5 +1,6 @@
 const fs = require('fs');
-const path = 'c:/Users/alaou/OneDrive/Documents/test-merge-ala-antigonerh/RH-Application/frontend/src/pages/ProjetsPage.tsx';
+const pathLib = require('path');
+const path = pathLib.join(__dirname, 'src', 'pages', 'ProjetsPage.tsx');
 
 let content = fs.readFileSync(path, 'utf8');
 
@@ -295,9 +296,9 @@ const startIndex = content.indexOf('{/* ── PROJECTS VIEW ── */}');
 const endIndex = content.indexOf('{/* ══════════════════════════════════════════════════════════════════════');
 
 if (startIndex !== -1 && endIndex !== -1) {
-    const updated = content.substring(0, startIndex) + newViews.substring(6) + '\\n\\n      ' + content.substring(endIndex);
-    fs.writeFileSync(path, updated);
-    console.log('Successfully updated ProjetsPage details layout.');
+  const updated = content.substring(0, startIndex) + newViews.substring(6) + '\\n\\n      ' + content.substring(endIndex);
+  fs.writeFileSync(path, updated);
+  console.log('Successfully updated ProjetsPage details layout.');
 } else {
-    console.error('Could not find bounds to inject the new components.');
+  console.error('Could not find bounds to inject the new components.');
 }

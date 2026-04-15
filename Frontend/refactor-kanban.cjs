@@ -1,5 +1,6 @@
 const fs = require('fs');
-const path = 'c:/Users/alaou/OneDrive/Documents/test-merge-ala-antigonerh/RH-Application/frontend/src/pages/ProjetTachesPage.tsx';
+const pathLib = require('path');
+const path = pathLib.join(__dirname, 'src', 'pages', 'ProjetTachesPage.tsx');
 
 let content = fs.readFileSync(path, 'utf8');
 
