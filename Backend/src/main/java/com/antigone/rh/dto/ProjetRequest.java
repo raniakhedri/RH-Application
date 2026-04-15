@@ -13,6 +13,8 @@ public class ProjetRequest {
     private String statut;
     /** DETERMINE or INDETERMINE */
     private String typeProjet;
+    private Boolean isMediaPlanProject;
+    private Long mediaPlanLigneId;
     /** Single chef (legacy, kept for backward compat) */
     private Long chefDeProjetId;
     /**

@@ -38,6 +38,7 @@ public class MediaPlanService {
     private final EmployeRepository employeRepository;
     private final ProjetService projetService;
     private final ProjetRepository projetRepository;
+    private final com.antigone.rh.repository.TacheRepository tacheRepository;
     private final GoogleDriveService googleDriveService;
 
     // =============================================
@@ -272,26 +273,19 @@ public class MediaPlanService {
         mp.setStatut(StatutMediaPlan.APPROUVE);
         mediaPlanRepository.save(mp);
 
-        // Build project name: "media plan projet de [client] pour [month]"
-        String clientName = mp.getClient() != null ? mp.getClient().getNom() : "Inconnu";
-        String monthLabel = "";
-        if (mp.getDatePublication() != null) {
-            String[] monthNames = { "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-                    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre" };
-            monthLabel = monthNames[mp.getDatePublication().getMonthValue() - 1]
-                    + " " + mp.getDatePublication().getYear();
-        }
-        String projetNom = "media plan projet de " + clientName + " pour " + monthLabel;
+        // Check if format contains "Video" (case insensitive)
+        if (mp.getFormat() != null && mp.getFormat().toLowerCase().contains("video")) {
+            String projetNom = "👉 Mediaplan: " + (mp.getTitre() != null ? mp.getTitre() : "Sans titre");
 
-        // Only create project if one with this name + client doesn't already exist
-        Long clientId = mp.getClient() != null ? mp.getClient().getId() : null;
-        if (clientId == null || !projetRepository.existsByNomAndClientId(projetNom, clientId)) {
             ProjetRequest projetReq = new ProjetRequest();
             projetReq.setNom(projetNom);
             projetReq.setDateDebut(LocalDate.now());
             projetReq.setTypeProjet("INDETERMINE");
             projetReq.setStatut("PLANIFIE");
+            projetReq.setIsMediaPlanProject(true);
+            projetReq.setMediaPlanLigneId(mp.getId());
 
+            Long clientId = mp.getClient() != null ? mp.getClient().getId() : null;
             if (clientId != null) {
                 projetReq.setClientId(clientId);
             }
@@ -309,7 +303,25 @@ public class MediaPlanService {
             projetReq.setChefDeProjetIds(chefIds);
             projetReq.setCreateurId(managerId);
 
-            projetService.create(projetReq);
+            com.antigone.rh.dto.ProjetDTO pDTO = projetService.create(projetReq);
+
+            // Auto-create default tasks
+            com.antigone.rh.entity.Projet createdProjet = projetRepository.findById(pDTO.getId()).orElse(null);
+            if (createdProjet != null) {
+                String[] taskNames = {
+                        "Tournage - " + (mp.getTitre() != null ? mp.getTitre() : "Vidéo"),
+                        "Montage - " + (mp.getTitre() != null ? mp.getTitre() : "Vidéo"),
+                        "Validation & Publication - " + (mp.getTitre() != null ? mp.getTitre() : "Vidéo")
+                };
+                for (String tName : taskNames) {
+                    com.antigone.rh.entity.Tache t = new com.antigone.rh.entity.Tache();
+                    t.setTitre(tName);
+                    t.setStatut(com.antigone.rh.enums.StatutTache.TODO);
+                    t.setProjet(createdProjet);
+                    t.setUrgente(false);
+                    tacheRepository.save(t);
+                }
+            }
         }
 
         return toDTO(mp);

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineArrowLeft } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineArrowLeft, HiOutlineCalendar, HiOutlineClock, HiOutlineCheckCircle, HiOutlineChartBar, HiDotsHorizontal } from 'react-icons/hi';
 import { tacheService } from '../api/tacheService';
 import { projetService } from '../api/projetService';
 import { employeService } from '../api/employeService';
-import { Tache, Projet, Employe, StatutTache } from '../types';
+import { mediaPlanService } from '../api/mediaPlanService';
+import { Tache, Projet, Employe, StatutTache, MediaPlan } from '../types';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -101,6 +102,7 @@ const ProjetTachesPage: React.FC = () => {
 
     // View modal
     const [viewingTache, setViewingTache] = useState<Tache | null>(null);
+    const [mediaPlanDetails, setMediaPlanDetails] = useState<MediaPlan | null>(null);
 
     const pid = Number(projetId);
 
@@ -119,6 +121,14 @@ const ProjetTachesPage: React.FC = () => {
             const p: Projet = pRes.data.data;
             setProjet(p);
             setTaches(tRes.data.data || []);
+
+            if (p.isMediaPlanProject && p.mediaPlanLigneId) {
+                mediaPlanService.getById(p.mediaPlanLigneId)
+                    .then(r => setMediaPlanDetails(r.data.data))
+                    .catch(e => console.error(e));
+            } else {
+                setMediaPlanDetails(null);
+            }
 
             // Build the full member map (all chefs + all membres) for display purposes
             const allMemberMap = new Map<number, Employe>();
@@ -407,9 +417,11 @@ const ProjetTachesPage: React.FC = () => {
                         </p>
                     </div>
                 </div>
-                <Button onClick={() => { setShowCreate(true); setTaskForms([emptyForm()]); setCreateError(null); }}>
-                    <HiOutlinePlus size={18} /> Nouvelles tâches
-                </Button>
+                {!projet?.isMediaPlanProject && (
+                    <Button onClick={() => { setShowCreate(true); setTaskForms([emptyForm()]); setCreateError(null); }}>
+                        <HiOutlinePlus size={18} /> Nouvelles tâches
+                    </Button>
+                )}
             </div>
 
             {/* Hint */}
@@ -421,112 +433,115 @@ const ProjetTachesPage: React.FC = () => {
             {taches.length === 0 ? (
                 <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center dark:border-gray-800 dark:bg-gray-dark">
                     <p className="text-gray-400">Aucune tâche pour ce projet.</p>
-                    <Button className="mt-4" onClick={() => setShowCreate(true)}>
-                        <HiOutlinePlus size={16} /> Créer la première tâche
-                    </Button>
+                    {!projet?.isMediaPlanProject && (
+                        <Button className="mt-4" onClick={() => setShowCreate(true)}>
+                            <HiOutlinePlus size={16} /> Créer la première tâche
+                        </Button>
+                    )}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     {(['TODO', 'IN_PROGRESS', 'DONE'] as const).map(colStatut => (
                         <div
                             key={colStatut}
                             onDragOver={e => handleDragOver(e, colStatut)}
                             onDrop={e => handleDrop(e, colStatut as StatutTache)}
                             onDragLeave={handleDragLeave}
-                            className={`rounded-2xl border-2 bg-white transition-colors dark:bg-gray-dark ${dragOverCol === colStatut ? 'border-brand-400 bg-brand-50/30 dark:bg-brand-500/5' : columnColors[colStatut]}`}
+                            className={`rounded-2xl transition-colors dark:bg-[#13161f] bg-gray-50 border border-gray-200 dark:border-transparent ${dragOverCol === colStatut ? 'ring-2 ring-brand-500/50' : ''}`}
                         >
-                            <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-700">
-                                <Badge text={statutLabels[colStatut]} variant={statutBadgeMap[colStatut]} />
-                                <span className="text-theme-xs text-gray-400">{grouped[colStatut].length}</span>
+                            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-800 dark:text-white">
+                                        {colStatut === 'TODO' ? 'TO DO' : colStatut === 'IN_PROGRESS' ? 'IN PROGRESS' : 'DONE'}
+                                    </span>
+                                    <span className="flex h-5 items-center justify-center rounded-md bg-gray-200 px-2 text-[10px] font-bold text-gray-600 dark:bg-[#24283b] dark:text-[#565f89]">
+                                        {grouped[colStatut].length}
+                                    </span>
+                                </div>
+                                <button className="text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300">
+                                    <HiDotsHorizontal size={16} />
+                                </button>
                             </div>
-                            <div className="min-h-[120px] space-y-2 p-3">
+                            <div className="min-h-[120px] space-y-3 p-3">
                                 {grouped[colStatut].length === 0 ? (
                                     <div className={`flex items-center justify-center rounded-xl border-2 border-dashed py-8 transition-colors ${dragOverCol === colStatut ? 'border-brand-300 text-brand-400' : 'border-gray-200 text-gray-300 dark:border-gray-700'}`}>
                                         <p className="text-theme-xs">Déposer ici</p>
                                     </div>
                                 ) : (
-                                    grouped[colStatut].map(tache => (
-                                        <div
-                                            key={tache.id}
-                                            draggable
-                                            onDragStart={e => handleDragStart(e, tache.id)}
-                                            className={`cursor-grab rounded-xl border-2 bg-gray-50 px-3 py-2.5 shadow-sm transition-shadow active:cursor-grabbing active:shadow-md dark:bg-gray-800 ${tache.urgente ? 'border-error-400 dark:border-error-500' : 'border-gray-100 dark:border-gray-700'}`}
-                                        >
-                                            {/* Drag handle hint */}
-                                            <div className="mb-1.5 flex items-start justify-between gap-2">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-1.5">
-                                                        {tache.urgente && (
-                                                            <span className="shrink-0 rounded-full bg-error-50 px-1.5 py-0.5 text-[10px] font-bold text-error-600 dark:bg-error-500/10 dark:text-error-400">🚨 Urgent</span>
-                                                        )}
-                                                        <p className="truncate text-theme-sm font-medium text-gray-800 dark:text-white">
-                                                            {tache.titre}
-                                                        </p>
+                                    grouped[colStatut].map(tache => {
+                                        let typeText = "TÂCHE";
+                                        if ((tache as any).typeDrive) {
+                                            const typesArr = ((tache as any).typeDrive as string).split(',');
+                                            if (typesArr.length > 0 && typesArr[0]) typeText = typesArr[0].toUpperCase();
+                                        }
+                                        if (projet?.isMediaPlanProject) typeText = "MEDIA PLAN";
+
+                                        let topRight = null;
+                                        if (tache.statut === 'DONE' && !tache.dateEcheance) {
+                                            topRight = <span className="flex items-center gap-1 text-[11px] font-semibold text-success-600 dark:text-[#9ece6a]"><HiOutlineCheckCircle size={14} /> Terminé</span>;
+                                        } else if (tache.statut === 'IN_PROGRESS' && !tache.dateEcheance) {
+                                            topRight = <span className="flex items-center gap-1 text-[11px] font-semibold text-warning-600 dark:text-[#e0af68]"><HiOutlineClock size={14} /> En cours</span>;
+                                        } else if (tache.dateEcheance) {
+                                            topRight = <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-[#565f89]"><HiOutlineCalendar size={14} /> {tache.dateEcheance.substring(5).replace('-', '/')}</span>;
+                                        } else {
+                                            topRight = <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 dark:text-[#565f89]">--</span>;
+                                        }
+
+                                        let assigneeInitials = "U";
+                                        let assigneeName = getMemberNom(tache.assigneeId);
+                                        if (assigneeName && assigneeName.trim() !== '-') {
+                                            const parts = assigneeName.split(' ');
+                                            if (parts.length >= 2) {
+                                                assigneeInitials = (parts[0][0] + parts[1][0]).toUpperCase();
+                                            } else {
+                                                assigneeInitials = parts[0].substring(0, 2).toUpperCase();
+                                            }
+                                        }
+
+                                        return (
+                                            <div
+                                                key={tache.id}
+                                                draggable
+                                                onClick={() => setViewingTache(tache)}
+                                                onDragStart={e => handleDragStart(e, tache.id)}
+                                                className={`cursor-pointer cursor-grab active:cursor-grabbing rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-[#1a1b26] ${tache.urgente ? 'border-error-300 dark:border-[#f7768e]/50 hover:border-error-400 dark:hover:border-[#f7768e]' : 'border-gray-200 dark:border-[#292e42] hover:border-brand-300 dark:hover:border-[#3b4261]'}`}
+                                            >
+                                                <div className="mb-3 flex items-start justify-between gap-2">
+                                                    <span className="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:bg-[#292e42] dark:text-gray-300">
+                                                        {typeText}
+                                                    </span>
+                                                    {topRight}
+                                                </div>
+                                                <p className="mb-4 text-[13px] font-bold leading-relaxed text-gray-800 line-clamp-3 dark:text-gray-100">
+                                                    {tache.titre}
+                                                </p>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-600 shadow-sm ring-2 ring-white dark:bg-[#3d59a1] dark:text-white dark:ring-[#1a1b26]" title={assigneeName}>
+                                                        {assigneeInitials}
                                                     </div>
-                                                    <p className="mt-0.5 text-theme-xs text-gray-500">
-                                                        👤 {getMemberNom(tache.assigneeId)}
-                                                    </p>
-                                                    {tache.dateEcheance && (
-                                                        <p className="text-theme-xs text-gray-400">⏰ {tache.dateEcheance}</p>
-                                                    )}
-                                                    {/* Drive info on card */}
-                                                    {(tache as any).driveLink && (() => {
-                                                        const links = ((tache as any).driveLink as string).split(',');
-                                                        const types = ((tache as any).typeDrive as string || '').split(',');
-                                                        return links.map((link, i) => (
-                                                            <a
-                                                                key={i}
-                                                                href={link}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="mt-0.5 flex items-center gap-1 text-[11px] text-brand-500 hover:text-brand-600 hover:underline"
-                                                                onMouseDown={e => e.stopPropagation()}
-                                                                onClick={e => e.stopPropagation()}
-                                                            >
-                                                                📁 Drive{types[i] ? ` · ${types[i]}` : ''} ↗
-                                                            </a>
-                                                        ));
-                                                    })()}
-                                                </div>
-                                                <div className="flex gap-1 flex-shrink-0">
-                                                    <button
-                                                        onClick={() => setViewingTache(tache)}
-                                                        className="rounded p-1 text-gray-400 hover:text-brand-500 hover:bg-brand-50"
-                                                        title="Voir"
-                                                        onMouseDown={e => e.stopPropagation()}
-                                                    >
-                                                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openEdit(tache)}
-                                                        className="rounded p-1 text-gray-400 hover:text-brand-500 hover:bg-brand-50"
-                                                        title="Modifier"
-                                                        onMouseDown={e => e.stopPropagation()}
-                                                    >
-                                                        <HiOutlinePencil size={13} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(tache.id)}
-                                                        className="rounded p-1 text-gray-400 hover:text-error-500 hover:bg-error-50"
-                                                        title="Supprimer"
-                                                        onMouseDown={e => e.stopPropagation()}
-                                                    >
-                                                        <HiOutlineTrash size={13} />
-                                                    </button>
+                                                    <div className={`flex items-center gap-1 text-[10px] font-bold ${tache.urgente ? 'text-error-600 dark:text-[#f7768e]' : 'text-success-600 dark:text-[#9ece6a]'}`}>
+                                                        {tache.urgente ? (
+                                                            <span className="flex items-center gap-0.5"><span className="text-[12px]">!</span> High</span>
+                                                        ) : (
+                                                            <span className="flex items-center gap-0.5"><HiOutlineChartBar size={12} /> Normal</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            {/* Drag hint icon */}
-                                            <div className="flex justify-center opacity-20">
-                                                <svg width="16" height="8" viewBox="0 0 16 8" fill="currentColor" className="text-gray-400">
-                                                    <circle cx="2" cy="2" r="1.5" /><circle cx="8" cy="2" r="1.5" /><circle cx="14" cy="2" r="1.5" />
-                                                    <circle cx="2" cy="6" r="1.5" /><circle cx="8" cy="6" r="1.5" /><circle cx="14" cy="6" r="1.5" />
-                                                </svg>
-                                            </div>
+                                        )
+                                    })
+                                )}
+                                {/* For "TO DO" column, add the NEW TASK button if no media plan */}
+                                {colStatut === 'TODO' && !projet?.isMediaPlanProject && (
+                                    <button
+                                        onClick={() => setShowCreate(true)}
+                                        className="mt-3 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 py-6 text-gray-400 transition-colors hover:border-brand-400 hover:text-brand-500 hover:bg-brand-50 dark:border-[#292e42] dark:bg-transparent dark:text-[#565f89] dark:hover:border-[#3b4261] dark:hover:text-gray-300 dark:hover:bg-[#1a1b26]/50"
+                                    >
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-inherit mb-2">
+                                            <HiOutlinePlus size={16} />
                                         </div>
-                                    ))
+                                        <span className="text-[11px] font-bold uppercase tracking-widest text-inherit">NEW TASK</span>
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -720,6 +735,32 @@ const ProjetTachesPage: React.FC = () => {
                                 >
                                     Ouvrir le dossier Drive ↗
                                 </a>
+                            </div>
+                        )}
+                        {/* Media Plan details if available */}
+                        {projet?.isMediaPlanProject && mediaPlanDetails && (
+                            <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-500/30 dark:bg-brand-500/10 mt-4">
+                                <h4 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-2">
+                                    Détails Media Plan
+                                </h4>
+                                <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                                    <div><span className="block text-[10px] font-bold uppercase text-gray-500">Format</span>
+                                        <span className="text-theme-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.format}</span></div>
+                                    <div><span className="block text-[10px] font-bold uppercase text-gray-500">Type</span>
+                                        <span className="text-theme-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.type || '-'}</span></div>
+                                    <div className="col-span-2"><span className="block text-[10px] font-bold uppercase text-gray-500">Texte sur Visuel</span>
+                                        <p className="mt-0.5 text-theme-xs text-gray-700 dark:text-gray-300">{mediaPlanDetails.texteSurVisuel || '-'}</p></div>
+                                    <div className="col-span-2"><span className="block text-[10px] font-bold uppercase text-gray-500">Inspiration / Autres</span>
+                                        <div className="mt-0.5 flex flex-wrap gap-2 text-theme-xs text-gray-700 dark:text-gray-300">
+                                            {mediaPlanDetails.inspiration ? (
+                                                mediaPlanDetails.inspiration.startsWith('http') || mediaPlanDetails.inspiration.startsWith('www') ?
+                                                    <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline dark:text-brand-400">Inspiration (Lien)</a>
+                                                    : <span>{mediaPlanDetails.inspiration}</span>
+                                            ) : '-'}
+                                            {mediaPlanDetails.autresElements && <span className="border-l border-gray-300 pl-2 dark:border-gray-700">{mediaPlanDetails.autresElements}</span>}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                         <div className="flex justify-end pt-2 gap-3">

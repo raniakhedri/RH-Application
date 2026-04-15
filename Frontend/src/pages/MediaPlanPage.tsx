@@ -9,12 +9,16 @@ import {
     HiOutlineRefresh,
     HiOutlineChevronDown,
     HiOutlineChevronRight,
+    HiOutlineDownload,
+    HiOutlineChatAlt,
+    HiOutlineShieldCheck,
 } from 'react-icons/hi';
 import { SiGoogledrive } from 'react-icons/si';
 import { useAuth } from '../context/AuthContext';
 import { mediaPlanService } from '../api/mediaPlanService';
 import { referentielService } from '../api/referentielService';
 import { mediaPlanAssignmentService } from '../api/mediaPlanAssignmentService';
+import { mediaPlanCommentService, MediaPlanCommentDTO } from '../api/mediaPlanCommentService';
 import {
     MediaPlan,
     MediaPlanRequest,
@@ -86,6 +90,14 @@ const emptyDraft = (): DraftRow => ({
     rectifs: '',
     remarques: '',
 });
+
+// ── Cell formatting ──
+interface CellFormat {
+    bold?: boolean;
+    fontSize?: number;
+    textColor?: string;
+    fillColor?: string;
+}
 
 // datePublication is excluded because it's always pre-filled with the month's first day
 const isDraftFilled = (d: DraftRow) => !!(d.titre || d.heure || d.format || d.type || d.texteSurVisuel || d.inspiration || d.autresElements || d.platforme || d.lienDrive || d.etatPublication || d.rectifs || d.remarques || d.texteSurVisuel);
@@ -177,7 +189,7 @@ const loadDraftsFromStorage = (clientId: number, monthKey: string): DraftRow[] =
         const raw = localStorage.getItem(getDraftStorageKey(clientId, monthKey));
         if (raw) {
             const parsed = JSON.parse(raw) as DraftRow[];
-            return parsed.map(d => ({ ...d, _key: `draft-${Date.now()}-${Math.random()}` }));
+            return parsed.map(d => ({ ...d, _key: d._key || `draft-${Date.now()}-${Math.random()}` }));
         }
     } catch (e) { /* */ }
     return [];
@@ -219,11 +231,13 @@ const statusColorClasses: Record<string, string> = {
 const MediaPlanPage: React.FC = () => {
     const { user } = useAuth();
     const { clientId: clientIdParam } = useParams<{ clientId: string }>();
+    const selectedClientId = clientIdParam ? Number(clientIdParam) : null;
     const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
 
     const [mediaPlans, setMediaPlans] = useState<MediaPlan[]>([]);
     const [assignments, setAssignments] = useState<MediaPlanAssignment[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isForbidden, setIsForbidden] = useState(false);
     const [draftRows, setDraftRows] = useState<DraftRow[]>([]);
 
     // Expanded cell
@@ -255,15 +269,121 @@ const MediaPlanPage: React.FC = () => {
     const resizeStartX = useRef(0);
     const resizeStartW = useRef(0);
 
+    // ── Cell formatting ──
+    const [cellFormats, setCellFormats] = useState<Record<string, CellFormat>>({});
+    const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null);
+    const selectedFormat = selectedCellKey ? (cellFormats[selectedCellKey] || {}) : {};
+
+    const updateFormat = (update: Partial<CellFormat>) => {
+        if (!selectedCellKey) return;
+        setCellFormats(prev => ({ ...prev, [selectedCellKey]: { ...(prev[selectedCellKey] || {}), ...update } }));
+    };
+
+    // ── Search ──
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // ── Row heights ──
+    const DEFAULT_ROW_HEIGHT = 104;
+    const [rowHeights, setRowHeights] = useState<Record<string, number>>({});
+    const rowResizeStart = useRef<{ key: string; startY: number; startH: number } | null>(null);
+
+    const startRowResize = (key: string, currentH: number, e: React.MouseEvent) => {
+        e.preventDefault();
+        rowResizeStart.current = { key, startY: e.clientY, startH: currentH };
+        const onMove = (ev: MouseEvent) => {
+            if (!rowResizeStart.current) return;
+            const delta = ev.clientY - rowResizeStart.current.startY;
+            const newH = Math.max(44, rowResizeStart.current.startH + delta);
+            setRowHeights(prev => ({ ...prev, [rowResizeStart.current!.key]: newH }));
+        };
+        const onUp = () => {
+            rowResizeStart.current = null;
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+    };
+
+    // ── Comments ──
+    const [comments, setComments] = useState<MediaPlanCommentDTO[]>([]);
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; cellKey: string; rowId: string; columnKey: string; mediaPlanId?: number; draftKey?: string } | null>(null);
+    const [commentModal, setCommentModal] = useState<{ cellKey: string; columnKey: string; mediaPlanId?: number; draftKey?: string } | null>(null);
+    const [commentText, setCommentText] = useState('');
+    const [commentTooltip, setCommentTooltip] = useState<{ cellKey: string; x: number; y: number } | null>(null);
+
+    const getCommentsForCell = useCallback((cellKey: string) => {
+        // cellKey format: mp-{id}-{col} or {draftKey}-{col}
+        return comments.filter(c => {
+            const parts = cellKey.split('-');
+            if (cellKey.startsWith('mp-')) {
+                const mpId = Number(parts[1]);
+                const col = parts.slice(2).join('-');
+                return c.mediaPlanId === mpId && c.columnKey === col;
+            } else {
+                const dKey = parts.slice(0, -1).join('-');
+                const col = parts[parts.length - 1];
+                return c.draftKey === dKey && c.columnKey === col;
+            }
+        });
+    }, [comments]);
+
+    // ── Export CSV ──
+    const exportToCSV = () => {
+        const headers = COLUMNS.filter(c => c.key !== 'actions').map(c => c.label);
+        const escape = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const rows = [
+            headers.join(','),
+            ...monthMediaPlans.map(mp =>
+                [mp.datePublication, mp.heure, mp.format, mp.type, mp.titre, mp.texteSurVisuel,
+                mp.inspiration, mp.autresElements, mp.platforme, mp.lienDrive,
+                mp.etatPublication, mp.rectifs, mp.remarques, mp.statut].map(escape).join(',')
+            ),
+            ...draftRows.filter(isDraftFilled).map(d =>
+                [d.datePublication, d.heure, d.format, d.type, d.titre, d.texteSurVisuel,
+                d.inspiration, d.autresElements, d.platforme, d.lienDrive,
+                d.etatPublication, d.rectifs, d.remarques, 'Brouillon'].map(escape).join(',')
+            ),
+        ].join('\n');
+        const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `MediaPlan_${selectedMonth}.csv`;
+        a.click(); URL.revokeObjectURL(url);
+    };
+
+    // Close context menu on outside click
+    useEffect(() => {
+        const handler = () => setContextMenu(null);
+        window.addEventListener('click', handler);
+        return () => window.removeEventListener('click', handler);
+    }, []);
+
     // Referentiels
     const [formats, setFormats] = useState<Referentiel[]>([]);
     const [types, setTypes] = useState<Referentiel[]>([]);
     const [platformes, setPlateformes] = useState<Referentiel[]>([]);
 
-    const selectedClientId = clientIdParam ? Number(clientIdParam) : null;
-
     useEffect(() => { loadReferentiels(); checkGoogleAuth(); }, []);
     useEffect(() => { loadData(); }, [selectedClientId]);
+
+    // Fetch comments when month or client changes
+    useEffect(() => {
+        if (!selectedClientId) return;
+        const fetchComments = async () => {
+            try {
+                const res = await mediaPlanCommentService.getByClientIdAndMonthKey(selectedClientId, selectedMonth);
+                setComments(res);
+            } catch (e) {
+                console.error('Failed to fetch comments', e);
+            }
+        };
+        fetchComments();
+    }, [selectedClientId, selectedMonth]);
 
     // ── Column resize ──
     const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -309,8 +429,23 @@ const MediaPlanPage: React.FC = () => {
     const loadData = async () => {
         try {
             setLoading(true);
+            setIsForbidden(false);
             if (!user?.employeId) return;
+
+            const roles = (user as any).roles || [];
+            const isAdmin = roles.includes('ADMIN') || roles.includes('MANAGER');
+
             if (selectedClientId) {
+                if (!isAdmin) {
+                    const assignRes = await mediaPlanAssignmentService.getByEmploye(user.employeId);
+                    setAssignments(assignRes.data.data || []);
+                    const hasAccess = (assignRes.data.data || []).some((a: MediaPlanAssignment) => a.clientId === selectedClientId);
+                    if (!hasAccess) {
+                        setIsForbidden(true);
+                        setLoading(false);
+                        return;
+                    }
+                }
                 const mpRes = await mediaPlanService.getByClient(selectedClientId);
                 setMediaPlans(mpRes.data.data || []);
             } else {
@@ -593,23 +728,60 @@ const MediaPlanPage: React.FC = () => {
     const selectClass = (ro?: boolean) =>
         `w-full bg-transparent border-0 text-sm text-gray-700 dark:text-gray-300 px-0 py-2.5 focus:outline-none focus:ring-1 focus:ring-brand-500 rounded ${ro ? 'cursor-default opacity-70 pointer-events-none' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`;
 
-    // ── Text cell ──
+    // ── Text cell with formatting + right-click comment support ──
     const TextCell: React.FC<{
+        cellKey: string;
         value: string; readOnly?: boolean; placeholder?: string; className?: string;
+        rowId: string; columnKey: string; mediaPlanId?: number; draftKey?: string;
         onSave: (v: string) => void;
-    }> = ({ value, readOnly, placeholder, className = '', onSave }) => {
+    }> = ({ cellKey, value, readOnly, placeholder, className = '', onSave, rowId, columnKey, mediaPlanId, draftKey }) => {
         const cellValue = value || '';
         const hasLink = cellValue && /(https?:\/\/[^\s]+)/.test(cellValue);
+        const fmt = cellFormats[cellKey] || {};
+        const cellStyle: React.CSSProperties = {
+            fontWeight: fmt.bold ? 'bold' : undefined,
+            fontSize: fmt.fontSize ? fmt.fontSize : undefined,
+            color: fmt.textColor || undefined,
+            backgroundColor: fmt.fillColor || undefined,
+        };
+        const isSelected = selectedCellKey === cellKey;
+        const cellComments = getCommentsForCell(cellKey);
+        const hasComments = cellComments.length > 0;
+
         return (
-            <div className={`relative ${className}`}
-                onDoubleClick={() => { if (readOnly) openExpanded(cellValue, true, () => { }); }}>
+            <div
+                className={`relative ${className}`}
+                style={cellStyle}
+                onClick={() => setSelectedCellKey(cellKey)}
+                onDoubleClick={() => { if (readOnly) openExpanded(cellValue, true, () => { }); }}
+                onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setContextMenu({ x: e.clientX, y: e.clientY, cellKey, rowId, columnKey, mediaPlanId, draftKey });
+                }}
+                onMouseEnter={(e) => { if (hasComments) setCommentTooltip({ cellKey, x: e.clientX, y: e.clientY }); }}
+                onMouseLeave={() => setCommentTooltip(null)}
+            >
                 {readOnly ? (
-                    <div className={`${inputClass(true)} truncate cursor-pointer`} title="Double-cliquez pour voir">
+                    <div
+                        className={`${inputClass(true)} cursor-pointer overflow-hidden`}
+                        style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', whiteSpace: 'normal', wordBreak: 'break-word', ...cellStyle }}
+                        title="Double-cliquez pour voir"
+                    >
                         {hasLink ? renderCellValue(cellValue) : (cellValue || '-')}
                     </div>
                 ) : (
-                    <input type="text" value={cellValue} readOnly className={`${inputClass(false)} truncate`}
-                        placeholder={placeholder} onFocus={() => openExpanded(cellValue, false, onSave)} />
+                    <div
+                        onClick={() => openExpanded(cellValue, false, onSave)}
+                        className={`${inputClass(false)} overflow-hidden cursor-text ${isSelected ? 'ring-2 ring-brand-500' : ''}`}
+                        style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', whiteSpace: 'normal', wordBreak: 'break-word', ...cellStyle, height: "100%" }}
+                    >
+                        {cellValue || <span className="text-gray-400">{placeholder}</span>}
+                    </div>
+                )}
+                {/* Comment indicator dot */}
+                {hasComments && (
+                    <div className="absolute top-0 right-0 w-2.5 h-2.5 rounded-bl-sm bg-amber-400" title={`${cellComments.length} commentaire(s)`} />
                 )}
             </div>
         );
@@ -656,117 +828,143 @@ const MediaPlanPage: React.FC = () => {
 
     const renderExistingRow = (mp: MediaPlan) => {
         const ro = isReadOnly(mp);
+        const rowH = rowHeights[`mp-${mp.id}`] || DEFAULT_ROW_HEIGHT;
         return (
-            <tr key={mp.id} className={`transition-colors ${ro ? 'bg-gray-50/50 dark:bg-gray-800/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`} style={{ height: '104px' }}>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[0] }}><input type="date" value={mp.datePublication || ''} readOnly={ro} onChange={e => handleCellChange(mp, 'datePublication', e.target.value)} className={inputClass(ro)} /></td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[1] }}>
-                    <select value={mp.heure || ''} disabled={ro} onChange={e => handleCellChange(mp, 'heure', e.target.value)} className={selectClass(ro)}>
-                        {HOURS.map(h => <option key={h} value={h}>{h || '-'}</option>)}
-                    </select>
-                </td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[2] }}>
-                    <select value={mp.format || ''} disabled={ro} onChange={e => handleCellChange(mp, 'format', e.target.value)} className={selectClass(ro)}>
-                        <option value="">-</option>
-                        {formats.map(f => <option key={f.id} value={f.libelle}>{f.libelle}</option>)}
-                    </select>
-                </td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[3] }}>
-                    <select value={mp.type || ''} disabled={ro} onChange={e => handleCellChange(mp, 'type', e.target.value)} className={selectClass(ro)}>
-                        <option value="">-</option>
-                        {types.map(t => <option key={t.id} value={t.libelle}>{t.libelle}</option>)}
-                    </select>
-                </td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[4] }}><TextCell value={mp.titre} readOnly={ro} onSave={v => handleCellChange(mp, 'titre', v)} className="font-medium" /></td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[5] }}><TextCell value={mp.texteSurVisuel || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'texteSurVisuel', v)} /></td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[6] }}><TextCell value={mp.inspiration || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'inspiration', v)} /></td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[7] }}><TextCell value={mp.autresElements || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'autresElements', v)} /></td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[8] }}>
-                    <select value={mp.platforme || ''} disabled={ro} onChange={e => handleCellChange(mp, 'platforme', e.target.value)} className={selectClass(ro)}>
-                        <option value="">-</option>
-                        {platformes.map(p => <option key={p.id} value={p.libelle}>{p.libelle}</option>)}
-                    </select>
-                </td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[9] }}><TextCell value={mp.lienDrive || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'lienDrive', v)} /></td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[10] }}>
-                    <select value={mp.etatPublication || ''} disabled={ro} onChange={e => handleCellChange(mp, 'etatPublication', e.target.value)} className={selectClass(ro)}>
-                        <option value="">-</option>
-                        {Object.values(EtatPublication).map(ep => <option key={ep} value={ep}>{EtatPublicationLabels[ep]}</option>)}
-                    </select>
-                </td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[11] }}><TextCell value={mp.rectifs || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'rectifs', v)} /></td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[12] }}><TextCell value={mp.remarques || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'remarques', v)} /></td>
-                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[13] }}>{getStatusBadge(mp.statut)}</td>
-                <td className="px-2 py-1 overflow-hidden" style={{ width: colWidths[14] }}>
-                    {!ro && (
-                        <button onClick={() => handleClearRow(mp)} className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Vider la ligne">
-                            <HiOutlineTrash size={15} />
-                        </button>
-                    )}
-                </td>
-            </tr>
+            <React.Fragment key={mp.id}>
+                <tr className={`transition-colors relative ${ro ? 'bg-gray-50/50 dark:bg-gray-800/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`} style={{ height: rowH }}>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[0] }}><input type="date" value={mp.datePublication || ''} readOnly={ro} onChange={e => handleCellChange(mp, 'datePublication', e.target.value)} className={inputClass(ro)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[1] }}>
+                        <select value={mp.heure || ''} disabled={ro} onChange={e => handleCellChange(mp, 'heure', e.target.value)} className={selectClass(ro)}>
+                            {HOURS.map(h => <option key={h} value={h}>{h || '-'}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[2] }}>
+                        <select value={mp.format || ''} disabled={ro} onChange={e => handleCellChange(mp, 'format', e.target.value)} className={selectClass(ro)}>
+                            <option value="">-</option>
+                            {formats.map(f => <option key={f.id} value={f.libelle}>{f.libelle}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[3] }}>
+                        <select value={mp.type || ''} disabled={ro} onChange={e => handleCellChange(mp, 'type', e.target.value)} className={selectClass(ro)}>
+                            <option value="">-</option>
+                            {types.map(t => <option key={t.id} value={t.libelle}>{t.libelle}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[4] }}><TextCell cellKey={`mp-${mp.id}-titre`} rowId={`mp-${mp.id}`} columnKey="titre" mediaPlanId={mp.id} value={mp.titre} readOnly={ro} onSave={v => handleCellChange(mp, 'titre', v)} className="font-medium" /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[5] }}><TextCell cellKey={`mp-${mp.id}-texte`} rowId={`mp-${mp.id}`} columnKey="texte" mediaPlanId={mp.id} value={mp.texteSurVisuel || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'texteSurVisuel', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[6] }}><TextCell cellKey={`mp-${mp.id}-inspiration`} rowId={`mp-${mp.id}`} columnKey="inspiration" mediaPlanId={mp.id} value={mp.inspiration || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'inspiration', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[7] }}><TextCell cellKey={`mp-${mp.id}-autres`} rowId={`mp-${mp.id}`} columnKey="autres" mediaPlanId={mp.id} value={mp.autresElements || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'autresElements', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[8] }}>
+                        <select value={mp.platforme || ''} disabled={ro} onChange={e => handleCellChange(mp, 'platforme', e.target.value)} className={selectClass(ro)}>
+                            <option value="">-</option>
+                            {platformes.map(p => <option key={p.id} value={p.libelle}>{p.libelle}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[9] }}><TextCell cellKey={`mp-${mp.id}-lien`} rowId={`mp-${mp.id}`} columnKey="lien" mediaPlanId={mp.id} value={mp.lienDrive || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'lienDrive', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[10] }}>
+                        <select value={mp.etatPublication || ''} disabled={ro} onChange={e => handleCellChange(mp, 'etatPublication', e.target.value)} className={selectClass(ro)}>
+                            <option value="">-</option>
+                            {Object.values(EtatPublication).map(ep => <option key={ep} value={ep}>{EtatPublicationLabels[ep]}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[11] }}><TextCell cellKey={`mp-${mp.id}-rectifs`} rowId={`mp-${mp.id}`} columnKey="rectifs" mediaPlanId={mp.id} value={mp.rectifs || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'rectifs', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[12] }}><TextCell cellKey={`mp-${mp.id}-remarques`} rowId={`mp-${mp.id}`} columnKey="remarques" mediaPlanId={mp.id} value={mp.remarques || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'remarques', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[13] }}>{getStatusBadge(mp.statut)}</td>
+                    <td className="px-2 py-1 h-[1px] overflow-hidden" style={{ width: colWidths[14] }}>
+                        {!ro && (
+                            <button onClick={() => handleClearRow(mp)} className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Vider la ligne">
+                                <HiOutlineTrash size={15} />
+                            </button>
+                        )}
+                    </td>
+                </tr>
+                {/* ── Row resize strip ── */}
+                <tr>
+                    <td colSpan={COLUMNS.length}
+                        style={{ height: '5px', padding: 0, cursor: 'row-resize', backgroundColor: 'transparent', borderBottom: '1px solid transparent' }}
+                        className="hover:bg-brand-400/30 transition-colors"
+                        onMouseDown={e => startRowResize(`mp-${mp.id}`, rowH, e)}
+                        title="Faire glisser pour redimensionner la ligne"
+                    />
+                </tr>
+            </React.Fragment>
         );
     };
 
-    const renderDraftRow = (draft: DraftRow, idx: number) => (
-        <tr key={draft._key} className="bg-brand-50/30 dark:bg-brand-900/5 hover:bg-brand-50/60 dark:hover:bg-brand-900/10 transition-colors" style={{ height: '104px' }}>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[0] }}><input type="date" value={draft.datePublication} onChange={e => handleDraftChange(idx, 'datePublication', e.target.value)} className={inputClass()} /></td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[1] }}>
-                <select value={draft.heure} onChange={e => handleDraftChange(idx, 'heure', e.target.value)} className={selectClass()}>
-                    {HOURS.map(h => <option key={h} value={h}>{h || '-'}</option>)}
-                </select>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[2] }}>
-                <select value={draft.format} onChange={e => handleDraftChange(idx, 'format', e.target.value)} className={selectClass()}>
-                    <option value="">-</option>
-                    {formats.map(f => <option key={f.id} value={f.libelle}>{f.libelle}</option>)}
-                </select>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[3] }}>
-                <select value={draft.type} onChange={e => handleDraftChange(idx, 'type', e.target.value)} className={selectClass()}>
-                    <option value="">-</option>
-                    {types.map(t => <option key={t.id} value={t.libelle}>{t.libelle}</option>)}
-                </select>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[4] }}><TextCell value={draft.titre} placeholder="Titre..." onSave={v => handleDraftChange(idx, 'titre', v)} className="font-medium" /></td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[5] }}><TextCell value={draft.texteSurVisuel} placeholder="..." onSave={v => handleDraftChange(idx, 'texteSurVisuel', v)} /></td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[6] }}><TextCell value={draft.inspiration} placeholder="..." onSave={v => handleDraftChange(idx, 'inspiration', v)} /></td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[7] }}><TextCell value={draft.autresElements} placeholder="..." onSave={v => handleDraftChange(idx, 'autresElements', v)} /></td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[8] }}>
-                <select value={draft.platforme} onChange={e => handleDraftChange(idx, 'platforme', e.target.value)} className={selectClass()}>
-                    <option value="">-</option>
-                    {platformes.map(p => <option key={p.id} value={p.libelle}>{p.libelle}</option>)}
-                </select>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[9] }}><TextCell value={draft.lienDrive} placeholder="https://..." onSave={v => handleDraftChange(idx, 'lienDrive', v)} /></td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[10] }}>
-                <select value={draft.etatPublication} onChange={e => handleDraftChange(idx, 'etatPublication', e.target.value)} className={selectClass()}>
-                    <option value="">-</option>
-                    {Object.values(EtatPublication).map(ep => <option key={ep} value={ep}>{EtatPublicationLabels[ep]}</option>)}
-                </select>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[11] }}><TextCell value={draft.rectifs} placeholder="..." onSave={v => handleDraftChange(idx, 'rectifs', v)} /></td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[12] }}><TextCell value={draft.remarques} placeholder="..." onSave={v => handleDraftChange(idx, 'remarques', v)} /></td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[13] }}><Badge variant="light">Brouillon</Badge></td>
-            <td className="px-2 py-1 overflow-hidden" style={{ width: colWidths[14] }}>
-                <div className="flex gap-1">
-                    <button onClick={() => {
-                        const { year, month } = parseMonthKey(selectedMonth);
-                        setDraftRows(prev => {
-                            const updated = [...prev];
-                            updated[idx] = { ...emptyDraft(), datePublication: `${year}-${String(month + 1).padStart(2, '0')}-01` };
-                            if (selectedClientId) saveDraftsToStorage(selectedClientId, selectedMonth, updated);
-                            return updated;
-                        });
-                    }} className="p-1 rounded text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors" title="Vider les champs">
-                        <HiOutlineRefresh size={15} />
-                    </button>
-                    <button onClick={() => removeDraft(idx)} className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Supprimer la ligne">
-                        <HiOutlineTrash size={15} />
-                    </button>
-                </div>
-            </td>
-        </tr>
-    );
+    const renderDraftRow = (draft: DraftRow, idx: number) => {
+        const rowH = rowHeights[draft._key] || DEFAULT_ROW_HEIGHT;
+        return (
+            <React.Fragment key={draft._key}>
+                <tr className="bg-brand-50/30 dark:bg-brand-900/5 hover:bg-brand-50/60 dark:hover:bg-brand-900/10 transition-colors" style={{ height: rowH }}>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[0] }}><input type="date" value={draft.datePublication} onChange={e => handleDraftChange(idx, 'datePublication', e.target.value)} className={inputClass()} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[1] }}>
+                        <select value={draft.heure} onChange={e => handleDraftChange(idx, 'heure', e.target.value)} className={selectClass()}>
+                            {HOURS.map(h => <option key={h} value={h}>{h || '-'}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[2] }}>
+                        <select value={draft.format} onChange={e => handleDraftChange(idx, 'format', e.target.value)} className={selectClass()}>
+                            <option value="">-</option>
+                            {formats.map(f => <option key={f.id} value={f.libelle}>{f.libelle}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[3] }}>
+                        <select value={draft.type} onChange={e => handleDraftChange(idx, 'type', e.target.value)} className={selectClass()}>
+                            <option value="">-</option>
+                            {types.map(t => <option key={t.id} value={t.libelle}>{t.libelle}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[4] }}><TextCell cellKey={`${draft._key}-titre`} rowId={draft._key} columnKey="titre" draftKey={draft._key} value={draft.titre} placeholder="Titre..." onSave={v => handleDraftChange(idx, 'titre', v)} className="font-medium" /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[5] }}><TextCell cellKey={`${draft._key}-texte`} rowId={draft._key} columnKey="texte" draftKey={draft._key} value={draft.texteSurVisuel} placeholder="..." onSave={v => handleDraftChange(idx, 'texteSurVisuel', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[6] }}><TextCell cellKey={`${draft._key}-inspiration`} rowId={draft._key} columnKey="inspiration" draftKey={draft._key} value={draft.inspiration} placeholder="..." onSave={v => handleDraftChange(idx, 'inspiration', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[7] }}><TextCell cellKey={`${draft._key}-autres`} rowId={draft._key} columnKey="autres" draftKey={draft._key} value={draft.autresElements} placeholder="..." onSave={v => handleDraftChange(idx, 'autresElements', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[8] }}>
+                        <select value={draft.platforme} onChange={e => handleDraftChange(idx, 'platforme', e.target.value)} className={selectClass()}>
+                            <option value="">-</option>
+                            {platformes.map(p => <option key={p.id} value={p.libelle}>{p.libelle}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[9] }}><TextCell cellKey={`${draft._key}-lien`} rowId={draft._key} columnKey="lien" draftKey={draft._key} value={draft.lienDrive} placeholder="https://..." onSave={v => handleDraftChange(idx, 'lienDrive', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[10] }}>
+                        <select value={draft.etatPublication} onChange={e => handleDraftChange(idx, 'etatPublication', e.target.value)} className={selectClass()}>
+                            <option value="">-</option>
+                            {Object.values(EtatPublication).map(ep => <option key={ep} value={ep}>{EtatPublicationLabels[ep]}</option>)}
+                        </select>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[11] }}><TextCell cellKey={`${draft._key}-rectifs`} rowId={draft._key} columnKey="rectifs" draftKey={draft._key} value={draft.rectifs} placeholder="..." onSave={v => handleDraftChange(idx, 'rectifs', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[12] }}><TextCell cellKey={`${draft._key}-remarques`} rowId={draft._key} columnKey="remarques" draftKey={draft._key} value={draft.remarques} placeholder="..." onSave={v => handleDraftChange(idx, 'remarques', v)} /></td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[13] }}><Badge variant="light">Brouillon</Badge></td>
+                    <td className="px-2 py-1 h-[1px] overflow-hidden" style={{ width: colWidths[14] }}>
+                        <div className="flex gap-1">
+                            <button onClick={() => {
+                                const { year, month } = parseMonthKey(selectedMonth);
+                                setDraftRows(prev => {
+                                    const updated = [...prev];
+                                    updated[idx] = { ...emptyDraft(), datePublication: `${year}-${String(month + 1).padStart(2, '0')}-01` };
+                                    if (selectedClientId) saveDraftsToStorage(selectedClientId, selectedMonth, updated);
+                                    return updated;
+                                });
+                            }} className="p-1 rounded text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors" title="Vider les champs">
+                                <HiOutlineRefresh size={15} />
+                            </button>
+                            <button onClick={() => removeDraft(idx)} className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Supprimer la ligne">
+                                <HiOutlineTrash size={15} />
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {/* ── Draft row resize strip ── */}
+                <tr>
+                    <td colSpan={COLUMNS.length}
+                        style={{ height: '5px', padding: 0, cursor: 'row-resize', backgroundColor: 'transparent', borderBottom: '1px solid transparent' }}
+                        className="hover:bg-brand-400/30 transition-colors"
+                        onMouseDown={e => startRowResize(draft._key, rowH, e)}
+                        title="Faire glisser pour redimensionner la ligne"
+                    />
+                </tr>
+            </React.Fragment>
+        );
+    };
 
     const tableWidth = colWidths.reduce((s, w) => s + w, 0);
 
@@ -793,6 +991,16 @@ const MediaPlanPage: React.FC = () => {
     }
 
     const sentStatus = getStatusInfo(monthMediaPlans);
+
+    if (isForbidden) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh] bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                <HiOutlineShieldCheck size={64} className="text-red-500 mb-4" />
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Accès Refusé</h2>
+                <p className="text-gray-500 dark:text-gray-400 max-w-sm mt-2">Vous n'êtes pas autorisé à consulter le Media Plan de ce client car vous n'y êtes pas assigné.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-4">
@@ -902,11 +1110,71 @@ const MediaPlanPage: React.FC = () => {
                                     </button>
                                 </div>
                             </div>
+                            {/* ── Excel toolbar + Search ── */}
+                            <div className="flex flex-wrap items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                                {/* Bold */}
+                                <button
+                                    onClick={() => updateFormat({ bold: !selectedFormat.bold })}
+                                    title="Gras"
+                                    className={`flex items-center justify-center w-7 h-7 rounded font-bold text-sm border transition-colors ${selectedFormat.bold
+                                        ? 'bg-brand-500 text-white border-brand-500'
+                                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                >B</button>
+                                {/* Font size */}
+                                <div className="flex items-center gap-1">
+                                    <button onClick={() => updateFormat({ fontSize: Math.max(8, (selectedFormat.fontSize || 14) - 1) })} className="w-5 h-5 flex items-center justify-center rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs">-</button>
+                                    <span className="w-7 text-center text-xs font-medium text-gray-700 dark:text-gray-300">{selectedFormat.fontSize || 14}</span>
+                                    <button onClick={() => updateFormat({ fontSize: Math.min(32, (selectedFormat.fontSize || 14) + 1) })} className="w-5 h-5 flex items-center justify-center rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs">+</button>
+                                </div>
+                                {/* Text color */}
+                                <label className="flex items-center gap-1 cursor-pointer" title="Couleur du texte">
+                                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400" style={{ color: selectedFormat.textColor || undefined }}>A</span>
+                                    <input type="color" value={selectedFormat.textColor || '#374151'} onChange={e => updateFormat({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer border-0 p-0" />
+                                </label>
+                                {/* Fill color */}
+                                <label className="flex items-center gap-1 cursor-pointer" title="Couleur de fond">
+                                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">🎨</span>
+                                    <input type="color" value={selectedFormat.fillColor || '#ffffff'} onChange={e => updateFormat({ fillColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer border-0 p-0" />
+                                </label>
+                                {/* Clear formatting */}
+                                {selectedCellKey && (
+                                    <button onClick={() => { if (selectedCellKey) setCellFormats(prev => { const n = { ...prev }; delete n[selectedCellKey]; return n; }); }} className="text-xs text-gray-500 hover:text-red-500 dark:text-gray-400 px-2 py-1 rounded border border-gray-200 dark:border-gray-600 hover:border-red-300 transition-colors" title="Effacer la mise en forme">✕</button>
+                                )}
+                                <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+
+                                <div className="flex items-center gap-3 ml-auto">
+                                    {/* Export */}
+                                    <button
+                                        onClick={exportToCSV}
+                                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded transition-colors border border-transparent hover:border-brand-200 dark:hover:border-brand-800"
+                                    >
+                                        <HiOutlineDownload size={14} /> Exporter
+                                    </button>
+
+                                    <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+
+                                    {/* Search */}
+                                    <div className="flex items-center gap-1.5">
+                                        <HiOutlineSearch size={14} className="text-gray-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Rechercher..."
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            className="h-7 w-40 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                        />
+                                        {searchQuery && <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600"><HiOutlineX size={12} /></button>}
+                                    </div>
+                                </div>
+                            </div>
                             <div className="overflow-x-auto bg-white dark:bg-gray-900">
                                 <table className="divide-y divide-gray-200 dark:divide-gray-700" style={{ tableLayout: 'fixed', width: tableWidth }}>
                                     {renderTableHeader()}
                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                        {draftRows.map((draft, idx) => renderDraftRow(draft, idx))}
+                                        {draftRows
+                                            .filter(d => !searchQuery || Object.values(d).some(v => typeof v === 'string' && v.toLowerCase().includes(searchQuery.toLowerCase())))
+                                            .map((draft, idx) => renderDraftRow(draft, idx))}
                                     </tbody>
                                 </table>
                             </div>
@@ -920,6 +1188,65 @@ const MediaPlanPage: React.FC = () => {
             {/* ══════════════════════════════════════════════════ */}
             {!isMonthSent && (
                 <>
+                    {/* ── Excel toolbar + Search ── */}
+                    <div className="flex flex-wrap items-center gap-3 px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                        {/* Bold */}
+                        <button
+                            onClick={() => updateFormat({ bold: !selectedFormat.bold })}
+                            title="Gras"
+                            className={`flex items-center justify-center w-7 h-7 rounded font-bold text-sm border transition-colors ${selectedFormat.bold
+                                ? 'bg-brand-500 text-white border-brand-500'
+                                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                        >B</button>
+                        {/* Font size */}
+                        <div className="flex items-center gap-1">
+                            <button onClick={() => updateFormat({ fontSize: Math.max(8, (selectedFormat.fontSize || 14) - 1) })} className="w-5 h-5 flex items-center justify-center rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs">-</button>
+                            <span className="w-7 text-center text-xs font-medium text-gray-700 dark:text-gray-300">{selectedFormat.fontSize || 14}</span>
+                            <button onClick={() => updateFormat({ fontSize: Math.min(32, (selectedFormat.fontSize || 14) + 1) })} className="w-5 h-5 flex items-center justify-center rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs">+</button>
+                        </div>
+                        {/* Text color */}
+                        <label className="flex items-center gap-1 cursor-pointer" title="Couleur du texte">
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400" style={{ color: selectedFormat.textColor || undefined }}>A</span>
+                            <input type="color" value={selectedFormat.textColor || '#374151'} onChange={e => updateFormat({ textColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer border-0 p-0" />
+                        </label>
+                        {/* Fill color */}
+                        <label className="flex items-center gap-1 cursor-pointer" title="Couleur de fond">
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">🎨</span>
+                            <input type="color" value={selectedFormat.fillColor || '#ffffff'} onChange={e => updateFormat({ fillColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer border-0 p-0" />
+                        </label>
+                        {/* Clear formatting */}
+                        {selectedCellKey && (
+                            <button onClick={() => { if (selectedCellKey) setCellFormats(prev => { const n = { ...prev }; delete n[selectedCellKey]; return n; }); }} className="text-xs text-gray-500 hover:text-red-500 dark:text-gray-400 px-2 py-1 rounded border border-gray-200 dark:border-gray-600 hover:border-red-300 transition-colors" title="Effacer la mise en forme">✕</button>
+                        )}
+                        <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+
+                        <div className="flex items-center gap-3 ml-auto">
+                            {/* Export */}
+                            <button
+                                onClick={exportToCSV}
+                                className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded transition-colors border border-transparent hover:border-brand-200 dark:hover:border-brand-800"
+                            >
+                                <HiOutlineDownload size={14} /> Exporter
+                            </button>
+
+                            <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+
+                            {/* Search */}
+                            <div className="flex items-center gap-1.5">
+                                <HiOutlineSearch size={14} className="text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Rechercher..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="h-7 w-44 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                />
+                                {searchQuery && <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600"><HiOutlineX size={12} /></button>}
+                            </div>
+                        </div>
+                    </div>
+                    {/* ── Action buttons ── */}
                     <div className="flex gap-2 items-center justify-end">
                         <button onClick={handleAddRow}
                             className="flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-600 transition-colors">
@@ -935,8 +1262,12 @@ const MediaPlanPage: React.FC = () => {
                         <table className="divide-y divide-gray-200 dark:divide-gray-700" style={{ tableLayout: 'fixed', width: tableWidth }}>
                             {renderTableHeader()}
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                {monthMediaPlans.map(mp => renderExistingRow(mp))}
-                                {draftRows.map((draft, idx) => renderDraftRow(draft, idx))}
+                                {monthMediaPlans
+                                    .filter(mp => !searchQuery || Object.values(mp).some(v => typeof v === 'string' && v.toLowerCase().includes(searchQuery.toLowerCase())))
+                                    .map(mp => renderExistingRow(mp))}
+                                {draftRows
+                                    .filter(d => !searchQuery || Object.values(d).some(v => typeof v === 'string' && v.toLowerCase().includes(searchQuery.toLowerCase())))
+                                    .map((draft, idx) => renderDraftRow(draft, idx))}
                             </tbody>
                         </table>
                     </div>
@@ -954,6 +1285,104 @@ const MediaPlanPage: React.FC = () => {
                     }}
                     onCancel={() => setExpandedCell(null)}
                 />
+            )}
+
+            {/* ── Comment Context Menu ── */}
+            {contextMenu && (
+                <div
+                    className="fixed z-[300] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-[160px]"
+                    style={{ left: Math.min(contextMenu.x, window.innerWidth - 180), top: Math.min(contextMenu.y, window.innerHeight - 60) }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <button
+                        onClick={() => {
+                            setCommentModal(contextMenu);
+                            setContextMenu(null);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center gap-2"
+                    >
+                        <HiOutlineChatAlt size={16} /> Ajouter un commentaire
+                    </button>
+                </div>
+            )}
+
+            {/* ── Comment Modal ── */}
+            {commentModal && (
+                <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-gray-900/40" onClick={() => setCommentModal(null)}>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md p-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <HiOutlineChatAlt className="text-brand-500" />
+                                {getCommentsForCell(commentModal.cellKey).length > 0 ? 'Commentaires' : 'Nouveau commentaire'}
+                            </h3>
+                            <button onClick={() => setCommentModal(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <HiOutlineX size={18} />
+                            </button>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto mb-4 space-y-2 pr-1">
+                            {getCommentsForCell(commentModal.cellKey).map(c => (
+                                <div key={c.id} className="text-sm bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-lg">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="font-semibold text-brand-600 dark:text-brand-400 text-xs">{c.auteurPrenom} {c.auteurNom}</span>
+                                        <div className="flex gap-2 items-center">
+                                            <span className="text-[10px] text-gray-400">{new Date(c.createdAt).toLocaleString()}</span>
+                                            {c.auteurId === user?.employeId && (
+                                                <button onClick={async () => {
+                                                    try {
+                                                        await mediaPlanCommentService.delete(c.id);
+                                                        setComments(prev => prev.filter(x => x.id !== c.id));
+                                                    } catch (e) { console.error(e); }
+                                                }} className="text-gray-400 hover:text-red-500"><HiOutlineTrash size={12} /></button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{c.content}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <textarea
+                            value={commentText} onChange={e => setCommentText(e.target.value)}
+                            placeholder="Écrire un commentaire..." autoFocus
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none h-20 mb-3"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setCommentModal(null)} className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50">Annuler</button>
+                            <button disabled={!commentText.trim()} onClick={async () => {
+                                try {
+                                    const res = await mediaPlanCommentService.create({
+                                        mediaPlanId: commentModal.mediaPlanId,
+                                        draftKey: commentModal.draftKey,
+                                        columnKey: commentModal.columnKey,
+                                        auteurId: user!.employeId,
+                                        content: commentText.trim(),
+                                        clientId: selectedClientId || 0,
+                                        monthKey: selectedMonth
+                                    });
+                                    const newComment = res;
+                                    setComments(prev => [...prev, newComment]);
+                                    setCommentText('');
+                                } catch (e) { console.error(e); }
+                            }} className="px-3 py-1.5 text-sm bg-brand-500 text-white rounded hover:bg-brand-600 disabled:opacity-50">Envoyer</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Comment Hover Tooltip ── */}
+            {commentTooltip && (
+                <div style={{ left: commentTooltip.x + 15, top: commentTooltip.y + 15 }} className="fixed z-[250] bg-white dark:bg-gray-800 rounded shadow-lg border border-gray-200 dark:border-gray-700 max-w-[250px] p-2 pointer-events-none">
+                    <div className="space-y-2">
+                        {getCommentsForCell(commentTooltip.cellKey).slice(-3).map(c => (
+                            <div key={c.id} className="text-xs">
+                                <span className="font-semibold text-brand-600 dark:text-brand-400 block">{c.auteurPrenom} {c.auteurNom}:</span>
+                                <span className="text-gray-700 dark:text-gray-300 line-clamp-2">{c.content}</span>
+                            </div>
+                        ))}
+                        {getCommentsForCell(commentTooltip.cellKey).length > 3 && (
+                            <div className="text-[10px] text-gray-500 italic mt-1">+ {getCommentsForCell(commentTooltip.cellKey).length - 3} autre(s)</div>
+                        )}
+                    </div>
+                </div>
             )}
 
             <ConfirmDialog {...confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />

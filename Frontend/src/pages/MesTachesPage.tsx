@@ -3,12 +3,13 @@ import { tacheService } from '../api/tacheService';
 import { demandeService } from '../api/demandeService';
 import { compteService } from '../api/compteService';
 import { projetService } from '../api/projetService';
+import { mediaPlanService } from '../api/mediaPlanService';
 import { useAuth } from '../context/AuthContext';
-import { TacheDetail, TacheMembreInfo, StatutTache, StatutDemande, Projet } from '../types';
+import { TacheDetail, TacheMembreInfo, StatutTache, StatutDemande, Projet, MediaPlan } from '../types';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
-import { HiOutlinePencil, HiOutlineChevronRight, HiOutlineUsers, HiOutlineFolder } from 'react-icons/hi';
+import { HiOutlinePencil, HiOutlineChevronRight, HiOutlineUsers, HiOutlineFolder, HiOutlineCalendar, HiOutlineClock, HiOutlineCheckCircle, HiOutlineChartBar, HiDotsHorizontal } from 'react-icons/hi';
 
 interface ProjectGroup {
     projetId: number;
@@ -93,6 +94,9 @@ const MesTachesPage: React.FC = () => {
     const [editError, setEditError] = useState<string | null>(null);
     const [editLoading, setEditLoading] = useState(false);
 
+    const [viewingTache, setViewingTache] = useState<TacheDetail | null>(null);
+    const [mediaPlanDetails, setMediaPlanDetails] = useState<MediaPlan | null>(null);
+
     const [selectedProject, setSelectedProject] = useState<ProjectGroup | null>(null);
     // Set of employeNom strings for people on congé today
     const [congeAujourdhuiNoms, setCongeAujourdhuiNoms] = useState<Set<string>>(new Set());
@@ -102,6 +106,21 @@ const MesTachesPage: React.FC = () => {
     const [projetDetails, setProjetDetails] = useState<Map<number, Projet>>(new Map());
 
     useEffect(() => { loadData(); }, [user?.employeId]);
+
+    useEffect(() => {
+        if (!viewingTache || !viewingTache.projetId) {
+            setMediaPlanDetails(null);
+            return;
+        }
+        const fullProjet = projetDetails.get(viewingTache.projetId);
+        if (fullProjet?.isMediaPlanProject && fullProjet?.mediaPlanLigneId) {
+            mediaPlanService.getById(fullProjet.mediaPlanLigneId)
+                .then(r => setMediaPlanDetails(r.data.data))
+                .catch(console.error);
+        } else {
+            setMediaPlanDetails(null);
+        }
+    }, [viewingTache, projetDetails]);
 
     const loadData = async () => {
         if (!user?.employeId) {
@@ -464,87 +483,115 @@ const MesTachesPage: React.FC = () => {
                         <p className="text-gray-400">Aucune tâche ne vous est assignée.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                        {(['TODO', 'IN_PROGRESS', 'DONE'] as const).map(statut => (
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                        {(['TODO', 'IN_PROGRESS', 'DONE'] as const).map(colStatut => (
                             <div
-                                key={statut}
-                                className={`rounded-2xl border-2 transition-colors duration-200 ${dragOverStatut === statut
-                                    ? 'border-brand-400 bg-brand-50/30 dark:bg-brand-500/5'
-                                    : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark'
+                                key={colStatut}
+                                className={`rounded-2xl transition-colors duration-200 dark:bg-[#13161f] bg-gray-50 border ${dragOverStatut === colStatut
+                                    ? 'border-brand-400 dark:border-transparent ring-2 ring-brand-500/50'
+                                    : 'border-gray-200 dark:border-transparent'
                                     }`}
-                                onDragOver={e => { e.preventDefault(); setDragOverStatut(statut); }}
+                                onDragOver={e => { e.preventDefault(); setDragOverStatut(colStatut); }}
                                 onDragLeave={() => setDragOverStatut(null)}
-                                onDrop={e => handleDrop(e, statut)}
+                                onDrop={e => handleDrop(e, colStatut)}
                             >
-                                <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-700">
-                                    <Badge text={statutLabels[statut]} variant={statutBadgeMap[statut]} />
-                                    <span className="text-theme-xs text-gray-400">{grouped[statut].length}</span>
+                                <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-800 dark:text-white">
+                                            {colStatut === 'TODO' ? 'TO DO' : colStatut === 'IN_PROGRESS' ? 'IN PROGRESS' : 'DONE'}
+                                        </span>
+                                        <span className="flex h-5 items-center justify-center rounded-md bg-gray-200 px-2 text-[10px] font-bold text-gray-600 dark:bg-[#24283b] dark:text-[#565f89]">
+                                            {grouped[colStatut].length}
+                                        </span>
+                                    </div>
+                                    <button className="text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300">
+                                        <HiDotsHorizontal size={16} />
+                                    </button>
                                 </div>
-                                <div className="min-h-[80px] space-y-2 p-3">
-                                    {grouped[statut].length === 0 ? (
-                                        <p className="py-6 text-center text-theme-sm text-gray-400">
-                                            {dragOverStatut === statut ? 'Déposez ici' : 'Aucune tâche'}
-                                        </p>
+                                <div className="min-h-[80px] space-y-3 p-3">
+                                    {grouped[colStatut].length === 0 ? (
+                                        <div className={`flex items-center justify-center rounded-xl border-2 border-dashed py-8 transition-colors ${dragOverStatut === colStatut ? 'border-brand-300 text-brand-400' : 'border-gray-200 text-gray-300 dark:border-gray-700'}`}>
+                                            <p className="text-theme-xs">{dragOverStatut === colStatut ? 'Déposez ici' : 'Aucune tâche'}</p>
+                                        </div>
                                     ) : (
-                                        grouped[statut].map(tache => (
-                                            <div
-                                                key={tache.id}
-                                                draggable
-                                                onDragStart={e => handleDragStart(e, tache)}
-                                                onDragEnd={handleDragEnd}
-                                                className={`cursor-grab rounded-xl border-2 bg-gray-50 px-3 py-2.5 transition-shadow hover:shadow-md active:cursor-grabbing dark:bg-gray-800 ${tache.urgente ? 'border-error-400 dark:border-error-500' : 'border-gray-100 dark:border-gray-700'}`}
-                                            >
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-1.5">
-                                                            {tache.urgente && (
-                                                                <span className="shrink-0 rounded-full bg-error-50 px-1.5 py-0.5 text-[10px] font-bold text-error-600 dark:bg-error-500/10 dark:text-error-400">🚨 Urgent</span>
+                                        grouped[colStatut].map(tache => {
+                                            const fullProjet = tache.projetId ? projetDetails.get(tache.projetId) : null;
+                                            const isMediaPlan = fullProjet?.isMediaPlanProject;
+
+                                            let typeText = "TÂCHE";
+                                            if ((tache as any).typeDrive) {
+                                                const typesArr = ((tache as any).typeDrive as string).split(',');
+                                                if (typesArr.length > 0 && typesArr[0]) typeText = typesArr[0].toUpperCase();
+                                            }
+                                            if (isMediaPlan) typeText = "MEDIA PLAN";
+
+                                            let topRight = null;
+                                            if (tache.statut === 'DONE' && !tache.dateEcheance) {
+                                                topRight = <span className="flex items-center gap-1 text-[11px] font-semibold text-success-600 dark:text-[#9ece6a]"><HiOutlineCheckCircle size={14} /> Terminé</span>;
+                                            } else if (tache.statut === 'IN_PROGRESS' && !tache.dateEcheance) {
+                                                topRight = <span className="flex items-center gap-1 text-[11px] font-semibold text-warning-600 dark:text-[#e0af68]"><HiOutlineClock size={14} /> En cours</span>;
+                                            } else if (tache.dateEcheance) {
+                                                topRight = <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-[#565f89]"><HiOutlineCalendar size={14} /> {tache.dateEcheance.substring(5).replace('-', '/')}</span>;
+                                            } else {
+                                                topRight = <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 dark:text-[#565f89]">--</span>;
+                                            }
+
+                                            let assigneeInitials = "U";
+                                            let assigneeName = tache.chefDeProjetNom || "User";
+                                            if (assigneeName && assigneeName.trim() !== '-' && assigneeName !== 'Inconnu') {
+                                                const parts = assigneeName.split(' ');
+                                                if (parts.length >= 2) {
+                                                    assigneeInitials = (parts[0][0] + parts[1][0]).toUpperCase();
+                                                } else {
+                                                    assigneeInitials = parts[0].substring(0, 2).toUpperCase();
+                                                }
+                                            }
+
+                                            return (
+                                                <div
+                                                    key={tache.id}
+                                                    draggable
+                                                    onClick={() => setViewingTache(tache)}
+                                                    onDragStart={e => handleDragStart(e, tache)}
+                                                    onDragEnd={handleDragEnd}
+                                                    className={`cursor-pointer cursor-grab active:cursor-grabbing rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-[#1a1b26] ${tache.urgente ? 'border-error-300 dark:border-[#f7768e]/50 hover:border-error-400 dark:hover:border-[#f7768e]' : 'border-gray-200 dark:border-[#292e42] hover:border-brand-300 dark:hover:border-[#3b4261]'}`}
+                                                >
+                                                    <div className="mb-3 flex items-start justify-between gap-2">
+                                                        <span className="rounded bg-gray-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-500 dark:bg-[#292e42] dark:text-gray-300">
+                                                            {typeText}
+                                                        </span>
+                                                        {topRight}
+                                                    </div>
+                                                    <p className="mb-4 text-[13px] font-bold leading-relaxed text-gray-800 line-clamp-3 dark:text-gray-100">
+                                                        {tache.titre}
+                                                    </p>
+                                                    {tache.projetNom && (
+                                                        <p className="mb-4 mt-[-8px] truncate text-theme-xs text-brand-500 dark:text-brand-400 flex items-center gap-1.5">
+                                                            {tache.projetNom}
+                                                        </p>
+                                                    )}
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-600 shadow-sm ring-2 ring-white dark:bg-[#3d59a1] dark:text-white dark:ring-[#1a1b26]" title={`Chef: ${assigneeName}`}>
+                                                                {assigneeInitials}
+                                                            </div>
+                                                            {congeAujourdhuiNoms.has(tache.chefDeProjetNom || '') && (
+                                                                <span className="rounded-full bg-warning-50 px-1.5 py-0.5 text-[9px] font-semibold text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+                                                                    En congé
+                                                                </span>
                                                             )}
-                                                            <p className="truncate text-theme-sm font-medium text-gray-800 dark:text-white">
-                                                                {tache.titre}
-                                                            </p>
                                                         </div>
-                                                        {tache.projetNom && (
-                                                            <p className="mt-0.5 truncate text-theme-xs text-brand-500 dark:text-brand-400 flex items-center gap-1.5">
-                                                                {tache.projetNom}
-                                                                {tache.chefDeProjetNom && (
-                                                                    <span className="text-gray-400">
-                                                                        · Chef: {tache.chefDeProjetNom}
-                                                                        {congeAujourdhuiNoms.has(tache.chefDeProjetNom) && (
-                                                                            <span className="ml-1 rounded-full bg-warning-50 px-1.5 py-0.5 text-[10px] font-semibold text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
-                                                                                En congé
-                                                                            </span>
-                                                                        )}
-                                                                    </span>
-                                                                )}
-                                                            </p>
-                                                        )}
-                                                        {tache.dateEcheance && (
-                                                            <p className="mt-0.5 text-theme-xs text-gray-400">⏰ {tache.dateEcheance}</p>
-                                                        )}
-                                                        {/* Drive links */}
-                                                        {(tache as any).driveLink && (() => {
-                                                            const links = ((tache as any).driveLink as string).split(',');
-                                                            const types = ((tache as any).typeDrive as string || '').split(',');
-                                                            return links.map((link: string, i: number) => (
-                                                                <a
-                                                                    key={i}
-                                                                    href={link}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="mt-0.5 flex items-center gap-1 text-[11px] text-brand-500 hover:text-brand-600 hover:underline"
-                                                                    onMouseDown={e => e.stopPropagation()}
-                                                                    onClick={e => e.stopPropagation()}
-                                                                    draggable={false}
-                                                                >
-                                                                    📁 Drive{types[i] ? ` · ${types[i]}` : ''} ↗
-                                                                </a>
-                                                            ));
-                                                        })()}
+                                                        <div className={`flex items-center gap-1 text-[10px] font-bold ${tache.urgente ? 'text-error-600 dark:text-[#f7768e]' : 'text-success-600 dark:text-[#9ece6a]'}`}>
+                                                            {tache.urgente ? (
+                                                                <span className="flex items-center gap-0.5"><span className="text-[12px]">!</span> High</span>
+                                                            ) : (
+                                                                <span className="flex items-center gap-0.5"><HiOutlineChartBar size={12} /> Normal</span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))
+                                            );
+                                        })
                                     )}
                                 </div>
                             </div>
@@ -575,8 +622,8 @@ const MesTachesPage: React.FC = () => {
                             type="button"
                             onClick={() => setEditForm(f => ({ ...f, urgente: !f.urgente }))}
                             className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${editForm.urgente
-                                    ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
-                                    : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
+                                ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
+                                : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
                                 }`}
                         >
                             🚨 {editForm.urgente ? 'Tâche urgente (actif)' : 'Marquer comme urgente'}
@@ -587,6 +634,93 @@ const MesTachesPage: React.FC = () => {
                         <div className="flex justify-end gap-3 pt-2">
                             <Button variant="outline" onClick={() => setEditingTache(null)}>Annuler</Button>
                             <Button onClick={handleEditSave} disabled={editLoading}>{editLoading ? 'Enregistrement...' : 'Enregistrer'}</Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* ── View Modal ────────────────────────────────────────── */}
+            <Modal isOpen={!!viewingTache} onClose={() => setViewingTache(null)} title="Détails de la tâche">
+                {viewingTache && (
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-theme-xs text-gray-500">Titre</p>
+                                <p className="text-theme-sm font-semibold text-gray-800 dark:text-white">{viewingTache.titre}</p>
+                            </div>
+                            <div>
+                                <p className="text-theme-xs text-gray-500">Statut</p>
+                                <Badge text={statutLabels[viewingTache.statut]} variant={statutBadgeMap[viewingTache.statut]} />
+                            </div>
+                            <div>
+                                <p className="text-theme-xs text-gray-500">Projet</p>
+                                <p className="text-theme-sm text-gray-700 dark:text-gray-300">{viewingTache.projetNom || '-'}</p>
+                            </div>
+                            <div>
+                                <p className="text-theme-xs text-gray-500">Date d'échéance</p>
+                                <p className="text-theme-sm text-gray-700 dark:text-gray-300">{viewingTache.dateEcheance || '-'}</p>
+                            </div>
+                        </div>
+                        {/* Drive link */}
+                        {(viewingTache as any).driveLink && (
+                            <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 dark:border-brand-500/30 dark:bg-brand-500/10">
+                                <p className="text-theme-xs font-medium text-brand-600 dark:text-brand-400 mb-1">
+                                    📁 Dossier Drive — {(viewingTache as any).typeDrive}
+                                </p>
+                                <a
+                                    href={(viewingTache as any).driveLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-theme-sm text-brand-600 underline hover:text-brand-700 dark:text-brand-400 break-all"
+                                >
+                                    Ouvrir le dossier Drive ↗
+                                </a>
+                            </div>
+                        )}
+                        {/* Media Plan details if available */}
+                        {(() => {
+                            const fullProjet = viewingTache.projetId ? projetDetails.get(viewingTache.projetId) : null;
+                            if (fullProjet?.isMediaPlanProject && mediaPlanDetails) {
+                                return (
+                                    <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-500/30 dark:bg-brand-500/10 mt-4">
+                                        <h4 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400 flex items-center gap-2">
+                                            Détails Media Plan
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                                            <div><span className="block text-[10px] font-bold uppercase text-gray-500">Format</span>
+                                                <span className="text-theme-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.format}</span></div>
+                                            <div><span className="block text-[10px] font-bold uppercase text-gray-500">Type</span>
+                                                <span className="text-theme-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.type || '-'}</span></div>
+                                            <div className="col-span-2"><span className="block text-[10px] font-bold uppercase text-gray-500">Texte sur Visuel</span>
+                                                <p className="mt-0.5 text-theme-xs text-gray-700 dark:text-gray-300">{mediaPlanDetails.texteSurVisuel || '-'}</p></div>
+                                            <div className="col-span-2"><span className="block text-[10px] font-bold uppercase text-gray-500">Inspiration / Autres</span>
+                                                <div className="mt-0.5 flex flex-wrap gap-2 text-theme-xs text-gray-700 dark:text-gray-300">
+                                                    {mediaPlanDetails.inspiration ? (
+                                                        mediaPlanDetails.inspiration.startsWith('http') || mediaPlanDetails.inspiration.startsWith('www') ?
+                                                            <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline dark:text-brand-400">Inspiration (Lien)</a>
+                                                            : <span>{mediaPlanDetails.inspiration}</span>
+                                                    ) : '-'}
+                                                    {mediaPlanDetails.autresElements && <span className="border-l border-gray-300 pl-2 dark:border-gray-700">{mediaPlanDetails.autresElements}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
+
+                        <div className="flex justify-end pt-2 gap-3">
+                            {(() => {
+                                const fullProjet = viewingTache.projetId ? projetDetails.get(viewingTache.projetId) : null;
+                                return !fullProjet?.isMediaPlanProject ? (
+                                    <Button variant="outline" onClick={() => {
+                                        setViewingTache(null);
+                                        openEdit(viewingTache, {} as React.MouseEvent);
+                                    }}>Modifier</Button>
+                                ) : null;
+                            })()}
+                            <Button onClick={() => setViewingTache(null)}>Fermer</Button>
                         </div>
                     </div>
                 )}
