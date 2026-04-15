@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "taches")
@@ -62,5 +63,30 @@ public class Tache {
     @JsonGetter("assigneeId")
     public Long fetchAssigneeIdJson() {
         return assignee != null ? assignee.getId() : null;
+    }
+
+    // ── Lifecycle timestamps ───────────────────────────────────────────────────
+
+    /** When the task was created by the Admin */
+    @Column(name = "date_creation")
+    private LocalDateTime dateCreation;
+
+    /** When the task was assigned to a team member */
+    @Column(name = "date_assignation")
+    private LocalDateTime dateAssignation;
+
+    /** When the task moved to IN_PROGRESS */
+    @Column(name = "date_debut_execution")
+    private LocalDateTime dateDebutExecution;
+
+    /** When the task was marked DONE */
+    @Column(name = "date_fin_execution")
+    private LocalDateTime dateFinExecution;
+
+    @PrePersist
+    public void prePersist() {
+        if (dateCreation == null) {
+            dateCreation = LocalDateTime.now();
+        }
     }
 }

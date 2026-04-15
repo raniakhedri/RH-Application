@@ -107,6 +107,7 @@ const menuGroups = [
          ],*/
       },
       { key: 'equipes', label: 'Équipes', path: '/equipes', icon: <HiOutlineUserGroup size={20} />, permission: 'VIEW_EQUIPES' },
+      { key: 'rapport-projet', label: 'Rapport Cycle de Vie', path: '/rapport-projet', icon: <HiOutlineDocumentReport size={20} />, permission: 'VIEW_PROJETS' },
     ] as NavItemDef[],
   },
   {
