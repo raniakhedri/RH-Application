@@ -33,4 +33,5 @@ export const employeService = {
   },
   exportCsv: () => api.get('/employes/export/csv', { responseType: 'blob' }),
   getOrganigramme: () => api.get<ApiResponse<OrgNode[]>>('/employes/organigramme'),
+  getOnLeaveToday: () => api.get<ApiResponse<number[]>>('/employes/on-leave-today'),
 };

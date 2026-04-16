@@ -36,7 +36,7 @@ public class RoleService {
             Map.entry("VIEW_ROLES", "Rôles"),
             Map.entry("VIEW_MONITORING", "Monitoring"),
             Map.entry("VIEW_TOUS_PROJETS", "Tous les projets"),
-            Map.entry("VIEW_CALENDRIER_PROJETS", "Calendrier Projets"),
+            Map.entry("VIEW_CALENDRIER_PROJETS", "Calendrier Tournage"),
             Map.entry("VIEW_DASHBOARD_RH", "Dashboard RH"),
             Map.entry("VIEW_MES_DEMANDES", "Mes demandes"),
             Map.entry("VIEW_MES_PROJETS", "Mes projets"),
@@ -51,7 +51,10 @@ public class RoleService {
             Map.entry("VIEW_PROJETS_CREATE_TACHES", "Projets - Consultation et Création de tâches"),
             // ── Media Plan ──────────────────────────────────────────────────
             Map.entry("VIEW_MEDIA_PLAN", "Media Plan"),
-            Map.entry("VIEW_TOUS_MEDIA_PLAN", "Tous les Media Plan"));
+            Map.entry("VIEW_TOUS_MEDIA_PLAN", "Tous les Media Plan"),
+            // ── Deadlines & Réunions ─────────────────────────────────────
+            Map.entry("VIEW_DEADLINES", "Calendrier Deadlines"),
+            Map.entry("VIEW_REUNIONS", "Calendrier Réunions"));
 
     public List<RoleDTO> getAllRoles() {
         return roleRepository.findAll().stream()

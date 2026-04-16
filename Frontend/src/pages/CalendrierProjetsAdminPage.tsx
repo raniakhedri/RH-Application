@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect as useEffectHook } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   HiOutlineChevronLeft, HiOutlineChevronRight,
   HiOutlineUser, HiOutlineUserGroup,
   HiOutlineCheck, HiOutlineX, HiOutlineTrash,
   HiOutlineLockClosed, HiOutlineBriefcase,
   HiOutlineShieldExclamation,
+  HiOutlineClock, HiOutlineCalendar,
 } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
 import { employeService } from '../api/employeService';
@@ -13,6 +15,8 @@ import { projetService } from '../api/projetService';
 import { tacheService } from '../api/tacheService';
 import { useEffect } from 'react';
 import { StatutProjet, StatutTache } from '../types';
+import DeadlinesCalendar from './DeadlinesCalendar';
+import ReunionsCalendar from './ReunionsCalendar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BusySlot {
@@ -89,6 +93,8 @@ const CalendrierProjetsAdminPage: React.FC = () => {
   const permissions: string[] = (user as any)?.permissions || [];
 
   const hasAccess      = permissions.includes(PERM_ACCESS);
+  const hasDeadlines   = permissions.includes('VIEW_DEADLINES');
+  const hasReunions    = permissions.includes('VIEW_REUNIONS');
   const roles: any[] = (user as any)?.roles || [];
     const canManagerMode = roles.some(r => {
       const nom = (typeof r === 'string' ? r : r.nom)?.toUpperCase() || '';
@@ -96,11 +102,35 @@ const CalendrierProjetsAdminPage: React.FC = () => {
     });
     const canSocialMode  = roles.some(r => {
       const nom = (typeof r === 'string' ? r : r.nom)?.toUpperCase() || '';
-      return nom === 'SOCIAL MEDIA MANAGER' || nom === 'SOCIAL_MEDIA_MANAGER' || nom === 'ROLE_SOCIAL_MEDIA_MANAGER';
+      return nom.startsWith('SOCIAL MEDIA') || nom.startsWith('SOCIAL_MEDIA') || nom.startsWith('ROLE_SOCIAL_MEDIA');
     });
   const canSwitch      = canManagerMode && canSocialMode;
 
-  if (!hasAccess) return <AccessDenied />;
+  // Determine which tabs are available
+  const tabs: { key: string; label: string; icon: React.ReactNode }[] = [];
+  if (hasAccess) tabs.push({ key: 'tournage', label: 'Tournage', icon: <HiOutlineBriefcase size={16}/> });
+  if (hasDeadlines) tabs.push({ key: 'deadlines', label: 'Deadlines', icon: <HiOutlineClock size={16}/> });
+  if (hasReunions) tabs.push({ key: 'reunions', label: 'Réunions', icon: <HiOutlineCalendar size={16}/> });
+
+  // Read tab from URL query string (?tab=reunions)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const defaultTab = (urlTab && tabs.some(t => t.key === urlTab)) ? urlTab : (tabs.length > 0 ? tabs[0].key : '');
+  const [activeTab, setActiveTabState] = useState(defaultTab);
+
+  const setActiveTab = (key: string) => {
+    setActiveTabState(key);
+    setSearchParams(key === tabs[0]?.key ? {} : { tab: key }, { replace: true });
+  };
+
+  // Sync if URL changes externally (e.g. notification click)
+  useEffectHook(() => {
+    if (urlTab && tabs.some(t => t.key === urlTab) && urlTab !== activeTab) {
+      setActiveTabState(urlTab);
+    }
+  }, [urlTab]);
+
+  if (tabs.length === 0) return <AccessDenied />;
 
   const defaultMode: 'manager' | 'social' = canManagerMode ? 'manager' : 'social';
 
@@ -108,16 +138,44 @@ const CalendrierProjetsAdminPage: React.FC = () => {
     ? { label: 'Administrateur',         cls: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 border-blue-200' }
     : canManagerMode
       ? { label: 'Head Prod',            cls: 'bg-violet-50 text-violet-700 border-violet-200' }
-      : { label: 'Social Media Manager', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      : { label: 'Social Media', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
 
   return (
-    <CalendrierCore
-      canManagerMode={canManagerMode}
-      canSocialMode={canSocialMode}
-      canSwitch={canSwitch}
-      defaultMode={defaultMode}
-      roleBadge={roleBadge}
-    />
+    <div>
+      {/* ── Tab Bar ── */}
+      {tabs.length > 1 && (
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6">
+          <div className="max-w-6xl mx-auto flex gap-1">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all
+                  ${activeTab === tab.key
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'}`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab Content ── */}
+      {activeTab === 'tournage' && hasAccess && (
+        <CalendrierCore
+          canManagerMode={canManagerMode}
+          canSocialMode={canSocialMode}
+          canSwitch={canSwitch}
+          defaultMode={defaultMode}
+          roleBadge={roleBadge}
+        />
+      )}
+      {activeTab === 'deadlines' && hasDeadlines && <DeadlinesCalendar />}
+      {activeTab === 'reunions' && hasReunions && <ReunionsCalendar />}
+    </div>
   );
 };
 
@@ -414,7 +472,7 @@ const CalendrierCore: React.FC<CoreProps> = ({
           ) : (
             <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium ${roleBadge.cls}`}>
               {canManagerMode ? <HiOutlineUser size={15}/> : <HiOutlineUserGroup size={15}/>}
-              {canManagerMode ? 'Mode Head Prod' : 'Mode Social Media Manager'}
+              {canManagerMode ? 'Mode Head Prod' : 'Mode Social Media'}
             </div>
           )}
         </div>

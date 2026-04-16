@@ -4,6 +4,7 @@ import { ApiResponse, Projet, StatutProjet } from '../types';
 export const projetService = {
   getAll: () => api.get<ApiResponse<Projet[]>>('/projets'),
   getByEmploye: (employeId: number) => api.get<ApiResponse<Projet[]>>(`/projets/by-employe/${employeId}`),
+  getByDepartement: (dept: string) => api.get<ApiResponse<Projet[]>>(`/projets/by-departement/${dept}`),
   getById: (id: number) => api.get<ApiResponse<Projet>>(`/projets/${id}`),
   getByStatut: (statut: StatutProjet) => api.get<ApiResponse<Projet[]>>(`/projets/statut/${statut}`),
   create: (data: Partial<Projet> & { equipeIds?: number[] }) => api.post<ApiResponse<Projet>>('/projets', data),

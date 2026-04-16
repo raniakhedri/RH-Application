@@ -35,6 +35,8 @@ interface NavItemDef {
   icon: React.ReactNode;
   key: string;
   permission?: string;
+  /** If set, item is visible when user has ANY of these permissions */
+  permissions?: string[];
   badge?: number;
   children?: { label: string; path: string }[];
 }
@@ -69,6 +71,7 @@ const menuGroups = [
       },
       { key: 'mes-taches', label: 'Mes projets', path: '/mes-taches', icon: <HiOutlineViewBoards size={20} />, permission: 'VIEW_MES_PROJETS' },
       { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_MON_CALENDRIER' },
+      { key: 'calendrier-projets-menu', label: 'Calendrier Projets', path: '/admin/calendrier-projets', icon: <HiOutlineCalendar size={20} />, permissions: ['VIEW_CALENDRIER_PROJETS', 'VIEW_DEADLINES', 'VIEW_REUNIONS'] },
 
     ] as NavItemDef[],
   },
@@ -123,7 +126,6 @@ const menuGroups = [
       { key: 'roles', label: 'Rôles', path: '/roles', icon: <HiOutlineShieldCheck size={20} />, permission: 'VIEW_ROLES' },
       { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} />, permission: 'VIEW_REFERENTIELS' },
       { key: 'calendrier', label: 'Calendrier Entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
-        { key: 'calendrier-projets', label: 'Calendrier Projets', path: '/admin/calendrier-projets', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER_PROJETS' },
       { key: 'tous-projets-admin', label: 'Tous les projets', path: '/admin/projets', icon: <HiOutlineBriefcase size={20} />, permission: 'VIEW_TOUS_PROJETS' },
       { key: 'dashboard-rh', label: 'Dashboard RH', path: '/dashboard-rh', icon: <HiOutlineChartBar size={20} />, permission: 'VIEW_DASHBOARD_RH' },
       { key: 'departements', label: 'Départements', path: '/admin/departements', icon: <HiOutlineUserGroup size={20} />, permission: 'VIEW_EMPLOYES' },
@@ -202,7 +204,10 @@ const Sidebar: React.FC = () => {
     .map((group) => ({
       ...group,
       items: group.items
-        .filter((item) => !item.permission || userPermissions.includes(item.permission))
+        .filter((item) => {
+          if (item.permissions) return item.permissions.some(p => userPermissions.includes(p));
+          return !item.permission || userPermissions.includes(item.permission);
+        })
         .map((item) => {
           if (item.key === 'media-plan' && assignedClients.length > 0) {
             return {

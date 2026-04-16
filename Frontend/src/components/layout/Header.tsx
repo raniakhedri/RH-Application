@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiOutlineBell, HiOutlineLogout, HiOutlineMenu, HiOutlineLockClosed, HiOutlineUser, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineUserAdd, HiOutlinePencilAlt, HiOutlineTrash, HiOutlineDocumentText, HiOutlineStar, HiOutlinePhotograph, HiOutlineCalendar, HiOutlineInformationCircle } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
@@ -83,11 +83,13 @@ const Header: React.FC = () => {
 
   const handleNotifClick = (notif: NotificationResponse) => {
     if (!notif.lu) handleMarkAsRead(notif.id);
-    if (notif.titre.includes('PLANIFICATION_PROJET')) { navigate('/admin/calendrier-projets'); } else if (notif.demandeId) {
+    if (notif.reunionId) {
+      navigate('/admin/calendrier-projets?tab=reunions');
+    } else if (notif.titre.includes('PLANIFICATION_PROJET')) { navigate('/admin/calendrier-projets'); } else if (notif.demandeId) {
       navigate('/mes-demandes');
-    } else if (notif.titre.includes('employÃ©') || notif.titre.includes('subordonnÃ©') || notif.titre.includes('Profil')) {
+    } else if (notif.titre.includes('employé') || notif.titre.includes('subordonné') || notif.titre.includes('Profil')) {
       navigate('/employes');
-    } else if (notif.titre.includes('compÃ©tence') || notif.titre.includes('CompÃ©tence')) {
+    } else if (notif.titre.includes('compétence') || notif.titre.includes('Compétence')) {
       navigate('/employes');
     } else if (notif.titre.includes('document') || notif.titre.includes('Document')) {
       navigate('/employes');
@@ -96,7 +98,9 @@ const Header: React.FC = () => {
   };
 
   const getNotifIcon = (titre: string) => {
-    if (titre.includes('Nouvel employÃ©') || titre.includes('Nouveau subordonnÃ©'))
+    if (titre.includes('réunion') || titre.includes('Réunion'))
+      return { icon: HiOutlineCalendar, bg: 'bg-indigo-50 dark:bg-indigo-500/10', color: 'text-indigo-500' };
+    if (titre.includes('Nouvel employé') || titre.includes('Nouveau subordonné'))
       return { icon: HiOutlineUserAdd, bg: 'bg-brand-50 dark:bg-brand-500/10', color: 'text-brand-500' };
     if (titre.includes('modifiÃ©') || titre.includes('mis Ã  jour') || titre.includes('mise Ã  jour'))
       return { icon: HiOutlinePencilAlt, bg: 'bg-warning-50 dark:bg-warning-500/10', color: 'text-warning-500' };

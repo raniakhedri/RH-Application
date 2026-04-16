@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.antigone.rh.repository.CongeRepository;
+
 @RestController
 @RequestMapping("/api/employes")
 @RequiredArgsConstructor
@@ -33,6 +35,7 @@ public class EmployeController {
     private final EmployeService employeService;
     private final ReferentielRepository referentielRepository;
     private final HoraireTravailRepository horaireTravailRepository;
+    private final CongeRepository congeRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<EmployeDTO>>> getAll() {
@@ -189,6 +192,12 @@ public class EmployeController {
     @GetMapping("/organigramme")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getOrganigramme() {
         return ResponseEntity.ok(ApiResponse.ok(employeService.getOrganigramme()));
+    }
+
+    @GetMapping("/on-leave-today")
+    public ResponseEntity<ApiResponse<List<Long>>> getOnLeaveToday() {
+        List<Long> ids = congeRepository.findEmployeIdsOnLeave(java.time.LocalDate.now());
+        return ResponseEntity.ok(ApiResponse.ok(ids));
     }
 
     private String getRef(String libelle, String defaultValue) {

@@ -56,6 +56,13 @@ const PermissionRoute: React.FC<{ permission: string; children: React.ReactNode 
   return <>{children}</>;
 };
 
+const AnyPermissionRoute: React.FC<{ permissions: string[]; children: React.ReactNode }> = ({ permissions, children }) => {
+  const { user } = useAuth();
+  const hasAny = permissions.some(p => user?.permissions?.includes(p));
+  if (!hasAny) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+
 const App: React.FC = () => {
   return (
     <NotificationProvider>
@@ -99,7 +106,7 @@ const App: React.FC = () => {
           <Route path="suivi-temps-reel" element={<PermissionRoute permission="VIEW_MONITORING"><SuiviTempsReelPage /></PermissionRoute>} />
           <Route path="rapports-inactivite" element={<PermissionRoute permission="VIEW_MONITORING"><RapportsInactivitePage /></PermissionRoute>} />
           <Route path="historique-agent" element={<PermissionRoute permission="VIEW_MONITORING"><HistoriqueAgentPage /></PermissionRoute>} />
-            <Route path="admin/calendrier-projets" element={<PermissionRoute permission="VIEW_CALENDRIER_PROJETS"><CalendrierProjetsAdminPage /></PermissionRoute>} />
+            <Route path="admin/calendrier-projets" element={<AnyPermissionRoute permissions={['VIEW_CALENDRIER_PROJETS','VIEW_DEADLINES','VIEW_REUNIONS']}><CalendrierProjetsAdminPage /></AnyPermissionRoute>} />
           <Route path="admin/projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><TousProjetsAdminPage /></PermissionRoute>} />
           <Route path="admin/projets/:projetId/taches" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjetTachesPage /></PermissionRoute>} />
           <Route path="dashboard-rh" element={<PermissionRoute permission="VIEW_DASHBOARD_RH"><DashboardRHPage /></PermissionRoute>} />

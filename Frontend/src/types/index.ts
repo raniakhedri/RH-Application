@@ -469,6 +469,7 @@ export interface NotificationResponse {
   lu: boolean;
   dateCreation: string;
   demandeId: number | null;
+  reunionId: number | null;
 }
 
 export interface CalculateDaysResult {
@@ -710,4 +711,51 @@ export interface MediaPlanAssignment {
 export interface MediaPlanAssignmentRequest {
   clientId: number;
   employeIds: number[];
+}
+
+// =====================
+// RÉUNIONS
+// =====================
+export enum TypeReunion {
+  PRESENTIEL = 'PRESENTIEL',
+  EN_LIGNE = 'EN_LIGNE',
+}
+
+export enum StatutReunion {
+  EN_ATTENTE = 'EN_ATTENTE',
+  ACCEPTEE = 'ACCEPTEE',
+  REFUSEE = 'REFUSEE',
+}
+
+export interface Reunion {
+  id: number;
+  titre: string;
+  dateReunion: string;
+  heureDebut: string;
+  heureFin: string | null;
+  typeReunion: TypeReunion;
+  plateforme: string | null;
+  lieu: string | null;
+  statut: StatutReunion;
+  initiateurId: number;
+  initiateurNom: string;
+  initiateurPrenom: string;
+  participantId: number | null;
+  participantNom: string | null;
+  participantPrenom: string | null;
+  clientParticipantId: number | null;
+  clientParticipantNom: string | null;
+  dateCreation: string;
+}
+
+export interface ReunionRequest {
+  titre: string;
+  dateReunion: string;
+  heureDebut: string;
+  heureFin?: string;
+  typeReunion: TypeReunion;
+  plateforme?: string;
+  lieu?: string;
+  participantId?: number;
+  clientParticipantId?: number;
 }

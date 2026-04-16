@@ -74,6 +74,12 @@ public class ProjetService {
                 .collect(Collectors.toList());
     }
 
+    public List<ProjetDTO> findByDepartement(String departement) {
+        return projetRepository.findByDepartement(departement).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
     public ProjetDTO create(ProjetRequest request) {
         String type = request.getTypeProjet() != null ? request.getTypeProjet() : "DETERMINE";
         boolean isIndetermine = "INDETERMINE".equalsIgnoreCase(type);

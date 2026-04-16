@@ -18,5 +18,6 @@ public class NotificationResponse {
     private Boolean lu;
     private LocalDateTime dateCreation;
     private Long demandeId;
+    private Long reunionId;
     private boolean urgent;
 }
