@@ -9,10 +9,12 @@ import { TacheDetail, TacheMembreInfo, StatutTache, StatutDemande, Projet, Media
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
-import { HiOutlinePencil, HiOutlineChevronRight, HiOutlineUsers, HiOutlineFolder, HiOutlineCalendar, HiOutlineClock, HiOutlineCheckCircle, HiOutlineChartBar, HiDotsHorizontal } from 'react-icons/hi';
+import { HiOutlinePencil, HiOutlineChevronRight, HiOutlineUsers, HiOutlineFolder, HiOutlineCalendar, HiOutlineClock, HiOutlineCheckCircle, HiOutlineChartBar, HiDotsHorizontal, HiOutlineBriefcase, HiOutlineArrowLeft } from 'react-icons/hi';
 
 interface ProjectGroup {
     projetId: number;
+    clientId?: number | null;
+    clientNom?: string | null;
     projetNom: string;
     projetDateFin: string | null;
     projetStatut: string | null;
@@ -20,6 +22,12 @@ interface ProjectGroup {
     chefsDeProjetIds: Set<number>;
     membres: TacheMembreInfo[];
     tacheCount: number;
+}
+
+interface ClientGroup {
+    clientId: number | null;
+    clientNom: string;
+    projects: ProjectGroup[];
 }
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success'> = {
@@ -81,6 +89,36 @@ const MemberCard: React.FC<{ membre: TacheMembreInfo }> = ({ membre }) => {
     );
 };
 
+/** Fetches the client's Drive folder link from the backend and renders it. */
+const DriveLinkButton: React.FC<{ clientId: number }> = ({ clientId }) => {
+    const [driveLink, setDriveLink] = React.useState<string | null>(null);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        setLoading(true);
+        fetch(`/api/clients/${clientId}/drive-link`, { credentials: 'include' })
+            .then(r => r.json())
+            .then(d => setDriveLink(d?.data ?? null))
+            .catch(() => setDriveLink(null))
+            .finally(() => setLoading(false));
+    }, [clientId]);
+
+    if (loading) return null;
+    if (!driveLink) return null;
+
+    return (
+        <a
+            href={driveLink}
+            target="_blank"
+            rel="noreferrer"
+            className="mb-3 inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-theme-xs font-semibold text-brand-600 transition-colors hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20"
+        >
+            <HiOutlineFolder size={14} />
+            Ouvrir le dossier Drive
+        </a>
+    );
+};
+
 const MesTachesPage: React.FC = () => {
     const { user } = useAuth();
     const [taches, setTaches] = useState<TacheDetail[]>([]);
@@ -98,6 +136,7 @@ const MesTachesPage: React.FC = () => {
     const [mediaPlanDetails, setMediaPlanDetails] = useState<MediaPlan | null>(null);
 
     const [selectedProject, setSelectedProject] = useState<ProjectGroup | null>(null);
+    const [selectedClientId, setSelectedClientId] = useState<number | null | undefined>(undefined);
     // Set of employeNom strings for people on congé today
     const [congeAujourdhuiNoms, setCongeAujourdhuiNoms] = useState<Set<string>>(new Set());
     // Set of employeIds that have the MANAGER role
@@ -272,6 +311,8 @@ const MesTachesPage: React.FC = () => {
                 map.set(t.projetId, {
                     projetId: t.projetId,
                     projetNom: t.projetNom || 'Projet sans nom',
+                    clientId: fullProjet?.clientId || null,
+                    clientNom: fullProjet?.clientNom || 'Projets Internes',
                     projetDateFin: t.projetDateFin,
                     projetStatut: t.projetStatut,
                     chefDeProjetNom: chefNom,
@@ -284,6 +325,22 @@ const MesTachesPage: React.FC = () => {
         }
         return Array.from(map.values());
     }, [taches, managerEmpIds, projetDetails]);
+
+    const clientGroups: ClientGroup[] = React.useMemo(() => {
+        const cMap = new Map<number | null, ClientGroup>();
+        for (const pg of projectGroups) {
+            const cid = pg.clientId ?? null;
+            if (!cMap.has(cid)) {
+                cMap.set(cid, {
+                    clientId: cid,
+                    clientNom: pg.clientNom || 'Projets Internes',
+                    projects: [],
+                });
+            }
+            cMap.get(cid)!.projects.push(pg);
+        }
+        return Array.from(cMap.values());
+    }, [projectGroups]);
 
     const handleChangeStatut = async (id: number, statut: StatutTache) => {
         try {
@@ -366,70 +423,126 @@ const MesTachesPage: React.FC = () => {
                             </p>
                         </div>
                         {/* Breadcrumb */}
-                        {selectedProject && (
+                        {selectedClientId !== undefined && (
                             <nav className="flex items-center gap-1.5 text-theme-xs">
                                 <button
-                                    onClick={() => setSelectedProject(null)}
+                                    onClick={() => { setSelectedClientId(undefined); setSelectedProject(null); }}
                                     className="text-brand-500 hover:underline"
                                 >
-                                    Projets
+                                    Clients
                                 </button>
-                                <HiOutlineChevronRight size={12} className="text-gray-300" />
-                                <span className="font-semibold text-gray-700 dark:text-gray-200">
-                                    {selectedProject.projetNom}
-                                </span>
+                                {selectedClientId !== undefined && (
+                                    <>
+                                        <HiOutlineChevronRight size={12} className="text-gray-300" />
+                                        <button onClick={() => setSelectedProject(null)} className="font-semibold text-gray-700 dark:text-gray-200 hover:underline">
+                                            {selectedClientId === null ? 'Projets Internes' : clientGroups.find(c => c.clientId === selectedClientId)?.clientNom}
+                                        </button>
+                                    </>
+                                )}
+                                {selectedProject && (
+                                    <>
+                                        <HiOutlineChevronRight size={12} className="text-gray-300" />
+                                        <span className="font-semibold text-gray-700 dark:text-gray-200">
+                                            {selectedProject.projetNom}
+                                        </span>
+                                    </>
+                                )}
                             </nav>
                         )}
                     </div>
 
-                    {/* Level 1 — Project cards */}
-                    {!selectedProject && (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                            {projectGroups.map(pg => (
+                    {/* Level 1 — Client cards */}
+                    {selectedClientId === undefined && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                            {clientGroups.map(cg => (
                                 <button
-                                    key={pg.projetId}
-                                    onClick={() => setSelectedProject(pg)}
+                                    key={cg.clientId ?? 'interne'}
+                                    onClick={() => setSelectedClientId(cg.clientId)}
                                     className="group rounded-2xl border border-gray-200 bg-white p-5 text-left transition-all hover:border-brand-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-dark"
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
-                                            <HiOutlineFolder size={22} />
+                                            <HiOutlineBriefcase size={22} />
                                         </div>
                                         <HiOutlineChevronRight size={16} className="mt-1 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-400" />
                                     </div>
-                                    <p className="mt-3 text-theme-sm font-semibold text-gray-800 dark:text-white">{pg.projetNom}</p>
-                                    {pg.projetStatut && (
-                                        <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-theme-xs font-medium ${pg.projetStatut === 'EN_COURS' ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/10' :
-                                            pg.projetStatut === 'CLOTURE' ? 'bg-success-50 text-success-600 dark:bg-success-500/10' :
-                                                pg.projetStatut === 'ANNULE' ? 'bg-error-50 text-error-600 dark:bg-error-500/10' :
-                                                    'bg-gray-100 text-gray-600 dark:bg-gray-700'
-                                            }`}>
-                                            {pg.projetStatut}
-                                        </span>
-                                    )}
-                                    {pg.chefDeProjetNom && (
-                                        <p className="mt-0.5 text-theme-xs text-gray-500 flex items-center gap-2">
-                                            Chef : {pg.chefDeProjetNom}
-                                            {congeAujourdhuiNoms.has(pg.chefDeProjetNom) && (
-                                                <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[10px] font-semibold text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
-                                                    En congé
-                                                </span>
-                                            )}
-                                        </p>
-                                    )}
-                                    {pg.projetDateFin && <p className="text-theme-xs text-warning-500">Fin : {pg.projetDateFin}</p>}
+                                    <p className="mt-3 text-theme-sm font-semibold text-gray-800 dark:text-white">{cg.clientNom}</p>
                                     <div className="mt-3 flex gap-2">
                                         <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-theme-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                            {pg.tacheCount} tâche{pg.tacheCount > 1 ? 's' : ''}
-                                        </span>
-                                        <span className="rounded-full bg-secondary-50 px-2.5 py-0.5 text-theme-xs font-medium text-secondary-600 dark:bg-secondary-500/10 dark:text-secondary-400">
-                                            {pg.membres.length} membre{pg.membres.length !== 1 ? 's' : ''}
+                                            {cg.projects.length} projet{cg.projects.length !== 1 ? 's' : ''}
                                         </span>
                                     </div>
                                 </button>
                             ))}
                         </div>
                     )}
+
+                    {/* Level 2 — Project cards for selected client */}
+                    {selectedClientId !== undefined && !selectedProject && (() => {
+                        const clientProjects = clientGroups.find(c => c.clientId === selectedClientId)?.projects || [];
+                        return (
+                            <div className="space-y-4">
+                                <button
+                                    onClick={() => setSelectedClientId(undefined)}
+                                    className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                                >
+                                    <HiOutlineArrowLeft size={14} /> Retour aux clients
+                                </button>
+                                {selectedClientId !== null && (() => {
+                                    const activeClient = clientGroups.find(c => c.clientId === selectedClientId);
+                                    if (!activeClient) return null;
+                                    return (
+                                        <DriveLinkButton clientId={selectedClientId!} />
+                                    );
+                                })()}
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                    {clientProjects.map(pg => (
+                                        <button
+                                            key={pg.projetId}
+                                            onClick={() => setSelectedProject(pg)}
+                                            className="group rounded-2xl border border-gray-200 bg-white p-5 text-left transition-all hover:border-brand-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-dark"
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
+                                                    <HiOutlineFolder size={22} />
+                                                </div>
+                                                <HiOutlineChevronRight size={16} className="mt-1 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-400" />
+                                            </div>
+                                            <p className="mt-3 text-theme-sm font-semibold text-gray-800 dark:text-white">{pg.projetNom}</p>
+                                            {pg.projetStatut && (
+                                                <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-theme-xs font-medium ${pg.projetStatut === 'EN_COURS' ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/10' :
+                                                    pg.projetStatut === 'CLOTURE' ? 'bg-success-50 text-success-600 dark:bg-success-500/10' :
+                                                        pg.projetStatut === 'ANNULE' ? 'bg-error-50 text-error-600 dark:bg-error-500/10' :
+                                                            'bg-gray-100 text-gray-600 dark:bg-gray-700'
+                                                    }`}>
+                                                    {pg.projetStatut}
+                                                </span>
+                                            )}
+                                            {pg.chefDeProjetNom && (
+                                                <p className="mt-0.5 text-theme-xs text-gray-500 flex items-center gap-2">
+                                                    Chef : {pg.chefDeProjetNom}
+                                                    {congeAujourdhuiNoms.has(pg.chefDeProjetNom) && (
+                                                        <span className="rounded-full bg-warning-50 px-2 py-0.5 text-[10px] font-semibold text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+                                                            En congé
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            )}
+                                            {pg.projetDateFin && <p className="text-theme-xs text-warning-500">Fin : {pg.projetDateFin}</p>}
+                                            <div className="mt-3 flex gap-2">
+                                                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-theme-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                                    {pg.tacheCount} tâche{pg.tacheCount > 1 ? 's' : ''}
+                                                </span>
+                                                <span className="rounded-full bg-secondary-50 px-2.5 py-0.5 text-theme-xs font-medium text-secondary-600 dark:bg-secondary-500/10 dark:text-secondary-400">
+                                                    {pg.membres.length} membre{pg.membres.length !== 1 ? 's' : ''}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* Level 2 — Membres du projet */}
                     {selectedProject && (
