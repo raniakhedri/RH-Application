@@ -40,27 +40,6 @@ interface TacheForm {
     statut: StatutTache;
     assigneeIds: string[];
     urgente: boolean;
-    typeDriveTypes: string[]; // subset of ['Post','Video','Documentation']
-}
-
-const DRIVE_TYPES = ['Post', 'Video', 'Documentation'] as const;
-const DRIVE_TYPE_ICON: Record<string, string> = { Post: '📸', Video: '🎬', Documentation: '📄' };
-
-/**
- * Toggle a drive type on/off with constraints:
- * - Post and Video are mutually exclusive
- * - Documentation can combine with either
- */
-function toggleDriveType(current: string[], type: string): string[] {
-    if (current.includes(type)) {
-        // Deselect
-        return current.filter(t => t !== type);
-    }
-    // Select — enforce mutual exclusion between Post and Video
-    let next = [...current, type];
-    if (type === 'Post') next = next.filter(t => t !== 'Video');
-    if (type === 'Video') next = next.filter(t => t !== 'Post');
-    return next;
 }
 
 const emptyForm = (): TacheForm => ({
@@ -69,7 +48,6 @@ const emptyForm = (): TacheForm => ({
     statut: StatutTache.TODO,
     assigneeIds: [],
     urgente: false,
-    typeDriveTypes: [],
 });
 
 const ProjetTachesPage: React.FC = () => {
@@ -240,7 +218,6 @@ const ProjetTachesPage: React.FC = () => {
                         statut: form.statut,
                         dateEcheance: form.dateEcheance || undefined,
                         urgente: form.urgente,
-                        typeDrive: form.typeDriveTypes.length > 0 ? form.typeDriveTypes.join(',') : undefined,
                     } as any);
                     if (form.assigneeIds[0]) {
                         await tacheService.assign(created.data.data.id, Number(form.assigneeIds[0]));
@@ -253,7 +230,6 @@ const ProjetTachesPage: React.FC = () => {
                             statut: form.statut,
                             dateEcheance: form.dateEcheance || undefined,
                             urgente: form.urgente,
-                            typeDrive: form.typeDriveTypes.length > 0 ? form.typeDriveTypes.join(',') : undefined,
                         } as any);
                         await tacheService.assign(created.data.data.id, Number(memberId));
                     }
@@ -279,7 +255,6 @@ const ProjetTachesPage: React.FC = () => {
             statut: tache.statut,
             assigneeIds: tache.assigneeId ? [String(tache.assigneeId)] : [],
             urgente: tache.urgente ?? false,
-            typeDriveTypes: (tache as any).typeDrive ? (tache as any).typeDrive.split(',') : [],
         });
         setEditError(null);
     };
@@ -294,7 +269,6 @@ const ProjetTachesPage: React.FC = () => {
                 dateEcheance: editForm.dateEcheance || undefined,
                 statut: editForm.statut,
                 urgente: editForm.urgente,
-                typeDrive: editForm.typeDriveTypes.join(','),
             } as any);
             // Assign the first selected member (or clear)
             if (editForm.assigneeIds[0]) {
@@ -318,14 +292,6 @@ const ProjetTachesPage: React.FC = () => {
         });
     };
 
-    const toggleEditDriveType = (type: string) => {
-        setEditForm(f => {
-            const types = f.typeDriveTypes.includes(type)
-                ? f.typeDriveTypes.filter(t => t !== type)
-                : [...f.typeDriveTypes, type];
-            return { ...f, typeDriveTypes: types };
-        });
-    };
 
     // ── Delete ─────────────────────────────────────────────────
 
@@ -593,30 +559,7 @@ const ProjetTachesPage: React.FC = () => {
                                     onToggle={id => toggleTaskAssignee(idx, id)}
                                     label={`Assigner à${form.assigneeIds.length > 1 ? ' (crée une tâche par membre)' : ''}`}
                                 />
-                                {/* Drive type multi-select (Post/Video mutually exclusive, Documentation can combine) */}
-                                <div>
-                                    <p className="mb-1.5 text-theme-xs font-medium text-gray-600 dark:text-gray-400">📁 Dossier Drive (optionnel)</p>
-                                    <div className="flex gap-2">
-                                        {DRIVE_TYPES.map(type => (
-                                            <button
-                                                key={type}
-                                                type="button"
-                                                onClick={() => updateTaskForm(idx, 'typeDriveTypes', toggleDriveType(form.typeDriveTypes, type))}
-                                                className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-2 py-2 text-theme-xs font-medium transition-colors ${form.typeDriveTypes.includes(type)
-                                                    ? 'border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400'
-                                                    : 'border-gray-200 text-gray-500 hover:border-brand-200 dark:border-gray-700'
-                                                    }`}
-                                            >
-                                                {DRIVE_TYPE_ICON[type]} {type}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    {form.typeDriveTypes.length > 0 && (
-                                        <p className="mt-1 text-theme-xs text-brand-500">
-                                            Dossiers Drive : {form.typeDriveTypes.join(' + ')}
-                                        </p>
-                                    )}
-                                </div>
+
                                 <button
                                     type="button"
                                     onClick={() => updateTaskForm(idx, 'urgente', !form.urgente)}

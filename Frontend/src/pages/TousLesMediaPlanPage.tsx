@@ -7,6 +7,8 @@ import {
     HiOutlineUserAdd,
     HiOutlineChevronDown,
     HiOutlineChevronRight,
+    HiOutlineBriefcase,
+    HiOutlineArrowLeft,
 } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
 import { mediaPlanService } from '../api/mediaPlanService';
@@ -17,7 +19,6 @@ import {
     MediaPlan,
     MediaPlanAssignment,
     Referentiel,
-    EtatPublication,
     EtatPublicationLabels,
     StatutMediaPlanLabels,
 } from '../types';
@@ -45,7 +46,6 @@ const COLUMNS = [
     { key: 'statut', label: 'Statut', defaultWidth: 100 },
 ];
 
-// ── Link detection ──
 const renderCellValue = (value: string | null) => {
     if (!value) return '-';
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -61,7 +61,6 @@ const renderCellValue = (value: string | null) => {
     return value;
 };
 
-// ── Column resize styles ──
 const resizeHandleStyle: React.CSSProperties = {
     position: 'absolute', right: 0, top: 0, bottom: 0, width: '6px',
     cursor: 'col-resize', zIndex: 10, borderRight: '2px solid transparent', transition: 'border-color 0.15s',
@@ -70,7 +69,6 @@ const resizeHandleHoverStyle: React.CSSProperties = {
     ...resizeHandleStyle, borderRight: '2px solid var(--color-brand-500, #6366f1)',
 };
 
-// ── Status helpers ──
 const getStatusInfo = (plans: MediaPlan[]) => {
     if (plans.length === 0) return { label: 'Vide', color: 'gray' };
     if (plans.every(p => p.statut === 'APPROUVE')) return { label: 'Approuvé', color: 'green' };
@@ -79,15 +77,6 @@ const getStatusInfo = (plans: MediaPlan[]) => {
     return { label: 'Brouillon', color: 'brand' };
 };
 
-const statusColorClasses: Record<string, string> = {
-    green: 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800 text-green-700 dark:text-green-400',
-    red: 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800 text-red-700 dark:text-red-400',
-    warning: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800 text-yellow-700 dark:text-yellow-400',
-    brand: 'bg-brand-50 border-brand-200 dark:bg-brand-900/20 dark:border-brand-800 text-brand-700 dark:text-brand-400',
-    gray: 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700 text-gray-600 dark:text-gray-400',
-};
-
-// ── Batch type ──
 interface PlanBatch {
     key: string;
     plans: MediaPlan[];
@@ -100,9 +89,6 @@ const getBatchLabel = (batch: PlanBatch) => {
     return `media plan de ${batch.monthLabel} ___a été envoyé par : ${batch.employeeName}  à ${batch.sentDate}`;
 };
 
-// ══════════════════════════════════════
-// ── MAIN COMPONENT ──
-// ══════════════════════════════════════
 const TousLesMediaPlanPage: React.FC = () => {
     const { user } = useAuth();
     const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
@@ -114,21 +100,38 @@ const TousLesMediaPlanPage: React.FC = () => {
     const [search, setSearch] = useState('');
     const [filterStatut, setFilterStatut] = useState('');
 
-    // Referentiels
     const [formats, setFormats] = useState<Referentiel[]>([]);
     const [types, setTypes] = useState<Referentiel[]>([]);
     const [platformes, setPlateformes] = useState<Referentiel[]>([]);
 
-    // Accordion state
-    const [openBatches, setOpenBatches] = useState<Set<string>>(new Set());
+    const [viewState, setViewState] = useState<'CLIENTS' | 'BATCHES' | 'BATCH_DETAILS'>('CLIENTS');
+    const [selectedBatchKey, setSelectedBatchKey] = useState<string | null>(null);
+    const [selectedMonthLabel, setSelectedMonthLabel] = useState<string | null>(null);
 
-    // Assign employee modal
+    const availableMonths = useMemo(() => {
+        const months = new Set<string>();
+        for (const mp of mediaPlans) {
+            if (mp.datePublication) {
+                const d = new Date(mp.datePublication);
+                months.add(`${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`);
+            } else {
+                months.add('Indéterminé');
+            }
+        }
+        return Array.from(months);
+    }, [mediaPlans]);
+
+    useEffect(() => {
+        if (availableMonths.length > 0 && (!selectedMonthLabel || !availableMonths.includes(selectedMonthLabel))) {
+            setSelectedMonthLabel(availableMonths[0]);
+        }
+    }, [availableMonths, selectedMonthLabel]);
+
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [socialMediaEmployees, setSocialMediaEmployees] = useState<{ id: number; nom: string; prenom: string; departement: string; email: string }[]>([]);
     const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
     const [existingAssignments, setExistingAssignments] = useState<MediaPlanAssignment[]>([]);
 
-    // Column widths
     const [colWidths, setColWidths] = useState<number[]>(COLUMNS.map(c => c.defaultWidth));
     const [resizingCol, setResizingCol] = useState<number | null>(null);
     const [hoveredHandle, setHoveredHandle] = useState<number | null>(null);
@@ -137,10 +140,13 @@ const TousLesMediaPlanPage: React.FC = () => {
 
     useEffect(() => { loadClients(); loadReferentiels(); }, []);
     useEffect(() => {
-        if (selectedClientId) { loadMediaPlans(selectedClientId); loadAssignments(selectedClientId); }
+        if (selectedClientId) {
+            setSelectedMonthLabel(null);
+            loadMediaPlans(selectedClientId);
+            loadAssignments(selectedClientId);
+        }
     }, [selectedClientId]);
 
-    // ── Column resize handlers ──
     const handleMouseMove = useCallback((e: MouseEvent) => {
         if (resizingCol === null) return;
         const delta = e.clientX - resizeStartX.current;
@@ -211,7 +217,6 @@ const TousLesMediaPlanPage: React.FC = () => {
         } catch (e) { console.error(e); }
     };
 
-    // ── Helper to build batch metadata ──
     const createBatch = (index: number, plans: MediaPlan[]): PlanBatch => {
         const first = plans[0];
         let monthLabel = '';
@@ -228,7 +233,6 @@ const TousLesMediaPlanPage: React.FC = () => {
         return { key: `batch-${index}`, plans, monthLabel, employeeName, sentDate };
     };
 
-    // ── Group plans into batches by dateCreation time gap (>5s = new batch) ──
     const batches = useMemo((): PlanBatch[] => {
         let filtered = mediaPlans;
         if (filterStatut) filtered = filtered.filter(mp => mp.statut === filterStatut);
@@ -240,6 +244,14 @@ const TousLesMediaPlanPage: React.FC = () => {
                 mp.createurPrenom?.toLowerCase().includes(s) ||
                 mp.format?.toLowerCase().includes(s)
             );
+        }
+
+        if (selectedMonthLabel) {
+            filtered = filtered.filter(mp => {
+                if (!mp.datePublication) return selectedMonthLabel === 'Indéterminé';
+                const d = new Date(mp.datePublication);
+                return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}` === selectedMonthLabel;
+            });
         }
 
         const sorted = [...filtered].sort((a, b) => {
@@ -264,18 +276,9 @@ const TousLesMediaPlanPage: React.FC = () => {
         if (currentBatch.length > 0) {
             groups.push(createBatch(groups.length, currentBatch));
         }
-        return groups.reverse(); // newest on top
-    }, [mediaPlans, filterStatut, search]);
+        return groups.reverse();
+    }, [mediaPlans, filterStatut, search, selectedMonthLabel]);
 
-    const toggleBatch = (key: string) => {
-        setOpenBatches(prev => {
-            const next = new Set(prev);
-            if (next.has(key)) next.delete(key); else next.add(key);
-            return next;
-        });
-    };
-
-    // ── Approve / Disapprove all plans in a batch ──
     const handleApproveBatch = async (batch: PlanBatch) => {
         confirm(`Approuver les ${batch.plans.length} ligne(s) de ce plan ?`, async () => {
             try {
@@ -306,7 +309,6 @@ const TousLesMediaPlanPage: React.FC = () => {
         });
     };
 
-    // ── Assign Employee ──
     const openAssignModal = async () => {
         try {
             const res = await mediaPlanAssignmentService.getSocialMediaEmployees();
@@ -346,10 +348,8 @@ const TousLesMediaPlanPage: React.FC = () => {
     };
 
     const inputClass = 'w-full bg-transparent border-0 text-sm text-gray-700 dark:text-gray-300 px-1 py-2.5 cursor-default opacity-70';
-
     const tableWidth = colWidths.reduce((s, w) => s + w, 0);
 
-    // ── Render table header ──
     const renderTableHeader = () => (
         <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
@@ -370,7 +370,6 @@ const TousLesMediaPlanPage: React.FC = () => {
         </thead>
     );
 
-    // ── Render existing row (read-only) ──
     const renderRow = (mp: MediaPlan) => (
         <tr key={mp.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50" style={{ height: '104px' }}>
             <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[0] }}>
@@ -390,37 +389,33 @@ const TousLesMediaPlanPage: React.FC = () => {
             </td>
             <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[5] }}>
                 <span className={`${inputClass} truncate block`}>{renderCellValue(mp.texteSurVisuel)}</span>
-            </td>
+            </td >
             <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[6] }}>
                 <span className={`${inputClass} truncate block`}>{renderCellValue(mp.inspiration)}</span>
-            </td>
+            </td >
             <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[7] }}>
                 <span className={`${inputClass} truncate block`}>{renderCellValue(mp.autresElements)}</span>
-            </td>
+            </td >
             <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[8] }}>
                 <span className={inputClass}>{mp.platforme || '-'}</span>
             </td>
             <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[9] }}>
                 <span className={`${inputClass} truncate block`}>{renderCellValue(mp.lienDrive)}</span>
-            </td>
+            </td >
             <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[10] }}>
                 <Badge variant="neutral">{EtatPublicationLabels[mp.etatPublication as keyof typeof EtatPublicationLabels] || mp.etatPublication || '-'}</Badge>
             </td>
             <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[11] }}>
                 <span className={`${inputClass} truncate block`}>{renderCellValue(mp.rectifs)}</span>
-            </td>
+            </td >
             <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[12] }}>
                 <span className={`${inputClass} truncate block`}>{renderCellValue(mp.remarques)}</span>
-            </td>
+            </td >
             <td className="px-2 py-1 overflow-hidden" style={{ width: colWidths[13] }}>
                 {getStatusBadge(mp.statut)}
             </td>
-        </tr>
+        </tr >
     );
-
-    // ══════════════════════════════════════
-    // ── RENDER ──
-    // ══════════════════════════════════════
 
     if (loading) {
         return (
@@ -432,123 +427,214 @@ const TousLesMediaPlanPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tous les Media Plans</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Gestion et approbation des media plans</p>
-                </div>
-                <button onClick={openAssignModal}
-                    className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition-colors">
-                    <HiOutlineUserAdd size={18} /> Assigner Employé
-                </button>
-            </div>
-
-            {/* Client Selector + Assigned Employees */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sélectionner un client</label>
-                    <select value={selectedClientId || ''} onChange={e => setSelectedClientId(Number(e.target.value))}
-                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm dark:text-white focus:ring-2 focus:ring-brand-500">
-                        {clients.map(c => (<option key={c.id} value={c.id}>{c.nom}</option>))}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Employés assignés</label>
-                    <div className="flex flex-wrap gap-2">
-                        {existingAssignments.length === 0 ? (
-                            <span className="text-sm text-gray-400">Aucun employé assigné</span>
-                        ) : existingAssignments.map(a => (
-                            <span key={a.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 text-xs font-medium">
-                                {a.employePrenom} {a.employeNom}
-                                <button onClick={() => handleRemoveAssignment(a.id)} className="ml-1 hover:text-red-500 transition-colors" title="Retirer">
-                                    <HiOutlineX size={12} />
-                                </button>
-                            </span>
-                        ))}
+            {/* ── CLIENTS VIEW ── */}
+            {viewState === 'CLIENTS' && (
+                <div className="space-y-6">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tous les Media Plans</h1>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Sélectionnez un client pour gérer ses media plans</p>
                     </div>
-                </div>
-            </div>
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-3">
-                <div className="relative flex-1 min-w-[200px]">
-                    <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input type="text" placeholder="Rechercher par titre, créateur, format..."
-                        value={search} onChange={e => setSearch(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 dark:text-white" />
-                </div>
-                <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)}
-                    className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm dark:text-white">
-                    <option value="">Tous les statuts</option>
-                    <option value="EN_ATTENTE">En attente</option>
-                    <option value="APPROUVE">Approuvé</option>
-                    <option value="DESAPPROUVE">Désapprouvé</option>
-                </select>
-            </div>
-
-            {/* ── Batch Accordions ── */}
-            {batches.length === 0 ? (
-                <div className="py-12 text-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
-                    {selectedClientId ? 'Aucun media plan pour ce client' : 'Sélectionnez un client'}
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {batches.map(batch => {
-                        const batchStatus = getStatusInfo(batch.plans);
-                        const isOpen = openBatches.has(batch.key);
-                        const allApproved = batch.plans.every(p => p.statut === 'APPROUVE');
-                        const allDisapproved = batch.plans.every(p => p.statut === 'DESAPPROUVE');
-
-                        return (
-                            <div key={batch.key} className={`rounded-xl border-2 overflow-hidden transition-all duration-300 ${statusColorClasses[batchStatus.color]}`}>
-                                {/* Accordion header */}
-                                <div className="flex items-center justify-between px-5 py-4">
-                                    <button onClick={() => toggleBatch(batch.key)}
-                                        className="flex-1 flex items-center gap-3 text-left hover:opacity-80 transition-opacity">
-                                        {isOpen
-                                            ? <HiOutlineChevronDown size={20} className="transition-transform flex-shrink-0" />
-                                            : <HiOutlineChevronRight size={20} className="transition-transform flex-shrink-0" />}
-                                        <div className="min-w-0">
-                                            <span className="text-base font-semibold">{getBatchLabel(batch)}</span>
-                                            <span className="text-sm opacity-70 ml-2">— {batch.plans.length} ligne(s)</span>
+                    {clients.length === 0 ? (
+                        <div className="py-12 text-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                            Aucun client disponible.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {clients.map(c => (
+                                <div
+                                    key={c.id}
+                                    onClick={() => { setSelectedClientId(c.id); setViewState('BATCHES'); }}
+                                    className="group cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 hover:border-brand-300 hover:shadow-md transition-all dark:border-gray-700 dark:bg-gray-800 dark:hover:border-brand-500/50"
+                                >
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
+                                            <HiOutlineBriefcase size={20} />
                                         </div>
-                                    </button>
-                                    <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1">{c.nom}</h3>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{c.description || 'Projets internes / Non assignés'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 dark:border-gray-700/50">
+                                        <span className="text-[11px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            Gérer les media plans →
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── BATCHES VIEW ── */}
+            {viewState === 'BATCHES' && selectedClientId && (
+                <div className="space-y-6">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <button
+                                onClick={() => setViewState('CLIENTS')}
+                                className="mb-4 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                            >
+                                <HiOutlineArrowLeft size={14} /> Retour aux clients
+                            </button>
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {clients.find(c => c.id === selectedClientId)?.nom || 'Client Inconnu'}
+                            </h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Groupes de la ligne de temps</p>
+                        </div>
+                        <button onClick={openAssignModal}
+                            className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition-colors">
+                            <HiOutlineUserAdd size={18} /> Assigner Employé
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div className="lg:col-span-3">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Employés assignés au client</label>
+                            <div className="flex flex-wrap gap-2">
+                                {existingAssignments.length === 0 ? (
+                                    <span className="text-sm text-gray-400 italic">Aucun employé assigné</span>
+                                ) : existingAssignments.map(a => (
+                                    <span key={a.id} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 text-xs font-semibold">
+                                        {a.employePrenom} {a.employeNom}
+                                        <button onClick={() => handleRemoveAssignment(a.id)} className="ml-1 hover:text-red-500 transition-colors" title="Retirer">
+                                            <HiOutlineX size={14} />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex flex-wrap gap-3">
+                        <div className="relative flex-1 min-w-[200px]">
+                            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input type="text" placeholder="Rechercher par titre, créateur, format..."
+                                value={search} onChange={e => setSearch(e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 dark:text-white" />
+                        </div>
+                        <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)}
+                            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm dark:text-white">
+                            <option value="">Tous les statuts</option>
+                            <option value="EN_ATTENTE">En attente</option>
+                            <option value="APPROUVE">Approuvé</option>
+                            <option value="DESAPPROUVE">Désapprouvé</option>
+                        </select>
+                    </div>
+
+                    {/* Month Tabs */}
+                    {availableMonths.length > 0 && (
+                        <div className="flex overflow-x-auto pb-2 scrollbar-hide gap-2">
+                            {availableMonths.map(m => (
+                                <button
+                                    key={m}
+                                    onClick={() => setSelectedMonthLabel(m)}
+                                    className={`shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${selectedMonthLabel === m
+                                        ? 'bg-green-500 text-white shadow'
+                                        : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Batch Cards Grid */}
+                    {batches.length === 0 ? (
+                        <div className="py-12 text-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                            Aucun media plan pour ce client
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-2">
+                            {batches.map(batch => {
+                                const batchStatus = getStatusInfo(batch.plans);
+                                return (
+                                    <div key={batch.key} onClick={() => { setSelectedBatchKey(batch.key); setViewState('BATCH_DETAILS'); }}
+                                        className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[20px] border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:shadow-xl dark:hover:border-brand-500/50">
+                                        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                                            <h3 className="line-clamp-2 flex-1 text-base font-semibold leading-snug text-gray-900 dark:text-gray-100">
+                                                {getBatchLabel(batch)}
+                                            </h3>
+                                            <Badge variant={
+                                                batchStatus.color === 'green' ? 'success' :
+                                                    batchStatus.color === 'red' ? 'danger' :
+                                                        batchStatus.color === 'warning' ? 'warning' : 'neutral' as any
+                                            }>{batchStatus.label}</Badge>
+                                        </div>
+
+                                        <div className="flex-1 text-sm text-gray-500 dark:text-gray-400 mb-4">
+                                            {batch.plans.length} ligne(s) dans ce lot.
+                                        </div>
+
+                                        <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-4 dark:border-gray-700/50">
+                                            <span className="text-[11px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                Voir Détails →
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── BATCH DETAILS VIEW ── */}
+            {viewState === 'BATCH_DETAILS' && selectedBatchKey && (
+                <div className="space-y-6">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <button
+                                onClick={() => setViewState('BATCHES')}
+                                className="mb-4 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                            >
+                                <HiOutlineArrowLeft size={14} /> Retour aux groupes
+                            </button>
+                            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                                {getBatchLabel(batches.find(b => b.key === selectedBatchKey)!)}
+                            </h1>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {(() => {
+                                const activeBatch = batches.find(b => b.key === selectedBatchKey);
+                                if (!activeBatch) return null;
+                                const allApproved = activeBatch.plans.every(p => p.statut === 'APPROUVE');
+                                const allDisapproved = activeBatch.plans.every(p => p.statut === 'DESAPPROUVE');
+
+                                return (
+                                    <>
                                         {!allApproved && (
-                                            <button onClick={() => handleApproveBatch(batch)}
-                                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors">
-                                                <HiOutlineCheck size={14} /> Approuver
+                                            <button onClick={() => handleApproveBatch(activeBatch)}
+                                                className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                                                <HiOutlineCheck size={16} className="text-green-500" /> Approuver
                                             </button>
                                         )}
                                         {!allDisapproved && (
-                                            <button onClick={() => handleDisapproveBatch(batch)}
-                                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition-colors">
-                                                <HiOutlineX size={14} /> Désapprouver
+                                            <button onClick={() => handleDisapproveBatch(activeBatch)}
+                                                className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm font-medium dark:bg-red-900/10 dark:border-red-900/50 dark:text-red-400 hover:bg-red-100 transition-colors">
+                                                <HiOutlineX size={16} /> Désapprouver
                                             </button>
                                         )}
-                                        <Badge variant={
-                                            batchStatus.color === 'green' ? 'success' :
-                                                batchStatus.color === 'red' ? 'danger' :
-                                                    batchStatus.color === 'warning' ? 'warning' : 'neutral' as any
-                                        }>{batchStatus.label}</Badge>
-                                    </div>
-                                </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    </div>
 
-                                {/* Accordion content */}
-                                {isOpen && (
-                                    <div className="overflow-x-auto border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                                        <table className="divide-y divide-gray-200 dark:divide-gray-700" style={{ tableLayout: 'fixed', width: tableWidth }}>
-                                            {renderTableHeader()}
-                                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                                {batch.plans.map(mp => renderRow(mp))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
+                        <table className="divide-y divide-gray-200 dark:divide-gray-700" style={{ tableLayout: 'fixed', width: tableWidth }}>
+                            {renderTableHeader()}
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                {batches.find(b => b.key === selectedBatchKey)?.plans.map(mp => renderRow(mp))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
@@ -586,10 +672,10 @@ const TousLesMediaPlanPage: React.FC = () => {
                         Assigner ({selectedEmployeeIds.length})
                     </button>
                 </div>
-            </Modal>
+            </Modal >
 
             <ConfirmDialog {...confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
-        </div>
+        </div >
     );
 };
 

@@ -28,6 +28,7 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
+    private final GoogleDriveService googleDriveService;
 
     @Value("${app.upload.dir:uploads/justificatifs}")
     private String uploadDir;
@@ -92,6 +93,10 @@ public class ClientService {
         if (rawPassword != null) {
             dto.setGeneratedPassword(rawPassword);
         }
+        
+        // Trigger Async drive hierarchy generation for current year
+        googleDriveService.generateFullClientStructure(client.getNom(), java.time.LocalDate.now().getYear());
+        
         return dto;
     }
 

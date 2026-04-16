@@ -363,10 +363,8 @@ const ProjetsPage: React.FC = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Mes Projets</h1>
-          <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
-            {projets.length} projet{projets.length !== 1 ? 's' : ''} — organisés par client
-          </p>
+          <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Tous les Projets</h1>
+  
         </div>
       </div>
 
@@ -414,15 +412,14 @@ const ProjetsPage: React.FC = () => {
             <div>
               <button
                 onClick={() => setViewState('CLIENTS')}
-                className="mb-4 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#f29f44] transition-colors hover:text-[#d98b36]"
+                className="mb-4 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-brand-500 transition-colors hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300"
               >
                 <HiOutlineArrowLeft size={14} />
                 Retour aux clients
               </button>
-              <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {getClientForKey(selectedClientKey || 'none')?.nom || 'Sans Client'}
-                <span className="font-normal text-gray-400 dark:text-gray-500"> / Projets</span>
-              </h1>
+              </h2>
               <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">
                 {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).length} projets actifs pour ce client.
               </p>
@@ -431,7 +428,7 @@ const ProjetsPage: React.FC = () => {
             {canManageAllProjets && (
               <button
                 onClick={() => openCreateModal(selectedClientKey || 'none')}
-                className="flex h-11 items-center gap-2 rounded-xl bg-[#f29f44] px-5 text-[13px] font-bold text-black shadow-lg shadow-orange-500/20 transition-all hover:bg-[#e0892f] hover:shadow-orange-500/30"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <HiOutlinePlus size={16} /> Nouveau Projet
               </button>
@@ -442,19 +439,19 @@ const ProjetsPage: React.FC = () => {
             {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).map(p => {
               const chefs = getChefs(p);
 
-              let statusBadgeClass = 'bg-[#292c35] text-gray-300 border-[#3e424e]';
-              if (p.statut === 'EN_COURS') statusBadgeClass = 'bg-[#1b3d3e] text-[#4dbfa2] border-[#2b5956]';
-              else if (p.statut === 'CLOTURE') statusBadgeClass = 'bg-[#1b3e24] text-[#4dbf6a] border-[#2b5936]';
-              else if (p.statut === 'ANNULE') statusBadgeClass = 'bg-[#3e1b1b] text-[#bf4d4d] border-[#592b2b]';
+              let statusBadgeClass = 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
+              if (p.statut === 'EN_COURS') statusBadgeClass = 'bg-brand-50 text-brand-600 border-brand-200 dark:bg-brand-900/20 dark:text-brand-400 dark:border-brand-800';
+              else if (p.statut === 'CLOTURE') statusBadgeClass = 'bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800';
+              else if (p.statut === 'ANNULE') statusBadgeClass = 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
 
               return (
                 <div
                   key={p.id}
                   onClick={() => { setSelectedProject(p); setViewState('PROJECT_DETAILS'); }}
-                  className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[20px] border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 dark:border-[#272a35] dark:bg-[#1a1c22] dark:shadow-xl dark:shadow-black/20 dark:hover:border-[#3a3e4d]"
+                  className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[20px] border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:shadow-xl dark:shadow-black/20 dark:hover:border-[#3a3e4d]"
                 >
                   <div className="mb-4 flex items-start justify-between gap-3">
-                    <h3 className="line-clamp-2 flex-1 text-[17px] font-bold leading-snug text-gray-900 dark:text-gray-100">
+                    <h3 className="line-clamp-2 flex-1 text-base font-semibold leading-snug text-gray-900 dark:text-gray-100">
                       {p.nom}
                     </h3>
                     <span className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusBadgeClass}`}>
@@ -483,14 +480,14 @@ const ProjetsPage: React.FC = () => {
                             {c.imageUrl ? (
                               <img src={c.imageUrl} alt={c.nom} className="h-full w-full object-cover" />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-gray-200 dark:bg-[#2c303c] text-[9px] font-bold text-gray-700 dark:text-gray-300">
+                              <div className="flex h-full w-full items-center justify-center bg-gray-200 dark:bg-gray-700 text-[9px] font-bold text-gray-700 dark:text-gray-300">
                                 {c.prenom?.[0]}{c.nom?.[0]}
                               </div>
                             )}
                           </div>
                         ))}
                         {chefs.length > 3 && (
-                          <div className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 ring-2 ring-white dark:bg-[#292c35] dark:text-gray-300 dark:ring-[#1a1c22] text-[10px] font-bold">
+                          <div className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 ring-2 ring-white dark:bg-gray-700 dark:text-gray-300 dark:ring-[#1a1c22] text-[10px] font-bold">
                             +{chefs.length - 3}
                           </div>
                         )}
@@ -502,7 +499,7 @@ const ProjetsPage: React.FC = () => {
                     <span className="text-[11px] font-medium text-gray-500 dark:text-gray-500">
                       {(p.membres || []).length} membres actifs
                     </span>
-                    <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-hover:text-[#f29f44] dark:text-gray-500">
+                    <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-hover:text-brand-500 dark:text-gray-500">
                       Détails <span className="text-lg leading-none translate-y-[-1px]">→</span>
                     </span>
                   </div>
@@ -514,9 +511,9 @@ const ProjetsPage: React.FC = () => {
             {canManageAllProjets && (
               <div
                 onClick={() => openCreateModal(selectedClientKey || 'none')}
-                className="group flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border-2 border-dashed border-gray-200 bg-transparent transition-all hover:border-gray-300 hover:bg-gray-50 dark:border-[#272a35] dark:hover:border-[#3a3e4d] dark:hover:bg-white/5"
+                className="group flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border-2 border-dashed border-gray-200 bg-transparent transition-all hover:border-gray-300 hover:bg-gray-50 dark:border-[#272a35] dark:hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors group-hover:bg-gray-200 group-hover:text-gray-600 dark:bg-[#1f222b] dark:text-gray-500 dark:group-hover:bg-[#2a2e3a] dark:group-hover:text-gray-300">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors group-hover:bg-gray-200 group-hover:text-gray-600 dark:bg-gray-100 dark:bg-gray-800 dark:text-gray-500 dark:group-hover:bg-gray-200 dark:bg-gray-700 dark:group-hover:text-gray-300">
                   <HiOutlinePlus size={20} />
                 </div>
                 <div className="text-center">
@@ -546,7 +543,7 @@ const ProjetsPage: React.FC = () => {
           <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
             {/* Info Block (Left) */}
             <div className="max-w-2xl">
-              <h1 className="mb-4 text-4xl font-black tracking-tight text-gray-900 dark:text-white">
+              <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
                 {selectedProject.nom}
               </h1>
               <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -573,7 +570,7 @@ const ProjetsPage: React.FC = () => {
                     handleChangeStatut(selectedProject.id, StatutProjet.EN_COURS);
                     setSelectedProject({ ...selectedProject, statut: StatutProjet.EN_COURS });
                   }}
-                  className="flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0ed96f] px-5 text-[13px] font-bold text-[#10301a] shadow-lg shadow-green-500/20 transition-colors hover:bg-[#0bc061]"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 >
                   Démarrer
                 </button>
@@ -584,7 +581,7 @@ const ProjetsPage: React.FC = () => {
                     handleChangeStatut(selectedProject.id, StatutProjet.CLOTURE);
                     setSelectedProject({ ...selectedProject, statut: StatutProjet.CLOTURE });
                   }}
-                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#333745] bg-[#242731] px-4 text-[13px] font-medium text-gray-200 transition-colors hover:bg-[#2d313c]"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 >
                   Clôturer
                 </button>
@@ -592,7 +589,7 @@ const ProjetsPage: React.FC = () => {
               {(canManageAllProjets || canViewProjetsCreateTaches) && (
                 <button
                   onClick={() => navigate(`/projets/${selectedProject.id}/taches`)}
-                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#333745] bg-[#242731] px-4 text-[13px] font-medium text-gray-200 transition-colors hover:bg-[#2d313c]"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 >
                   <HiOutlineClipboardList size={16} /> Tâches
                 </button>
@@ -600,7 +597,7 @@ const ProjetsPage: React.FC = () => {
               {(canManageAllProjets || canViewProjetsCreateTaches) && ((selectedProject.chefsDeProjet && selectedProject.chefsDeProjet.some(c => c.id === user?.employeId)) || selectedProject.chefDeProjet?.id === user?.employeId) && (
                 <button
                   onClick={() => handleAffectMembers(selectedProject)}
-                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#333745] bg-[#242731] px-4 text-[13px] font-medium text-gray-200 transition-colors hover:bg-[#2d313c]"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 >
                   <HiOutlineUserGroup size={16} /> Affecter
                 </button>
@@ -608,7 +605,7 @@ const ProjetsPage: React.FC = () => {
               {canManageAllProjets && (
                 <button
                   onClick={() => handleEdit(selectedProject)}
-                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#333745] bg-[#242731] px-4 text-[13px] font-medium text-gray-200 transition-colors hover:bg-[#2d313c]"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 >
                   <HiOutlinePencil size={16} /> Modifier
                 </button>
@@ -616,7 +613,7 @@ const ProjetsPage: React.FC = () => {
               {canManageAllProjets && (
                 <button
                   onClick={() => handleDelete(selectedProject.id)}
-                  className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#4a2e30] bg-[#2d1b1c] px-4 text-[13px] font-medium text-[#e06c75] transition-colors hover:bg-[#3d2425]"
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none dark:border-red-900/50 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-gray-700"
                 >
                   <HiOutlineTrash size={16} /> Supprimer
                 </button>
@@ -626,8 +623,8 @@ const ProjetsPage: React.FC = () => {
 
           {/* Media Plan Details Panel */}
           {selectedProject.isMediaPlanProject && mediaPlanDetails && (
-            <div className="mb-6 rounded-[20px] border border-brand-200 bg-brand-50 p-6 dark:border-[#2d251d] dark:bg-[#1a1612]">
-              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-[#f29f44] dark:text-[#f29f44]">
+            <div className="mb-6 rounded-[20px] border border-brand-200 bg-brand-50 p-6 dark:border-brand-200 dark:bg-brand-900/5 dark:border-brand-900/20">
+              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400">
                 <HiOutlineDocumentText size={16} /> Détails Media Plan
               </h4>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
@@ -638,7 +635,7 @@ const ProjetsPage: React.FC = () => {
                 <div><span className="block text-[10px] font-bold uppercase text-gray-500">Publication</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.datePublication ? formatDate(mediaPlanDetails.datePublication) : '-'}</span></div>
                 <div><span className="block text-[10px] font-bold uppercase text-gray-500">Lien Drive</span>
-                  {mediaPlanDetails.lienDrive ? <a href={mediaPlanDetails.lienDrive} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#f29f44] underline hover:text-[#e0892f]">Ouvrir Drive</a> : <span className="text-sm text-gray-500">-</span>}</div>
+                  {mediaPlanDetails.lienDrive ? <a href={mediaPlanDetails.lienDrive} target="_blank" rel="noreferrer" className="text-sm font-medium text-brand-600 underline hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-500">Ouvrir Drive</a> : <span className="text-sm text-gray-500">-</span>}</div>
               </div>
               <div className="mt-4 border-t border-brand-200/50 pt-4 dark:border-[#2d251d]">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -651,7 +648,7 @@ const ProjetsPage: React.FC = () => {
                     <div className="mt-1 flex flex-wrap gap-2 text-[13px] text-gray-700 dark:text-gray-300">
                       {mediaPlanDetails.inspiration ? (
                         mediaPlanDetails.inspiration.startsWith('http') || mediaPlanDetails.inspiration.startsWith('www') ?
-                          <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer" className="text-[#f29f44] hover:underline">Inspiration (Lien)</a>
+                          <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline dark:text-brand-400">Inspiration (Lien)</a>
                           : <span>{mediaPlanDetails.inspiration}</span>
                       ) : '-'}
                       {mediaPlanDetails.autresElements && <span className="ml-2 border-l border-gray-300 pl-2 dark:border-gray-700">{mediaPlanDetails.autresElements}</span>}
@@ -666,17 +663,17 @@ const ProjetsPage: React.FC = () => {
             {/* Managers Panel */}
             <div>
               <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-gray-800 dark:text-gray-100">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-[#f29f44]">&starf;</span>
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"><HiOutlineUserGroup size={16} /></span>
                 Department Managers
               </h4>
               <div className="rounded-[20px] border border-gray-100 bg-gray-50/50 p-6 dark:border-[#1e212b] dark:bg-[#14161d] min-h-[160px]">
                 <div className="flex flex-col gap-3">
                   {getChefs(selectedProject).length === 0 ? (
-                    <p className="py-4 text-center text-[13px] font-medium italic text-gray-400 dark:text-[#4d5265]">Aucun manager assigné</p>
+                    <p className="py-4 text-center text-[13px] font-medium italic text-gray-400 dark:text-gray-500">Aucun manager assigné</p>
                   ) : (
                     getChefs(selectedProject).map(m => (
                       <div key={m.id} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#262a36] dark:bg-[#1a1c23]">
-                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-[14px] font-bold text-brand-600 dark:bg-[#eb9d47] dark:text-white">
+                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-[14px] font-bold text-brand-600 dark:bg-brand-500 dark:text-white">
                           {congeAujourdhuiIds.has(m.id) && (
                             <div className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-white bg-error-500 dark:border-[#1a1c23] z-10" title="En congé"></div>
                           )}
@@ -688,7 +685,7 @@ const ProjetsPage: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-[15px] font-bold text-gray-900 dark:text-white">{m.prenom} {m.nom}</p>
-                          <p className="text-[12px] font-medium text-gray-500 dark:text-[#8b93a8]">Manager</p>
+                          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">Manager</p>
                         </div>
                       </div>
                     ))
@@ -700,17 +697,17 @@ const ProjetsPage: React.FC = () => {
             {/* Members Panel */}
             <div>
               <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-gray-800 dark:text-gray-100">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-[#f29f44]"><HiOutlineUserGroup size={12} /></span>
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"><HiOutlineUserGroup size={12} /></span>
                 Membres du projet
               </h4>
               <div className="rounded-[20px] border border-gray-100 bg-gray-50/50 p-6 dark:border-[#1e212b] dark:bg-[#14161d] min-h-[160px]">
                 <div className="flex flex-col gap-3">
                   {!(selectedProject.membres ?? []).length ? (
-                    <p className="flex h-[80px] items-center justify-center text-[13px] font-medium italic text-gray-400 dark:text-[#4d5265]">Aucun membre assigné</p>
+                    <p className="flex h-[80px] items-center justify-center text-[13px] font-medium italic text-gray-400 dark:text-gray-500">Aucun membre assigné</p>
                   ) : (
                     (selectedProject.membres ?? []).map(m => (
                       <div key={m.id} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#262a36] dark:bg-[#1a1c23]">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-[14px] font-bold text-gray-600 dark:bg-[#2c303c] dark:text-[#a5acbe]">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-[14px] font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">
                           {m.imageUrl ? (
                             <img src={m.imageUrl} alt={m.nom} className="h-full w-full object-cover" />
                           ) : (
@@ -719,7 +716,7 @@ const ProjetsPage: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-[15px] font-bold text-gray-900 dark:text-white">{m.prenom} {m.nom}</p>
-                          <p className="text-[12px] font-medium text-gray-500 dark:text-[#8b93a8]">{m.departement || 'Membre'}</p>
+                          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{m.departement || 'Membre'}</p>
                         </div>
                       </div>
                     ))

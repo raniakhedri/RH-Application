@@ -12,12 +12,16 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 
+import com.antigone.rh.service.GoogleDriveService;
+import org.springframework.http.MediaType;
+
 @RestController
 @RequestMapping("/api/clients")
 @RequiredArgsConstructor
 public class ClientController {
 
     private final ClientService clientService;
+    private final GoogleDriveService googleDriveService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ClientDTO>>> getAll() {
@@ -27,6 +31,16 @@ public class ClientController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ClientDTO>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok("Client récupéré", clientService.getById(id)));
+    }
+
+    @GetMapping("/{id}/drive-link")
+    public ResponseEntity<ApiResponse<String>> getDriveLink(@PathVariable Long id) {
+        ClientDTO dto = clientService.getById(id);
+        String link = googleDriveService.getClientFolderLink(dto.getNom());
+        if (link != null) {
+            return ResponseEntity.ok(ApiResponse.ok("Lien Drive récupéré", link));
+        }
+        return ResponseEntity.ok(ApiResponse.ok("Dossier Drive non trouvé", null));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
