@@ -38,6 +38,11 @@ public class ProjetController {
         return ResponseEntity.ok(ApiResponse.ok(projetService.findByStatut(StatutProjet.valueOf(statut))));
     }
 
+    @GetMapping("/by-departement/{dept}")
+    public ResponseEntity<ApiResponse<List<ProjetDTO>>> getByDepartement(@PathVariable String dept) {
+        return ResponseEntity.ok(ApiResponse.ok(projetService.findByDepartement(dept)));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<ProjetDTO>> create(@RequestBody ProjetRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Projet créé", projetService.create(request)));

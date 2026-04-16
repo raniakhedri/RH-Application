@@ -4,6 +4,7 @@ import com.antigone.rh.dto.NotificationResponse;
 import com.antigone.rh.entity.Demande;
 import com.antigone.rh.entity.Employe;
 import com.antigone.rh.entity.Notification;
+import com.antigone.rh.entity.Reunion;
 import com.antigone.rh.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,29 @@ public class NotificationService {
      */
     public Notification createUrgent(Employe employe, String titre, String message, Demande demande) {
         return save(employe, titre, message, demande, true);
+    }
+
+    /**
+     * Crée une notification simple sans demande associée (ex : réunions).
+     */
+    public Notification createSimple(Employe employe, String titre, String message) {
+        return save(employe, titre, message, null, false);
+    }
+
+    /**
+     * Crée une notification liée à une réunion.
+     */
+    public Notification createForReunion(Employe employe, String titre, String message, Reunion reunion) {
+        Notification notification = Notification.builder()
+                .employe(employe)
+                .titre(titre)
+                .message(message)
+                .dateCreation(LocalDateTime.now())
+                .lu(false)
+                .urgent(false)
+                .reunion(reunion)
+                .build();
+        return notificationRepository.save(notification);
     }
 
     /**
@@ -108,6 +132,7 @@ public class NotificationService {
             .urgent(n.isUrgent())
             .dateCreation(n.getDateCreation())
             .demandeId(n.getDemande() != null ? n.getDemande().getId() : null)
+            .reunionId(n.getReunion() != null ? n.getReunion().getId() : null)
             .build();
 }
 }

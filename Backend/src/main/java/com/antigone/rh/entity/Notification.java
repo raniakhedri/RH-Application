@@ -47,6 +47,12 @@ public class Notification {
     @EqualsAndHashCode.Exclude
     private Demande demande;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reunion_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Reunion reunion;
+
     @PrePersist
     public void prePersist() {
         if (dateCreation == null) {
