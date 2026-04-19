@@ -81,6 +81,12 @@ public class ProjetAnalyseService {
         List<ProjetAnalyseDTO.RetardEntry> retards = buildRetards(
                 phaseSetup, phaseDistribution, phaseExecution);
 
+        // ── Temps par employé ───────────────────────────────────────────────
+        List<ProjetAnalyseDTO.EmployeTempsDTO> tempsParEmploye = buildTempsParEmploye(taches, cloture);
+
+        // ── Temps inactif managers ──────────────────────────────────────────
+        List<ProjetAnalyseDTO.ManagerTempsInactifDTO> tempsInactifManagers = buildTempsInactifManagers(projet, taches);
+
         return ProjetAnalyseDTO.builder()
                 .projetId(projet.getId())
                 .projetNom(projet.getNom())
@@ -94,6 +100,8 @@ public class ProjetAnalyseService {
                 .phaseExecution(phaseExecution)
                 .phaseCloture(phaseCloture)
                 .retards(retards)
+                .tempsParEmploye(tempsParEmploye)
+                .tempsInactifManagers(tempsInactifManagers)
                 .build();
     }
 
@@ -111,7 +119,6 @@ public class ProjetAnalyseService {
                     .build();
         }
 
-        // Last task creation = end of admin setup phase
         LocalDateTime lastTaskCreation = taches.stream()
                 .map(Tache::getDateCreation)
                 .filter(Objects::nonNull)
@@ -124,7 +131,6 @@ public class ProjetAnalyseService {
 
         if (lastTaskCreation != null) {
             dureeSetup = Duration.between(ouverture, lastTaskCreation).toMinutes();
-            // Flag if setup took more than 24h
             if (dureeSetup > MANAGER_DELAY_THRESHOLD_MIN) {
                 retard = true;
                 commentaire = "L'Admin a mis " + formatDuration(dureeSetup)
@@ -201,7 +207,6 @@ public class ProjetAnalyseService {
             Long dureeExecution = (debut != null && fin != null)
                     ? Duration.between(debut, fin).toMinutes() : null;
 
-            // Check if task is late: finished after echeance
             boolean enRetard = false;
             if (t.getDateEcheance() != null && fin != null) {
                 enRetard = fin.toLocalDate().isAfter(t.getDateEcheance());
@@ -252,6 +257,188 @@ public class ProjetAnalyseService {
                 .delaiCloture(delai)
                 .clotureEffectuee(dateCloture != null)
                 .build();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TEMPS PAR EMPLOYÉ — Calcul du temps dans chaque statut
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private List<ProjetAnalyseDTO.EmployeTempsDTO> buildTempsParEmploye(List<Tache> taches,
+                                                                         LocalDateTime dateCloture) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime referenceEnd = dateCloture != null ? dateCloture : now;
+
+        // Group tasks by assignee
+        Map<Long, List<Tache>> byEmployee = new LinkedHashMap<>();
+        for (Tache t : taches) {
+            if (t.getAssignee() != null) {
+                byEmployee.computeIfAbsent(t.getAssignee().getId(), k -> new ArrayList<>()).add(t);
+            }
+        }
+
+        List<ProjetAnalyseDTO.EmployeTempsDTO> result = new ArrayList<>();
+
+        for (Map.Entry<Long, List<Tache>> entry : byEmployee.entrySet()) {
+            List<Tache> empTaches = entry.getValue();
+            Employe emp = empTaches.get(0).getAssignee();
+            String empNom = emp.getPrenom() + " " + emp.getNom();
+
+            int totalT = empTaches.size();
+            int doneT = (int) empTaches.stream().filter(t -> t.getStatut() == StatutTache.DONE).count();
+            int ipT = (int) empTaches.stream().filter(t -> t.getStatut() == StatutTache.IN_PROGRESS).count();
+            int todoT = (int) empTaches.stream().filter(t -> t.getStatut() == StatutTache.TODO).count();
+
+            long tempsEnTodo = 0;
+            long tempsEnInProgress = 0;
+            long tempsDepuisDone = 0;
+            long tempsTotal = 0;
+
+            for (Tache t : empTaches) {
+                LocalDateTime assignation = t.getDateAssignation();
+                LocalDateTime debut = t.getDateDebutExecution();
+                LocalDateTime fin = t.getDateFinExecution();
+
+                // Temps en TODO = (début exécution ou now) - date assignation
+                if (assignation != null) {
+                    if (debut != null) {
+                        long todoMin = Duration.between(assignation, debut).toMinutes();
+                        tempsEnTodo += Math.max(todoMin, 0);
+                    } else if (t.getStatut() == StatutTache.TODO) {
+                        long todoMin = Duration.between(assignation, now).toMinutes();
+                        tempsEnTodo += Math.max(todoMin, 0);
+                    }
+                }
+
+                // Temps en IN_PROGRESS = (fin exécution ou now) - début exécution
+                if (debut != null) {
+                    if (fin != null) {
+                        long ipMin = Duration.between(debut, fin).toMinutes();
+                        tempsEnInProgress += Math.max(ipMin, 0);
+                    } else if (t.getStatut() == StatutTache.IN_PROGRESS) {
+                        long ipMin = Duration.between(debut, now).toMinutes();
+                        tempsEnInProgress += Math.max(ipMin, 0);
+                    }
+                }
+
+                // Temps depuis DONE = (clôture ou now) - fin exécution
+                if (fin != null && t.getStatut() == StatutTache.DONE) {
+                    long doneMin = Duration.between(fin, referenceEnd).toMinutes();
+                    tempsDepuisDone += Math.max(doneMin, 0);
+                }
+
+                // Temps total = de l'assignation au finish ou now
+                if (assignation != null) {
+                    LocalDateTime endRef = fin != null ? fin : now;
+                    long totalMin = Duration.between(assignation, endRef).toMinutes();
+                    tempsTotal += Math.max(totalMin, 0);
+                }
+            }
+
+            // Temps inactif = temps total - (temps en TODO + temps en IN_PROGRESS)
+            long tempsActif = tempsEnTodo + tempsEnInProgress;
+            long tempsInactif = Math.max(tempsTotal - tempsActif, 0);
+
+            result.add(ProjetAnalyseDTO.EmployeTempsDTO.builder()
+                    .employeId(entry.getKey())
+                    .employeNom(empNom)
+                    .totalTaches(totalT)
+                    .tachesDone(doneT)
+                    .tachesInProgress(ipT)
+                    .tachesTodo(todoT)
+                    .tempsEnTodoMinutes(tempsEnTodo)
+                    .tempsEnInProgressMinutes(tempsEnInProgress)
+                    .tempsDepuisDoneMinutes(tempsDepuisDone)
+                    .tempsTotalMinutes(tempsTotal)
+                    .tempsInactifMinutes(tempsInactif)
+                    .build());
+        }
+
+        // Sort by total time descending
+        result.sort((a, b) -> Long.compare(
+                b.getTempsTotalMinutes() != null ? b.getTempsTotalMinutes() : 0,
+                a.getTempsTotalMinutes() != null ? a.getTempsTotalMinutes() : 0));
+
+        return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TEMPS INACTIF MANAGERS — Détection du temps perdu
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private List<ProjetAnalyseDTO.ManagerTempsInactifDTO> buildTempsInactifManagers(Projet projet,
+                                                                                     List<Tache> taches) {
+        List<ProjetAnalyseDTO.ManagerTempsInactifDTO> result = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        // Collect managers
+        Map<Long, String> managerMap = new LinkedHashMap<>();
+        try {
+            if (projet.getChefsDeProjet() != null) {
+                for (Employe chef : projet.getChefsDeProjet()) {
+                    managerMap.put(chef.getId(), chef.getPrenom() + " " + chef.getNom());
+                }
+            }
+            if (managerMap.isEmpty() && projet.getChefDeProjet() != null) {
+                Employe chef = projet.getChefDeProjet();
+                managerMap.put(chef.getId(), chef.getPrenom() + " " + chef.getNom());
+            }
+        } catch (Exception ignored) {}
+
+        // Reference time for project reception by manager
+        LocalDateTime dateReception = projet.getDateAffectationChef();
+        if (dateReception == null) {
+            dateReception = projet.getDateCreation(); // Fallback
+        }
+
+        for (Map.Entry<Long, String> entry : managerMap.entrySet()) {
+            // Find the earliest task assignation date
+            LocalDateTime premiereAssignation = taches.stream()
+                    .filter(t -> t.getDateAssignation() != null)
+                    .map(Tache::getDateAssignation)
+                    .min(Comparator.naturalOrder())
+                    .orElse(null);
+
+            // Count unassigned tasks
+            int nonAssignees = (int) taches.stream()
+                    .filter(t -> t.getAssignee() == null)
+                    .count();
+
+            Long tempsInactif = null;
+            boolean retard = false;
+            String commentaire = null;
+
+            if (dateReception != null && premiereAssignation != null) {
+                tempsInactif = Duration.between(dateReception, premiereAssignation).toMinutes();
+                tempsInactif = Math.max(tempsInactif, 0);
+                if (tempsInactif > MANAGER_DELAY_THRESHOLD_MIN) {
+                    retard = true;
+                    commentaire = "Le manager a mis " + formatDuration(tempsInactif)
+                            + " avant de commencer à distribuer les tâches.";
+                }
+            } else if (dateReception != null && premiereAssignation == null && !taches.isEmpty()) {
+                tempsInactif = Duration.between(dateReception, now).toMinutes();
+                tempsInactif = Math.max(tempsInactif, 0);
+                retard = tempsInactif > MANAGER_DELAY_THRESHOLD_MIN;
+                commentaire = "⚠ Aucune tâche assignée par le manager depuis " + formatDuration(tempsInactif) + ".";
+            }
+
+            if (nonAssignees > 0 && commentaire == null) {
+                commentaire = nonAssignees + " tâche(s) encore non assignée(s).";
+            }
+
+            result.add(ProjetAnalyseDTO.ManagerTempsInactifDTO.builder()
+                    .managerId(entry.getKey())
+                    .managerNom(entry.getValue())
+                    .dateReceptionProjet(dateReception)
+                    .datePremiereAssignation(premiereAssignation)
+                    .tempsInactifMinutes(tempsInactif)
+                    .tachesNonAssignees(nonAssignees)
+                    .retard(retard)
+                    .commentaire(commentaire)
+                    .build());
+        }
+
+        return result;
     }
 
     // ─────────────────────────────────────────────────────────────────────────

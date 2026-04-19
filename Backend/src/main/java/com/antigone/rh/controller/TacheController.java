@@ -55,7 +55,12 @@ public class TacheController {
 
     @PatchMapping("/{id}/statut")
     public ResponseEntity<ApiResponse<Tache>> changeStatut(@PathVariable Long id, @RequestParam StatutTache statut) {
-        return ResponseEntity.ok(ApiResponse.ok("Statut mis à jour", tacheService.changeStatut(id, statut)));
+        try {
+            return ResponseEntity.ok(ApiResponse.ok("Statut mis à jour", tacheService.changeStatut(id, statut)));
+        } catch (IllegalStateException e) {
+            // CORRECTION 2: blocked status change without assignee
+            return ResponseEntity.status(409).body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")

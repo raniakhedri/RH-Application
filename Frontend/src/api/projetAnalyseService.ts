@@ -52,6 +52,29 @@ export interface ProjetAnalyseDTO {
     dureeRetardMinutes: number | null;
     impact: string;
   }[];
+  tempsParEmploye: {
+    employeId: number;
+    employeNom: string;
+    totalTaches: number;
+    tachesDone: number;
+    tachesInProgress: number;
+    tachesTodo: number;
+    tempsEnTodoMinutes: number | null;
+    tempsEnInProgressMinutes: number | null;
+    tempsDepuisDoneMinutes: number | null;
+    tempsTotalMinutes: number | null;
+    tempsInactifMinutes: number | null;
+  }[];
+  tempsInactifManagers: {
+    managerId: number;
+    managerNom: string;
+    dateReceptionProjet: string | null;
+    datePremiereAssignation: string | null;
+    tempsInactifMinutes: number | null;
+    tachesNonAssignees: number;
+    retard: boolean;
+    commentaire: string | null;
+  }[];
 }
 
 export const projetAnalyseService = {

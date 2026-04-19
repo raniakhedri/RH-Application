@@ -130,18 +130,42 @@ public class TacheService {
         return saved;
     }
 
+    /**
+     * CORRECTION 1 — Capture timestamps automatically on each status change.
+     * CORRECTION 2 — Block status change to IN_PROGRESS/DONE if no assignee.
+     */
     public Tache changeStatut(Long tacheId, StatutTache statut) {
         Tache tache = findById(tacheId);
+
+        // ── CORRECTION 2: Block IN_PROGRESS / DONE without assignee ──────────
+        if ((statut == StatutTache.IN_PROGRESS || statut == StatutTache.DONE)
+                && tache.getAssignee() == null) {
+            throw new IllegalStateException(
+                    "⛔ Impossible de changer le statut — aucun employé assigné. "
+                    + "Veuillez d'abord assigner un responsable à la tâche \"" + tache.getTitre() + "\".");
+        }
+
         tache.setStatut(statut);
 
-        // Record lifecycle timestamps
-        if (statut == StatutTache.IN_PROGRESS && tache.getDateDebutExecution() == null) {
-            tache.setDateDebutExecution(LocalDateTime.now());
-        } else if (statut == StatutTache.DONE) {
+        // ── CORRECTION 1: Record lifecycle timestamps precisely ──────────────
+        LocalDateTime now = LocalDateTime.now();
+        if (statut == StatutTache.IN_PROGRESS) {
             if (tache.getDateDebutExecution() == null) {
-                tache.setDateDebutExecution(LocalDateTime.now());
+                tache.setDateDebutExecution(now);
+                log.info("✅ Correction 1 — started_at enregistré pour tâche #{}: {}", tacheId, now);
             }
-            tache.setDateFinExecution(LocalDateTime.now());
+        } else if (statut == StatutTache.DONE) {
+            // If task skipped IN_PROGRESS, record start now
+            if (tache.getDateDebutExecution() == null) {
+                tache.setDateDebutExecution(now);
+                log.warn("⚠ Tâche #{} passée directement à DONE sans IN_PROGRESS — started_at forcé", tacheId);
+            }
+            tache.setDateFinExecution(now);
+            log.info("✅ Correction 1 — completed_at enregistré pour tâche #{}: {}", tacheId, now);
+        } else if (statut == StatutTache.TODO) {
+            // Reset timestamps if moved back to TODO
+            tache.setDateDebutExecution(null);
+            tache.setDateFinExecution(null);
         }
 
         Tache saved = tacheRepository.save(tache);
@@ -166,6 +190,12 @@ public class TacheService {
         tache.setTitre(tacheDetails.getTitre());
         tache.setDateEcheance(tacheDetails.getDateEcheance());
         tache.setUrgente(tacheDetails.isUrgente());
+        if (tacheDetails.getDureePrevueJours() != null) {
+            tache.setDureePrevueJours(tacheDetails.getDureePrevueJours());
+        }
+        if (tacheDetails.getDescription() != null) {
+            tache.setDescription(tacheDetails.getDescription());
+        }
         if (tacheDetails.getStatut() != null) {
             tache.setStatut(tacheDetails.getStatut());
         }

@@ -17,6 +17,21 @@ public interface TacheRepository extends JpaRepository<Tache, Long> {
 
     List<Tache> findByProjetIdAndStatut(Long projetId, StatutTache statut);
 
+    long countByProjetIdAndStatut(Long projetId, StatutTache statut);
+
+    long countByProjetId(Long projetId);
+
+    /** Active tâches that are TODO — for alert calculation */
+    List<Tache> findByStatutAndDateEcheanceIsNotNull(StatutTache statut);
+
+    /** All non-DONE tasks with an assignee */
+    @Query("SELECT t FROM Tache t WHERE t.statut <> 'DONE' AND t.assignee IS NOT NULL")
+    List<Tache> findAllActiveAssigned();
+
+    /** All non-DONE tasks — used by alert scheduler */
+    @Query("SELECT t FROM Tache t WHERE t.statut <> 'DONE'")
+    List<Tache> findAllActive();
+
     /**
      * All non-DONE tâches that have an assignee and a deadline — used by the
      * deadline scheduler.

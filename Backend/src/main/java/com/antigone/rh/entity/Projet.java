@@ -103,6 +103,20 @@ public class Projet {
     @Column(name = "date_cloture")
     private LocalDateTime dateCloture;
 
+    /** Precise timestamp of when the chef de projet was assigned */
+    @Column(name = "date_affectation_chef")
+    private LocalDateTime dateAffectationChef;
+
+    /** True when project was closed with remaining open tasks */
+    @Column(name = "cloture_forcee")
+    @Builder.Default
+    private Boolean clotureForcee = false;
+
+    /** Number of tasks that were not DONE at forced closure */
+    @Column(name = "taches_abandonnees")
+    @Builder.Default
+    private Integer tachesAbandonnees = 0;
+
     @PrePersist
     public void prePersist() {
         if (dateCreation == null) {
