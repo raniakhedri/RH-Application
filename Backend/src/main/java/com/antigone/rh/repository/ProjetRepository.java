@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProjetRepository extends JpaRepository<Projet, Long> {
@@ -18,6 +19,8 @@ public interface ProjetRepository extends JpaRepository<Projet, Long> {
     List<Projet> findByCreateurId(Long createurId);
 
     boolean existsByNomAndClientId(String nom, Long clientId);
+
+    Optional<Projet> findFirstByMediaPlanLigneId(Long mediaPlanLigneId);
 
     /**
      * Projects where the given employee is a member of one of the project's equipes

@@ -17,6 +17,12 @@ public class MediaPlanRequest {
     private String etatPublication;
     private String rectifs;
     private String remarques;
+
+    private Boolean isShooting;
+    private String shootingDescription;
+    private String shootingLocalisation;
+    private String shootingDate;
+    private String shootingTypeDeContenu; // PHOTO | VIDEO | BOTH
     private Long clientId;
     private Long createurId;
 }

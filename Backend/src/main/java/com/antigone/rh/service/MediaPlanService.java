@@ -9,6 +9,7 @@ import com.antigone.rh.entity.MediaPlan;
 import com.antigone.rh.entity.MediaPlanAssignment;
 import com.antigone.rh.enums.EtatPublication;
 import com.antigone.rh.enums.StatutMediaPlan;
+import com.antigone.rh.enums.TypeContenuShooting;
 import com.antigone.rh.exception.ResourceNotFoundException;
 import com.antigone.rh.repository.ClientRepository;
 import com.antigone.rh.repository.EmployeRepository;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -40,6 +42,7 @@ public class MediaPlanService {
     private final ProjetRepository projetRepository;
     private final com.antigone.rh.repository.TacheRepository tacheRepository;
     private final GoogleDriveService googleDriveService;
+    private final MediaPlanShootingWorkflowService mediaPlanShootingWorkflowService;
 
     // =============================================
     // QUERIES
@@ -106,6 +109,11 @@ public class MediaPlanService {
                         : EtatPublication.PAS_ENCORE)
                 .rectifs(request.getRectifs())
                 .remarques(request.getRemarques())
+            .isShooting(Boolean.TRUE.equals(request.getIsShooting()))
+            .shootingDescription(request.getShootingDescription())
+            .shootingLocalisation(request.getShootingLocalisation())
+            .shootingDate(parseLocalDateOrNull(request.getShootingDate()))
+            .shootingTypeDeContenu(parseTypeContenuOrNull(request.getShootingTypeDeContenu()))
                 .statut(StatutMediaPlan.EN_ATTENTE)
                 .client(client)
                 .createur(createur)
@@ -191,6 +199,11 @@ public class MediaPlanService {
                     .etatPublication(etatPub)
                     .rectifs(req.getRectifs())
                     .remarques(req.getRemarques())
+                    .isShooting(Boolean.TRUE.equals(req.getIsShooting()))
+                    .shootingDescription(req.getShootingDescription())
+                    .shootingLocalisation(req.getShootingLocalisation())
+                    .shootingDate(parseLocalDateOrNull(req.getShootingDate()))
+                    .shootingTypeDeContenu(parseTypeContenuOrNull(req.getShootingTypeDeContenu()))
                     .statut(StatutMediaPlan.EN_ATTENTE)
                     .client(client)
                     .createur(createur)
@@ -240,6 +253,26 @@ public class MediaPlanService {
         if (request.getRemarques() != null)
             mp.setRemarques(request.getRemarques());
 
+        if (request.getIsShooting() != null) {
+            mp.setShooting(Boolean.TRUE.equals(request.getIsShooting()));
+            if (!Boolean.TRUE.equals(request.getIsShooting())) {
+                mp.setShootingDescription(null);
+                mp.setShootingLocalisation(null);
+                mp.setShootingDate(null);
+                mp.setShootingTypeDeContenu(null);
+                mp.setShootingStatus(null);
+                mp.setShootingStatusReason(null);
+            }
+        }
+        if (request.getShootingDescription() != null)
+            mp.setShootingDescription(request.getShootingDescription());
+        if (request.getShootingLocalisation() != null)
+            mp.setShootingLocalisation(request.getShootingLocalisation());
+        if (request.getShootingDate() != null)
+            mp.setShootingDate(parseLocalDateOrNull(request.getShootingDate()));
+        if (request.getShootingTypeDeContenu() != null)
+            mp.setShootingTypeDeContenu(parseTypeContenuOrNull(request.getShootingTypeDeContenu()));
+
         if (request.getClientId() != null) {
             Client client = clientRepository.findById(request.getClientId())
                     .orElseThrow(() -> new ResourceNotFoundException("Client", request.getClientId()));
@@ -271,6 +304,15 @@ public class MediaPlanService {
                 .orElseThrow(() -> new ResourceNotFoundException("MediaPlan", mediaPlanId));
 
         mp.setStatut(StatutMediaPlan.APPROUVE);
+
+        // Shooting lines: do NOT create project/tasks here.
+        // Instead, create a calendrier_projet entry to be validated.
+        if (mp.isShooting()) {
+            mediaPlanRepository.save(mp);
+            mediaPlanShootingWorkflowService.onMediaPlanApproved(mp);
+            return toDTO(mp);
+        }
+
         mediaPlanRepository.save(mp);
 
         // Check if format contains "Video" (case insensitive)
@@ -331,6 +373,27 @@ public class MediaPlanService {
         MediaPlan mp = mediaPlanRepository.findById(mediaPlanId)
                 .orElseThrow(() -> new ResourceNotFoundException("MediaPlan", mediaPlanId));
         mp.setStatut(StatutMediaPlan.DESAPPROUVE);
+        return toDTO(mediaPlanRepository.save(mp));
+    }
+
+    /**
+     * Re-submit a previously disapproved media plan line to the manager.
+     * Sets status back to EN_ATTENTE and updates the submission timestamp.
+     */
+    public MediaPlanDTO resubmit(Long mediaPlanId) {
+        MediaPlan mp = mediaPlanRepository.findById(mediaPlanId)
+                .orElseThrow(() -> new ResourceNotFoundException("MediaPlan", mediaPlanId));
+
+        if (mp.getStatut() != StatutMediaPlan.DESAPPROUVE) {
+            throw new RuntimeException("Seuls les media plans désapprouvés peuvent être renvoyés");
+        }
+
+        mp.setStatut(StatutMediaPlan.EN_ATTENTE);
+        mp.setDateCreation(LocalDateTime.now());
+
+        // Reset shooting validation state so the new submission starts clean.
+        mp.setShootingStatus(null);
+        mp.setShootingStatusReason(null);
         return toDTO(mediaPlanRepository.save(mp));
     }
 
@@ -414,6 +477,14 @@ public class MediaPlanService {
                 .etatPublication(mp.getEtatPublication() != null ? mp.getEtatPublication().name() : null)
                 .rectifs(mp.getRectifs())
                 .remarques(mp.getRemarques())
+                .isShooting(mp.isShooting())
+                .shootingDescription(mp.getShootingDescription())
+                .shootingLocalisation(mp.getShootingLocalisation())
+                .shootingDate(mp.getShootingDate() != null ? mp.getShootingDate().toString() : null)
+                .shootingTypeDeContenu(mp.getShootingTypeDeContenu() != null ? mp.getShootingTypeDeContenu().name() : null)
+                .shootingStatus(mp.getShootingStatus() != null ? mp.getShootingStatus().name() : null)
+                .shootingStatusReason(mp.getShootingStatusReason())
+                .calendrierProjetId(mp.getCalendrierProjet() != null ? mp.getCalendrierProjet().getId() : null)
                 .statut(mp.getStatut().name())
                 .clientId(mp.getClient() != null ? mp.getClient().getId() : null)
                 .clientNom(mp.getClient() != null ? mp.getClient().getNom() : null)
@@ -422,5 +493,29 @@ public class MediaPlanService {
                 .createurPrenom(mp.getCreateur() != null ? mp.getCreateur().getPrenom() : null)
                 .dateCreation(mp.getDateCreation() != null ? mp.getDateCreation().toString() : null)
                 .build();
+    }
+
+    private LocalDate parseLocalDateOrNull(String value) {
+        if (value == null) return null;
+        String v = value.trim();
+        if (v.isBlank()) return null;
+        try {
+            return LocalDate.parse(v);
+        } catch (Exception e) {
+            throw new RuntimeException("Format de date invalide: '" + value + "'");
+        }
+    }
+
+    private TypeContenuShooting parseTypeContenuOrNull(String value) {
+        if (value == null) return null;
+        String v = value.trim();
+        if (v.isBlank()) return null;
+
+        String normalized = v.toUpperCase();
+        if ("PHOTO".equals(normalized)) return TypeContenuShooting.PHOTO;
+        if ("VIDEO".equals(normalized)) return TypeContenuShooting.VIDEO;
+        if ("BOTH".equals(normalized)) return TypeContenuShooting.BOTH;
+
+        throw new RuntimeException("Type de contenu invalide: '" + value + "' (attendu: PHOTO, VIDEO, BOTH)");
     }
 }

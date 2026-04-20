@@ -1,5 +1,6 @@
 package com.antigone.rh.entity;
 
+import com.antigone.rh.enums.TypeContenuShooting;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -29,6 +30,24 @@ public class CalendrierProjet {
 
     @Column(nullable = false)
     private String projectName;
+
+    // =====================
+    // SHOOTING DETAILS (optional)
+    // =====================
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    private String localisation;
+
+    @Enumerated(EnumType.STRING)
+    private TypeContenuShooting typeDeContenu;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "media_plan_ligne_id", unique = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private MediaPlan mediaPlanLigne;
 
     @Column(nullable = false)
     private boolean urgent;

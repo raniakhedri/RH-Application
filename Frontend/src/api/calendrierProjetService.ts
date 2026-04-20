@@ -6,9 +6,16 @@ export interface CalendrierProjetDTO {
     socialManagerId?: number;
     dateSlot: string;
     projectName?: string;
+    description?: string;
+    localisation?: string;
+    typeDeContenu?: 'PHOTO' | 'VIDEO' | 'BOTH';
+    mediaPlanLigneId?: number;
+    titre?: string;
+    clientId?: number;
+    clientNom?: string;
     urgent: boolean;
     type: 'BUSY' | 'BOOKED';
-    statut: 'DISPONIBLE' | 'EN_ATTENTE' | 'VALIDE' | 'ANNULE';
+    statut: 'EN_ATTENTE' | 'VALIDE' | 'REJETE';
 }
 
 export const calendrierProjetService = {

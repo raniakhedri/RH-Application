@@ -19,6 +19,8 @@ import { mediaPlanService } from '../api/mediaPlanService';
 import { referentielService } from '../api/referentielService';
 import { mediaPlanAssignmentService } from '../api/mediaPlanAssignmentService';
 import { mediaPlanCommentService, MediaPlanCommentDTO } from '../api/mediaPlanCommentService';
+import { employeService } from '../api/employeService';
+import { calendrierProjetService } from '../api/calendrierProjetService';
 import {
     MediaPlan,
     MediaPlanRequest,
@@ -26,6 +28,9 @@ import {
     EtatPublication,
     EtatPublicationLabels,
     StatutMediaPlanLabels,
+    TypeContenuShooting,
+    TypeContenuShootingLabels,
+    StatutShooting,
     MediaPlanAssignment,
 } from '../types';
 import Badge from '../components/ui/Badge';
@@ -50,6 +55,7 @@ const COLUMNS = [
     { key: 'etatPublication', label: 'État Pub.', defaultWidth: 110 },
     { key: 'rectifs', label: 'Rectifs', defaultWidth: 110 },
     { key: 'remarques', label: 'Remarques', defaultWidth: 120 },
+    { key: 'shooting', label: 'Shooting', defaultWidth: 90 },
     { key: 'statut', label: 'Statut', defaultWidth: 100 },
     { key: 'actions', label: 'Actions', defaultWidth: 80 },
 ];
@@ -71,6 +77,11 @@ interface DraftRow {
     etatPublication: string;
     rectifs: string;
     remarques: string;
+    isShooting: boolean;
+    shootingDescription: string;
+    shootingLocalisation: string;
+    shootingDate: string;
+    shootingTypeDeContenu: TypeContenuShooting | '';
 }
 
 const emptyDraft = (): DraftRow => ({
@@ -89,6 +100,11 @@ const emptyDraft = (): DraftRow => ({
     etatPublication: '',
     rectifs: '',
     remarques: '',
+    isShooting: false,
+    shootingDescription: '',
+    shootingLocalisation: '',
+    shootingDate: '',
+    shootingTypeDeContenu: '',
 });
 
 // ── Cell formatting ──
@@ -100,7 +116,11 @@ interface CellFormat {
 }
 
 // datePublication is excluded because it's always pre-filled with the month's first day
-const isDraftFilled = (d: DraftRow) => !!(d.titre || d.heure || d.format || d.type || d.texteSurVisuel || d.inspiration || d.autresElements || d.platforme || d.lienDrive || d.etatPublication || d.rectifs || d.remarques || d.texteSurVisuel);
+const isDraftFilled = (d: DraftRow) => !!(
+    d.titre || d.heure || d.format || d.type || d.texteSurVisuel || d.inspiration || d.autresElements ||
+    d.platforme || d.lienDrive || d.etatPublication || d.rectifs || d.remarques ||
+    d.isShooting || d.shootingDescription || d.shootingLocalisation || d.shootingDate || d.shootingTypeDeContenu
+);
 
 // ── Expanded cell overlay ──
 const ExpandedCell: React.FC<{
@@ -167,6 +187,17 @@ const getMonthKey = (year: number, month: number) => `${year}-${String(month + 1
 const parseMonthKey = (key: string) => {
     const [y, m] = key.split('-').map(Number);
     return { year: y, month: m - 1 };
+};
+
+const fmtDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const getAllDatesInMonth = (year: number, month: number): string[] => {
+    const dates: string[] = [];
+    const d = new Date(year, month, 1);
+    while (d.getMonth() === month) {
+        dates.push(fmtDate(d));
+        d.setDate(d.getDate() + 1);
+    }
+    return dates;
 };
 
 // ── LocalStorage helpers ──
@@ -341,12 +372,12 @@ const MediaPlanPage: React.FC = () => {
             ...monthMediaPlans.map(mp =>
                 [mp.datePublication, mp.heure, mp.format, mp.type, mp.titre, mp.texteSurVisuel,
                 mp.inspiration, mp.autresElements, mp.platforme, mp.lienDrive,
-                mp.etatPublication, mp.rectifs, mp.remarques, mp.statut].map(escape).join(',')
+                mp.etatPublication, mp.rectifs, mp.remarques, mp.isShooting ? 'Oui' : 'Non', mp.statut].map(escape).join(',')
             ),
             ...draftRows.filter(isDraftFilled).map(d =>
                 [d.datePublication, d.heure, d.format, d.type, d.titre, d.texteSurVisuel,
                 d.inspiration, d.autresElements, d.platforme, d.lienDrive,
-                d.etatPublication, d.rectifs, d.remarques, 'Brouillon'].map(escape).join(',')
+                d.etatPublication, d.rectifs, d.remarques, d.isShooting ? 'Oui' : 'Non', 'Brouillon'].map(escape).join(',')
             ),
         ].join('\n');
         const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' });
@@ -368,8 +399,74 @@ const MediaPlanPage: React.FC = () => {
     const [types, setTypes] = useState<Referentiel[]>([]);
     const [platformes, setPlateformes] = useState<Referentiel[]>([]);
 
+    // Shooting availability (dates dispo)
+    const [headProdId, setHeadProdId] = useState<number | null>(null);
+    const [availableShootingDates, setAvailableShootingDates] = useState<string[]>([]);
+    const [isAvailabilityRestricted, setIsAvailabilityRestricted] = useState(false);
+    const [availabilityLoading, setAvailabilityLoading] = useState(false);
+
+    const shootingMonthRange = useMemo(() => {
+        const { year, month } = parseMonthKey(selectedMonth);
+        const start = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        const endD = new Date(year, month + 1, 0);
+        const end = `${year}-${String(month + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
+        return { start, end };
+    }, [selectedMonth]);
+
     useEffect(() => { loadReferentiels(); checkGoogleAuth(); }, []);
     useEffect(() => { loadData(); }, [selectedClientId]);
+
+    useEffect(() => {
+        const fetchHeadProd = async () => {
+            try {
+                const [res1, res2] = await Promise.all([
+                    employeService.getByRole('Head Prod').catch(() => ({ data: { data: [] } } as any)),
+                    employeService.getByRole('HEAD_PROD').catch(() => ({ data: { data: [] } } as any)),
+                ]);
+                const data1 = res1.data?.data || [];
+                const data2 = res2.data?.data || [];
+                const merged = [...data1, ...data2];
+                const unique = Array.from(new Map(merged.map((m: any) => [m.id, m])).values());
+                setHeadProdId(unique.length > 0 ? unique[0].id : null);
+            } catch (e) {
+                setHeadProdId(null);
+            }
+        };
+        fetchHeadProd();
+    }, []);
+
+    useEffect(() => {
+        const fetchAvailableDates = async () => {
+            if (!headProdId) {
+                setIsAvailabilityRestricted(false);
+                setAvailabilityLoading(false);
+                setAvailableShootingDates([]);
+                return;
+            }
+            setIsAvailabilityRestricted(true);
+            setAvailabilityLoading(true);
+            try {
+                const { year, month } = parseMonthKey(selectedMonth);
+                const allDates = getAllDatesInMonth(year, month);
+
+                const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+                const endD = new Date(year, month + 1, 0);
+                const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
+
+                const slots: any[] = await calendrierProjetService.getManagerSlotsBetween(headProdId, startDate, endDate);
+                const occupied = new Set((slots || []).map(s => s.dateSlot));
+                setAvailableShootingDates(allDates.filter(d => !occupied.has(d)));
+            } catch (e) {
+                // If calendrier endpoint fails, fall back to not restricting choices
+                setIsAvailabilityRestricted(false);
+                setAvailableShootingDates([]);
+            } finally {
+                setAvailabilityLoading(false);
+            }
+        };
+
+        fetchAvailableDates();
+    }, [headProdId, selectedMonth]);
 
     // Fetch comments when month or client changes
     useEffect(() => {
@@ -620,11 +717,27 @@ const MediaPlanPage: React.FC = () => {
     };
 
     // ===== CELL EDIT =====
-    const handleCellChange = async (mp: MediaPlan, field: string, value: string) => {
+    const handleCellChange = async (mp: MediaPlan, field: string, value: any) => {
         if (mp.statut === 'EN_ATTENTE' || mp.statut === 'APPROUVE') return;
         try {
             await mediaPlanService.update(mp.id, { [field]: value } as any);
-            setMediaPlans(prev => prev.map(p => p.id === mp.id ? { ...p, [field]: value } : p));
+            setMediaPlans(prev => prev.map(p => {
+                if (p.id !== mp.id) return p;
+                if (field === 'isShooting' && value === false) {
+                    return {
+                        ...p,
+                        isShooting: false,
+                        shootingDescription: null,
+                        shootingLocalisation: null,
+                        shootingDate: null,
+                        shootingTypeDeContenu: null,
+                        shootingStatus: null,
+                        shootingStatusReason: null,
+                        calendrierProjetId: null,
+                    };
+                }
+                return { ...p, [field]: value } as any;
+            }));
         } catch (e: any) { console.error(e); }
     };
 
@@ -644,10 +757,20 @@ const MediaPlanPage: React.FC = () => {
         });
     };
 
-    const handleDraftChange = (index: number, field: keyof DraftRow, value: string) => {
+    const handleDraftChange = (index: number, field: keyof DraftRow, value: any) => {
         setDraftRows(prev => {
             const updated = [...prev];
             (updated[index] as any)[field] = value;
+            if (field === 'isShooting' && value === false) {
+                updated[index] = {
+                    ...(updated[index] as any),
+                    isShooting: false,
+                    shootingDescription: '',
+                    shootingLocalisation: '',
+                    shootingDate: '',
+                    shootingTypeDeContenu: '',
+                };
+            }
             if (selectedClientId) saveDraftsToStorage(selectedClientId, selectedMonth, updated);
             return updated;
         });
@@ -657,32 +780,122 @@ const MediaPlanPage: React.FC = () => {
     const handleBulkConfirm = async () => {
         if (!selectedClientId) return alert('Sélectionnez un client');
         const filledDrafts = draftRows.filter(isDraftFilled);
-        if (filledDrafts.length === 0) return alert('Aucune ligne remplie à confirmer');
+        const resubmittableExisting = monthMediaPlans.filter(mp => mp.statut === 'DESAPPROUVE');
 
-        confirm(`Confirmer et envoyer ${filledDrafts.length} ligne(s) remplie(s) au manager ?`, async () => {
+        if (filledDrafts.length === 0 && resubmittableExisting.length === 0) {
+            return alert('Aucune ligne à envoyer');
+        }
+
+        const invalidShooting = filledDrafts.find(d => d.isShooting && (!d.shootingDate || !d.shootingTypeDeContenu));
+        if (invalidShooting) {
+            return alert('Veuillez remplir la Date de shooting et le Type de contenu pour les lignes Shooting.');
+        }
+
+        const invalidShootingExisting = resubmittableExisting.find(mp => mp.isShooting && (!mp.shootingDate || !mp.shootingTypeDeContenu));
+        if (invalidShootingExisting) {
+            return alert('Veuillez remplir la Date de shooting et le Type de contenu pour les lignes Shooting désapprouvées.');
+        }
+
+        if (isAvailabilityRestricted && !availabilityLoading && availableShootingDates.length > 0) {
+            const invalidExistingDate = resubmittableExisting.find(mp => mp.isShooting && mp.shootingDate && !availableShootingDates.includes(mp.shootingDate));
+            if (invalidExistingDate) {
+                return alert('Une ou plusieurs dates de shooting ne sont pas disponibles. Veuillez choisir une date disponible avant d\'envoyer.');
+            }
+        }
+
+        const confirmMessage =
+            filledDrafts.length > 0 && resubmittableExisting.length > 0
+                ? `Confirmer et envoyer ${filledDrafts.length} ligne(s) remplie(s) et renvoyer ${resubmittableExisting.length} ligne(s) désapprouvée(s) au manager ?`
+                : filledDrafts.length > 0
+                    ? `Confirmer et envoyer ${filledDrafts.length} ligne(s) remplie(s) au manager ?`
+                    : `Confirmer et envoyer ${resubmittableExisting.length} ligne(s) désapprouvée(s) au manager ?`;
+
+        confirm(confirmMessage, async () => {
             try {
-                const requests: MediaPlanRequest[] = filledDrafts.map(draft => ({
-                    titre: draft.titre || 'Sans titre',
-                    datePublication: draft.datePublication || undefined,
-                    heure: draft.heure || undefined,
-                    format: draft.format || undefined,
-                    type: draft.type || undefined,
-                    texteSurVisuel: draft.texteSurVisuel || undefined,
-                    inspiration: draft.inspiration || undefined,
-                    autresElements: draft.autresElements || undefined,
-                    platforme: draft.platforme || undefined,
-                    lienDrive: draft.lienDrive || undefined,
-                    etatPublication: draft.etatPublication || undefined,
-                    rectifs: draft.rectifs || undefined,
-                    remarques: draft.remarques || undefined,
-                    clientId: selectedClientId,
-                    createurId: user?.employeId || 0,
-                }));
+                if (filledDrafts.length > 0) {
+                    const requests: MediaPlanRequest[] = filledDrafts.map(draft => ({
+                        titre: draft.titre || 'Sans titre',
+                        datePublication: draft.datePublication || undefined,
+                        heure: draft.heure || undefined,
+                        format: draft.format || undefined,
+                        type: draft.type || undefined,
+                        texteSurVisuel: draft.texteSurVisuel || undefined,
+                        inspiration: draft.inspiration || undefined,
+                        autresElements: draft.autresElements || undefined,
+                        platforme: draft.platforme || undefined,
+                        lienDrive: draft.lienDrive || undefined,
+                        etatPublication: draft.etatPublication || undefined,
+                        rectifs: draft.rectifs || undefined,
+                        remarques: draft.remarques || undefined,
+                        isShooting: draft.isShooting,
+                        shootingDescription: draft.isShooting ? (draft.shootingDescription || undefined) : undefined,
+                        shootingLocalisation: draft.isShooting ? (draft.shootingLocalisation || undefined) : undefined,
+                        shootingDate: draft.isShooting ? (draft.shootingDate || undefined) : undefined,
+                        shootingTypeDeContenu: draft.isShooting ? ((draft.shootingTypeDeContenu || undefined) as any) : undefined,
+                        clientId: selectedClientId,
+                        createurId: user?.employeId || 0,
+                    }));
 
-                await mediaPlanService.createBulk(requests);
+                    await mediaPlanService.createBulk(requests);
 
-                if (selectedClientId) clearDraftsFromStorage(selectedClientId, selectedMonth);
-                setNewPlanOpen(false);
+                    if (selectedClientId) clearDraftsFromStorage(selectedClientId, selectedMonth);
+                    setNewPlanOpen(false);
+                }
+
+                if (resubmittableExisting.length > 0) {
+                    for (const mp of resubmittableExisting) {
+                        await mediaPlanService.resubmit(mp.id);
+                    }
+                }
+
+                await loadData();
+            } catch (e: any) {
+                alert(e.response?.data?.message || 'Erreur');
+            }
+        });
+    };
+
+    const handleResubmit = (mp: MediaPlan) => {
+        if (mp.statut !== 'DESAPPROUVE') return;
+
+        if (mp.isShooting && (!mp.shootingDate || !mp.shootingTypeDeContenu)) {
+            alert('Veuillez remplir la Date de shooting et le Type de contenu avant de confirmer et envoyer.');
+            return;
+        }
+
+        confirm('Confirmer et envoyer cette ligne au manager ?', async () => {
+            try {
+                await mediaPlanService.resubmit(mp.id);
+                await loadData();
+            } catch (e: any) {
+                alert(e.response?.data?.message || 'Erreur');
+            }
+        });
+    };
+
+    const handleBatchResubmit = (plans: MediaPlan[]) => {
+        const disapprovedLines = plans.filter(p => p.statut === 'DESAPPROUVE');
+        if (disapprovedLines.length === 0) return;
+
+        const invalidShootingExisting = disapprovedLines.find(mp => mp.isShooting && (!mp.shootingDate || !mp.shootingTypeDeContenu));
+        if (invalidShootingExisting) {
+            alert('Veuillez remplir la Date de shooting et le Type de contenu pour les lignes Shooting désapprouvées.');
+            return;
+        }
+
+        if (isAvailabilityRestricted && !availabilityLoading && availableShootingDates.length > 0) {
+            const invalidExistingDate = disapprovedLines.find(mp => mp.isShooting && mp.shootingDate && !availableShootingDates.includes(mp.shootingDate));
+            if (invalidExistingDate) {
+                alert('Une ou plusieurs dates de shooting ne sont pas disponibles. Veuillez choisir une date disponible avant d\'envoyer.');
+                return;
+            }
+        }
+
+        confirm(`Confirmer et envoyer ${disapprovedLines.length} ligne(s) désapprouvée(s) au manager ?`, async () => {
+            try {
+                for (const mp of disapprovedLines) {
+                    await mediaPlanService.resubmit(mp.id);
+                }
                 await loadData();
             } catch (e: any) {
                 alert(e.response?.data?.message || 'Erreur');
@@ -718,6 +931,13 @@ const MediaPlanPage: React.FC = () => {
     const getStatusBadge = (statut: string) => {
         const variants: Record<string, string> = { EN_ATTENTE: 'warning', APPROUVE: 'success', DESAPPROUVE: 'danger' };
         return <Badge variant={(variants[statut] || 'neutral') as any}>{StatutMediaPlanLabels[statut as keyof typeof StatutMediaPlanLabels] || statut}</Badge>;
+    };
+
+    const getShootingStatusBadge = (statut: StatutShooting | null) => {
+        if (!statut) return null;
+        const variants: Record<string, string> = { EN_ATTENTE: 'warning', VALIDE: 'success', REJETE: 'danger' };
+        const labels: Record<string, string> = { EN_ATTENTE: 'En attente', VALIDE: 'Validé', REJETE: 'Rejeté' };
+        return <Badge variant={(variants[statut] || 'neutral') as any}>{labels[statut] || statut}</Badge>;
     };
 
     const isReadOnly = (mp: MediaPlan) => mp.statut === 'EN_ATTENTE' || mp.statut === 'APPROUVE';
@@ -869,15 +1089,146 @@ const MediaPlanPage: React.FC = () => {
                     </td>
                     <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[11] }}><TextCell cellKey={`mp-${mp.id}-rectifs`} rowId={`mp-${mp.id}`} columnKey="rectifs" mediaPlanId={mp.id} value={mp.rectifs || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'rectifs', v)} /></td>
                     <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[12] }}><TextCell cellKey={`mp-${mp.id}-remarques`} rowId={`mp-${mp.id}`} columnKey="remarques" mediaPlanId={mp.id} value={mp.remarques || ''} readOnly={ro} onSave={v => handleCellChange(mp, 'remarques', v)} /></td>
-                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[13] }}>{getStatusBadge(mp.statut)}</td>
-                    <td className="px-2 py-1 h-[1px] overflow-hidden" style={{ width: colWidths[14] }}>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[13] }}>
+                        <div className="flex items-center justify-center">
+                            <input
+                                type="checkbox"
+                                checked={!!mp.isShooting}
+                                disabled={ro}
+                                onChange={e => handleCellChange(mp, 'isShooting', e.target.checked)}
+                                className="h-4 w-4 accent-brand-500"
+                            />
+                        </div>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[14] }}>{getStatusBadge(mp.statut)}</td>
+                    <td className="px-2 py-1 h-[1px] overflow-hidden" style={{ width: colWidths[15] }}>
                         {!ro && (
-                            <button onClick={() => handleClearRow(mp)} className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Vider la ligne">
-                                <HiOutlineTrash size={15} />
-                            </button>
+                            <div className="flex gap-1">
+                                {mp.statut === 'DESAPPROUVE' && (
+                                    <button
+                                        onClick={() => handleResubmit(mp)}
+                                        className="p-1 rounded text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                                        title="Confirmer et envoyer"
+                                    >
+                                        <HiOutlineCheck size={15} />
+                                    </button>
+                                )}
+                                <button onClick={() => handleClearRow(mp)} className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Vider la ligne">
+                                    <HiOutlineTrash size={15} />
+                                </button>
+                            </div>
                         )}
                     </td>
                 </tr>
+
+                {mp.isShooting && (
+                    <tr className="bg-brand-50/20 dark:bg-brand-900/10">
+                        <td colSpan={COLUMNS.length} className="px-3 py-3 border-b border-gray-100 dark:border-gray-800">
+                            <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">SHOOTING</div>
+                            {ro ? (
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-2 text-sm text-gray-700 dark:text-gray-200">
+                                    <div>
+                                        <div className="text-[11px] text-gray-400 dark:text-gray-500">Description</div>
+                                        <div className="mt-0.5 whitespace-pre-wrap">{mp.shootingDescription || '-'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[11px] text-gray-400 dark:text-gray-500">Localisation</div>
+                                        <div className="mt-0.5">{mp.shootingLocalisation || '-'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[11px] text-gray-400 dark:text-gray-500">Date</div>
+                                        <div className="mt-0.5">{mp.shootingDate || '-'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[11px] text-gray-400 dark:text-gray-500">Type de contenu</div>
+                                        <div className="mt-0.5">{mp.shootingTypeDeContenu ? TypeContenuShootingLabels[mp.shootingTypeDeContenu] : '-'}</div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-2">
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Description</label>
+                                        <textarea
+                                            value={mp.shootingDescription || ''}
+                                            onChange={e => handleCellChange(mp, 'shootingDescription', e.target.value)}
+                                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                            rows={2}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Localisation</label>
+                                        <input
+                                            value={mp.shootingLocalisation || ''}
+                                            onChange={e => handleCellChange(mp, 'shootingLocalisation', e.target.value)}
+                                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Date</label>
+                                        <input
+                                            type="date"
+                                            value={mp.shootingDate || ''}
+                                            min={shootingMonthRange.start}
+                                            max={shootingMonthRange.end}
+                                            disabled={isAvailabilityRestricted && (availabilityLoading || availableShootingDates.length === 0)}
+                                            onChange={e => {
+                                                const next = e.target.value;
+                                                if (!next) {
+                                                    handleCellChange(mp, 'shootingDate', '');
+                                                    return;
+                                                }
+
+                                                if (isAvailabilityRestricted && !availabilityLoading) {
+                                                    if (!availableShootingDates.includes(next)) {
+                                                        alert('Cette date n\'est pas disponible pour le shooting.');
+                                                        handleCellChange(mp, 'shootingDate', '');
+                                                        return;
+                                                    }
+                                                }
+
+                                                handleCellChange(mp, 'shootingDate', next);
+                                            }}
+                                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                        />
+                                        {isAvailabilityRestricted && (
+                                            <div className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                                                {availabilityLoading
+                                                    ? 'Chargement des dates disponibles…'
+                                                    : availableShootingDates.length === 0
+                                                        ? 'Aucune date disponible pour ce mois.'
+                                                        : 'Seules les dates disponibles sont acceptées.'}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Type de contenu</label>
+                                        <select
+                                            value={mp.shootingTypeDeContenu || ''}
+                                            onChange={e => handleCellChange(mp, 'shootingTypeDeContenu', e.target.value)}
+                                            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                        >
+                                            <option value="">-</option>
+                                            <option value={TypeContenuShooting.PHOTO}>Photo</option>
+                                            <option value={TypeContenuShooting.VIDEO}>Vidéo</option>
+                                            <option value={TypeContenuShooting.BOTH}>Vidéo + photos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {(mp.shootingStatus || mp.shootingStatusReason) && (
+                                <div className="mt-3 flex items-center gap-2">
+                                    <span className="text-[11px] text-gray-400 dark:text-gray-500">Statut shooting</span>
+                                    {getShootingStatusBadge(mp.shootingStatus)}
+                                    {mp.shootingStatus === StatutShooting.REJETE && mp.shootingStatusReason && (
+                                        <span className="text-xs text-red-600 dark:text-red-400">({mp.shootingStatusReason})</span>
+                                    )}
+                                </div>
+                            )}
+                        </td>
+                    </tr>
+                )}
+
                 {/* ── Row resize strip ── */}
                 <tr>
                     <td colSpan={COLUMNS.length}
@@ -933,8 +1284,18 @@ const MediaPlanPage: React.FC = () => {
                     </td>
                     <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[11] }}><TextCell cellKey={`${draft._key}-rectifs`} rowId={draft._key} columnKey="rectifs" draftKey={draft._key} value={draft.rectifs} placeholder="..." onSave={v => handleDraftChange(idx, 'rectifs', v)} /></td>
                     <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[12] }}><TextCell cellKey={`${draft._key}-remarques`} rowId={draft._key} columnKey="remarques" draftKey={draft._key} value={draft.remarques} placeholder="..." onSave={v => handleDraftChange(idx, 'remarques', v)} /></td>
-                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[13] }}><Badge variant="light">Brouillon</Badge></td>
-                    <td className="px-2 py-1 h-[1px] overflow-hidden" style={{ width: colWidths[14] }}>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[13] }}>
+                        <div className="flex items-center justify-center">
+                            <input
+                                type="checkbox"
+                                checked={!!draft.isShooting}
+                                onChange={e => handleDraftChange(idx, 'isShooting', e.target.checked)}
+                                className="h-4 w-4 accent-brand-500"
+                            />
+                        </div>
+                    </td>
+                    <td className="px-2 py-1 h-[1px] border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[14] }}><Badge variant="light">Brouillon</Badge></td>
+                    <td className="px-2 py-1 h-[1px] overflow-hidden" style={{ width: colWidths[15] }}>
                         <div className="flex gap-1">
                             <button onClick={() => {
                                 const { year, month } = parseMonthKey(selectedMonth);
@@ -953,6 +1314,84 @@ const MediaPlanPage: React.FC = () => {
                         </div>
                     </td>
                 </tr>
+
+                {draft.isShooting && (
+                    <tr className="bg-brand-50/20 dark:bg-brand-900/10">
+                        <td colSpan={COLUMNS.length} className="px-3 py-3 border-b border-gray-100 dark:border-gray-800">
+                            <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">SHOOTING</div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-2">
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Description</label>
+                                    <textarea
+                                        value={draft.shootingDescription}
+                                        onChange={e => handleDraftChange(idx, 'shootingDescription', e.target.value)}
+                                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                        rows={2}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Localisation</label>
+                                    <input
+                                        value={draft.shootingLocalisation}
+                                        onChange={e => handleDraftChange(idx, 'shootingLocalisation', e.target.value)}
+                                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Date</label>
+                                    <input
+                                        type="date"
+                                        value={draft.shootingDate}
+                                        min={shootingMonthRange.start}
+                                        max={shootingMonthRange.end}
+                                        disabled={isAvailabilityRestricted && (availabilityLoading || availableShootingDates.length === 0)}
+                                        onChange={e => {
+                                            const next = e.target.value;
+                                            if (!next) {
+                                                handleDraftChange(idx, 'shootingDate', '');
+                                                return;
+                                            }
+
+                                            if (isAvailabilityRestricted && !availabilityLoading) {
+                                                if (!availableShootingDates.includes(next)) {
+                                                    alert('Cette date n\'est pas disponible pour le shooting.');
+                                                    handleDraftChange(idx, 'shootingDate', '');
+                                                    return;
+                                                }
+                                            }
+
+                                            handleDraftChange(idx, 'shootingDate', next);
+                                        }}
+                                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                    />
+                                    {isAvailabilityRestricted && (
+                                        <div className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                                            {availabilityLoading
+                                                ? 'Chargement des dates disponibles…'
+                                                : availableShootingDates.length === 0
+                                                    ? 'Aucune date disponible pour ce mois.'
+                                                    : 'Seules les dates disponibles sont acceptées.'}
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Type de contenu</label>
+                                    <select
+                                        value={draft.shootingTypeDeContenu}
+                                        onChange={e => handleDraftChange(idx, 'shootingTypeDeContenu', e.target.value as any)}
+                                        className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                    >
+                                        <option value="">-</option>
+                                        <option value={TypeContenuShooting.PHOTO}>Photo</option>
+                                        <option value={TypeContenuShooting.VIDEO}>Vidéo</option>
+                                            <option value={TypeContenuShooting.BOTH}>Vidéo + photos</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                )}
+
                 {/* ── Draft row resize strip ── */}
                 <tr>
                     <td colSpan={COLUMNS.length}
@@ -1045,10 +1484,21 @@ const MediaPlanPage: React.FC = () => {
                     {sentBatches.map((batch, batchIdx) => {
                         const batchStatus = getStatusInfo(batch.plans);
                         const isOpen = openBatches.has(batch.key);
+                        const hasDisapproved = batch.plans.some(p => p.statut === 'DESAPPROUVE');
                         return (
                             <div key={batch.key} className={`rounded-xl border-2 overflow-hidden transition-all duration-300 ${statusColorClasses[batchStatus.color]}`}>
-                                <button onClick={() => toggleBatch(batch.key)}
-                                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:opacity-80 transition-opacity">
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => toggleBatch(batch.key)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            toggleBatch(batch.key);
+                                        }
+                                    }}
+                                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:opacity-80 transition-opacity"
+                                >
                                     <div className="flex items-center gap-3">
                                         {isOpen
                                             ? <HiOutlineChevronDown size={20} className="transition-transform" />
@@ -1056,12 +1506,32 @@ const MediaPlanPage: React.FC = () => {
                                         <span className="text-base font-semibold">{batchStatus.label}</span>
                                         <span className="text-sm opacity-70">— {batch.plans.length} ligne(s)</span>
                                     </div>
-                                    <Badge variant={
-                                        batchStatus.color === 'green' ? 'success' :
-                                            batchStatus.color === 'red' ? 'danger' :
-                                                batchStatus.color === 'warning' ? 'warning' : 'neutral' as any
-                                    }>{batchStatus.label}</Badge>
-                                </button>
+                                    <div className="flex items-center gap-2">
+                                        {hasDisapproved && (
+                                            <>
+                                                <button
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenNewPlan(); }}
+                                                    className="flex items-center gap-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition-colors"
+                                                    title="Ajouter une ligne"
+                                                >
+                                                    <HiOutlinePlus size={14} /> Ajouter ligne
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBatchResubmit(batch.plans); }}
+                                                    className="flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition-colors"
+                                                    title="Confirmer et envoyer"
+                                                >
+                                                    <HiOutlineCheck size={14} /> Confirmer et envoyer
+                                                </button>
+                                            </>
+                                        )}
+                                        <Badge variant={
+                                            batchStatus.color === 'green' ? 'success' :
+                                                batchStatus.color === 'red' ? 'danger' :
+                                                    batchStatus.color === 'warning' ? 'warning' : 'neutral' as any
+                                        }>{batchStatus.label}</Badge>
+                                    </div>
+                                </div>
 
                                 {isOpen && (
                                     <div className="overflow-x-auto border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
