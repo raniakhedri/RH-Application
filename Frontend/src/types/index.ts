@@ -62,6 +62,7 @@ export enum StatutProjet {
   PLANIFIE = 'PLANIFIE',
   EN_COURS = 'EN_COURS',
   CLOTURE = 'CLOTURE',
+  CLOTURE_INCOMPLET = 'CLOTURE_INCOMPLET',
   ANNULE = 'ANNULE',
 }
 

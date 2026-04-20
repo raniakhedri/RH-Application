@@ -17,10 +17,12 @@ const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success' | 'danger
     PLANIFIE: 'neutral',
     EN_COURS: 'primary',
     CLOTURE: 'success',
+    CLOTURE_INCOMPLET: 'danger',
     ANNULE: 'danger',
 };
 const statutLabels: Record<string, string> = {
-    PLANIFIE: 'Planifié', EN_COURS: 'En cours', CLOTURE: 'Clôturé', ANNULE: 'Annulé',
+    PLANIFIE: 'Planifié', EN_COURS: 'En cours', CLOTURE: 'Clôturé ✅',
+    CLOTURE_INCOMPLET: 'Clôturé incomplet ⚠️', ANNULE: 'Annulé',
 };
 const tacheStatutMap: Record<string, 'neutral' | 'primary' | 'success'> = {
     TODO: 'neutral', IN_PROGRESS: 'primary', DONE: 'success',

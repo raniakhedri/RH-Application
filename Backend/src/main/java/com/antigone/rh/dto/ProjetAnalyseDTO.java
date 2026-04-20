@@ -35,6 +35,12 @@ public class ProjetAnalyseDTO {
     // ── Résumé des retards ────────────────────────────────────────────────────
     private List<RetardEntry> retards;
 
+    // ── Temps par employé ─────────────────────────────────────────────────────
+    private List<EmployeTempsDTO> tempsParEmploye;
+
+    // ── Temps inactif managers ────────────────────────────────────────────────
+    private List<ManagerTempsInactifDTO> tempsInactifManagers;
+
     // ── Sub-DTOs ──────────────────────────────────────────────────────────────
 
     @Data
@@ -99,5 +105,41 @@ public class ProjetAnalyseDTO {
         private String etape;        // Phase description
         private Long dureeRetardMinutes;
         private String impact;
+    }
+
+    @Data
+    @Builder
+    public static class EmployeTempsDTO {
+        private Long employeId;
+        private String employeNom;
+        private int totalTaches;
+        private int tachesDone;
+        private int tachesInProgress;
+        private int tachesTodo;
+        /** Σ(dateDebutExecution - dateAssignation) across all tasks */
+        private Long tempsEnTodoMinutes;
+        /** Σ(dateFinExecution - dateDebutExecution) across all tasks */
+        private Long tempsEnInProgressMinutes;
+        /** Σ(now/dateCloture - dateFinExecution) for done tasks */
+        private Long tempsDepuisDoneMinutes;
+        /** Total from assignment to done/now */
+        private Long tempsTotalMinutes;
+        /** Temps estimé inactif (sans tâche en cours) */
+        private Long tempsInactifMinutes;
+    }
+
+    @Data
+    @Builder
+    public static class ManagerTempsInactifDTO {
+        private Long managerId;
+        private String managerNom;
+        private LocalDateTime dateReceptionProjet;
+        private LocalDateTime datePremiereAssignation;
+        /** Minutes entre réception projet et 1ère assignation */
+        private Long tempsInactifMinutes;
+        /** Tâches encore sans assigné */
+        private int tachesNonAssignees;
+        private boolean retard;
+        private String commentaire;
     }
 }

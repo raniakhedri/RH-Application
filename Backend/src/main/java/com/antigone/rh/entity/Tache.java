@@ -31,7 +31,15 @@ public class Tache {
     private LocalDate dateEcheance;
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean urgente = false;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    /** Estimated duration in days for alert threshold calculation */
+    @Column(name = "duree_prevue_jours")
+    private Integer dureePrevueJours;
 
     /** Optional: Post, Video, Documentation */
     @Column

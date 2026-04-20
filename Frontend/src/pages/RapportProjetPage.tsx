@@ -76,6 +76,23 @@ const Badge: React.FC<{ ok: boolean; label?: string }> = ({ ok, label }) => (
   </span>
 );
 
+/** Stacked bar showing time distribution */
+const TimeBar: React.FC<{ todoMin: number; ipMin: number; doneMin: number; totalMin: number }> = ({
+  todoMin, ipMin, doneMin, totalMin,
+}) => {
+  if (totalMin <= 0) return <div className="h-3 rounded-full bg-gray-100 dark:bg-gray-800 w-full" />;
+  const todoPct = Math.round((todoMin / totalMin) * 100);
+  const ipPct = Math.round((ipMin / totalMin) * 100);
+  const donePct = Math.max(100 - todoPct - ipPct, 0);
+  return (
+    <div className="flex h-3 w-full rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800" title={`TODO: ${formatMinutes(todoMin)} | En cours: ${formatMinutes(ipMin)} | Done: ${formatMinutes(doneMin)}`}>
+      {todoPct > 0 && <div className="bg-amber-400 dark:bg-amber-500 transition-all" style={{ width: `${todoPct}%` }} />}
+      {ipPct > 0 && <div className="bg-brand-500 dark:bg-brand-400 transition-all" style={{ width: `${ipPct}%` }} />}
+      {donePct > 0 && <div className="bg-emerald-400 dark:bg-emerald-500 transition-all" style={{ width: `${donePct}%` }} />}
+    </div>
+  );
+};
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const RapportProjetPage: React.FC = () => {
@@ -322,6 +339,61 @@ const RapportProjetPage: React.FC = () => {
             )}
           </PhaseCard>
 
+          {/* ── Temps Inactif Managers ──────────────────────────────────────────── */}
+          {rapport.tempsInactifManagers && rapport.tempsInactifManagers.length > 0 && (
+            <PhaseCard
+              title="TEMPS INACTIF MANAGERS — Délai avant distribution"
+              icon={<HiOutlineClock />}
+              color="border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10"
+            >
+              <div className="space-y-4">
+                {rapport.tempsInactifManagers.map(m => (
+                  <div key={m.managerId} className={`rounded-xl border p-4 ${m.retard ? 'border-red-200 bg-red-50/50 dark:border-red-500/20 dark:bg-red-500/5' : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-dark'}`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold text-sm ${m.retard ? 'bg-gradient-to-br from-red-400 to-orange-500' : 'bg-gradient-to-br from-purple-400 to-violet-500'}`}>
+                          {m.managerNom.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-gray-800 dark:text-white">{m.managerNom}</p>
+                          <p className="text-[10px] text-gray-400">Manager</p>
+                        </div>
+                      </div>
+                      <Badge ok={!m.retard} label={m.retard ? '⚠ Retard' : '✅ OK'} />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-2.5">
+                        <p className="text-gray-400 mb-0.5">Réception projet</p>
+                        <p className="font-semibold text-gray-700 dark:text-gray-300">{formatDate(m.dateReceptionProjet)}</p>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-2.5">
+                        <p className="text-gray-400 mb-0.5">1ère assignation</p>
+                        <p className="font-semibold text-gray-700 dark:text-gray-300">{formatDate(m.datePremiereAssignation)}</p>
+                      </div>
+                      <div className={`rounded-lg p-2.5 ${m.retard ? 'bg-red-50 dark:bg-red-500/10' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                        <p className="text-gray-400 mb-0.5">Temps inactif</p>
+                        <p className={`font-bold ${m.retard ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                          {formatMinutes(m.tempsInactifMinutes)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-2.5">
+                        <p className="text-gray-400 mb-0.5">Non assignées</p>
+                        <p className={`font-bold ${m.tachesNonAssignees > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                          {m.tachesNonAssignees} tâche{m.tachesNonAssignees > 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    {m.commentaire && (
+                      <p className="mt-3 text-xs text-gray-500 dark:text-gray-400 italic bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2">
+                        {m.commentaire}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </PhaseCard>
+          )}
+
           {/* Phase 3 — Exécution */}
           <PhaseCard
             title="PHASE 3 — Exécution (Membres)"
@@ -369,6 +441,86 @@ const RapportProjetPage: React.FC = () => {
               </div>
             )}
           </PhaseCard>
+
+          {/* ── TEMPS PAR EMPLOYÉ ─────────────────────────────────────────────── */}
+          {rapport.tempsParEmploye && rapport.tempsParEmploye.length > 0 && (
+            <PhaseCard
+              title="RENDEMENT PAR EMPLOYÉ — Temps dans chaque statut"
+              icon={<HiOutlineClock />}
+              color="border-cyan-200 dark:border-cyan-800 bg-cyan-50/50 dark:bg-cyan-900/10"
+            >
+              {/* Legend */}
+              <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> TODO (en attente)</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-brand-500" /> En cours</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Terminé</span>
+              </div>
+
+              <div className="space-y-4">
+                {rapport.tempsParEmploye.map(emp => {
+                  const todoMin = emp.tempsEnTodoMinutes ?? 0;
+                  const ipMin = emp.tempsEnInProgressMinutes ?? 0;
+                  const doneMin = emp.tempsDepuisDoneMinutes ?? 0;
+                  const totalMin = emp.tempsTotalMinutes ?? 0;
+                  const inactifMin = emp.tempsInactifMinutes ?? 0;
+                  const isAnomaly = todoMin > ipMin * 2 || inactifMin > totalMin * 0.3;
+
+                  return (
+                    <div key={emp.employeId} className={`rounded-xl border p-4 transition-all ${isAnomaly ? 'border-amber-300 bg-amber-50/30 dark:border-amber-500/30 dark:bg-amber-500/5' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-dark'}`}>
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md ${isAnomaly ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-500/20' : 'bg-gradient-to-br from-cyan-400 to-blue-500 shadow-cyan-500/20'}`}>
+                            {emp.employeNom.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm text-gray-800 dark:text-white">{emp.employeNom}</p>
+                            <p className="text-[10px] text-gray-400">
+                              {emp.totalTaches} tâche{emp.totalTaches > 1 ? 's' : ''} • {emp.tachesDone} terminée{emp.tachesDone > 1 ? 's' : ''}
+                              {emp.tachesInProgress > 0 && ` • ${emp.tachesInProgress} en cours`}
+                              {emp.tachesTodo > 0 && ` • ${emp.tachesTodo} en attente`}
+                            </p>
+                          </div>
+                        </div>
+                        {isAnomaly && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                            <HiOutlineExclamation size={10} /> Anomalie
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Time Bar */}
+                      <TimeBar todoMin={todoMin} ipMin={ipMin} doneMin={doneMin} totalMin={Math.max(todoMin + ipMin + doneMin, 1)} />
+
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3">
+                        <div className="rounded-lg bg-amber-50 dark:bg-amber-500/10 p-2 text-center">
+                          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">TODO</p>
+                          <p className="text-sm font-bold text-amber-700 dark:text-amber-300">{formatMinutes(todoMin)}</p>
+                        </div>
+                        <div className="rounded-lg bg-brand-50 dark:bg-brand-500/10 p-2 text-center">
+                          <p className="text-[10px] text-brand-600 dark:text-brand-400 font-medium">En cours</p>
+                          <p className="text-sm font-bold text-brand-700 dark:text-brand-300">{formatMinutes(ipMin)}</p>
+                        </div>
+                        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-500/10 p-2 text-center">
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Depuis Done</p>
+                          <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{formatMinutes(doneMin)}</p>
+                        </div>
+                        <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-2 text-center">
+                          <p className="text-[10px] text-gray-500 font-medium">Total</p>
+                          <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{formatMinutes(totalMin)}</p>
+                        </div>
+                        <div className={`rounded-lg p-2 text-center ${inactifMin > 0 ? 'bg-red-50 dark:bg-red-500/10' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                          <p className={`text-[10px] font-medium ${inactifMin > 0 ? 'text-red-500' : 'text-gray-500'}`}>Inactif</p>
+                          <p className={`text-sm font-bold ${inactifMin > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>{formatMinutes(inactifMin)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </PhaseCard>
+          )}
 
           {/* Phase 4 — Clôture */}
           <PhaseCard
@@ -443,6 +595,12 @@ const RapportProjetPage: React.FC = () => {
                   )}
                   {rapport.retards.some(r => r.source === 'Membre') && (
                     <li>Les membres en retard devraient signaler les blocages plus tôt pour permettre une réallocation.</li>
+                  )}
+                  {rapport.tempsInactifManagers?.some(m => m.retard) && (
+                    <li>Un ou plusieurs managers ont mis trop de temps avant de distribuer les tâches — mettre en place des alertes automatiques.</li>
+                  )}
+                  {rapport.tempsParEmploye?.some(e => (e.tempsInactifMinutes ?? 0) > (e.tempsTotalMinutes ?? 1) * 0.3) && (
+                    <li>Certains employés ont un temps inactif élevé — vérifier la charge de travail et la répartition des tâches.</li>
                   )}
                 </ul>
               </div>

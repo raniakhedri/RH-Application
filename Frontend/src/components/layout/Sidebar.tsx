@@ -127,6 +127,7 @@ const menuGroups = [
       { key: 'referentiels', label: 'Référentiels', path: '/referentiels', icon: <HiOutlineCollection size={20} />, permission: 'VIEW_REFERENTIELS' },
       { key: 'calendrier', label: 'Calendrier Entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_CALENDRIER' },
       { key: 'tous-projets-admin', label: 'Tous les projets', path: '/admin/projets', icon: <HiOutlineBriefcase size={20} />, permission: 'VIEW_TOUS_PROJETS' },
+      { key: 'dashboard-projets-admin', label: 'Dashboard Projets', path: '/admin/dashboard-projets', icon: <HiOutlineChartBar size={20} />, permission: 'VIEW_TOUS_PROJETS' },
       { key: 'dashboard-rh', label: 'Dashboard RH', path: '/dashboard-rh', icon: <HiOutlineChartBar size={20} />, permission: 'VIEW_DASHBOARD_RH' },
       { key: 'departements', label: 'Départements', path: '/admin/departements', icon: <HiOutlineUserGroup size={20} />, permission: 'VIEW_EMPLOYES' },
       { key: 'clients', label: 'Clients', path: '/admin/clients', icon: <HiOutlineUsers size={20} />, permission: 'VIEW_CLIENTS' },

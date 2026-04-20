@@ -37,4 +37,8 @@ public class ProjetDTO {
     /** Linked validated client */
     private Long clientId;
     private String clientNom;
+    /** True if project was force-closed with remaining open tasks */
+    private Boolean clotureForcee;
+    /** Number of open tasks when force-closed */
+    private Integer tachesAbandonnees;
 }

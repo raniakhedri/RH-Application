@@ -13,6 +13,7 @@ import com.antigone.rh.repository.ProjetRepository;
 import com.antigone.rh.repository.EquipeRepository;
 import com.antigone.rh.repository.TacheRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class ProjetService {
 
     private final ProjetRepository projetRepository;
@@ -103,12 +105,14 @@ public class ProjetService {
             List<Employe> chefs = employeRepository.findAllById(chefIds);
             projet.getChefsDeProjet().clear();
             projet.getChefsDeProjet().addAll(chefs);
+            projet.setDateAffectationChef(LocalDateTime.now());
         } else if (request.getChefDeProjetId() != null) {
             Employe chef = employeRepository.findById(request.getChefDeProjetId())
                     .orElseThrow(
                             () -> new RuntimeException("Chef de projet introuvable: " + request.getChefDeProjetId()));
             projet.setChefDeProjet(chef);
             projet.getChefsDeProjet().add(chef);
+            projet.setDateAffectationChef(LocalDateTime.now());
         }
 
         // Linked validated client (optional)
@@ -178,19 +182,27 @@ public class ProjetService {
         // Chefs de projet (multiple)
         List<Long> chefIds = request.getChefDeProjetIds();
         if (chefIds != null) {
+            boolean hadChefBefore = projet.getChefDeProjet() != null;
             projet.getChefsDeProjet().clear();
             if (!chefIds.isEmpty()) {
                 List<Employe> chefs = employeRepository.findAllById(chefIds);
                 projet.getChefsDeProjet().addAll(chefs);
                 projet.setChefDeProjet(chefs.get(0));
+                if (!hadChefBefore || projet.getDateAffectationChef() == null) {
+                    projet.setDateAffectationChef(LocalDateTime.now());
+                }
             } else {
                 projet.setChefDeProjet(null);
             }
         } else if (request.getChefDeProjetId() != null) {
+            boolean hadChefBefore = projet.getChefDeProjet() != null;
             Employe chef = employeRepository.findById(request.getChefDeProjetId()).orElseThrow();
             projet.setChefDeProjet(chef);
             if (!projet.getChefsDeProjet().contains(chef))
                 projet.getChefsDeProjet().add(chef);
+            if (!hadChefBefore || projet.getDateAffectationChef() == null) {
+                projet.setDateAffectationChef(LocalDateTime.now());
+            }
         } else {
             projet.setChefDeProjet(null);
             projet.getChefsDeProjet().clear();
@@ -258,12 +270,64 @@ public class ProjetService {
         projetRepository.deleteById(id);
     }
 
+    /**
+     * CORRECTION 3 — Check for open tasks before closure.
+     * CORRECTION 5 — Distinguish CLOTURE from CLOTURE_INCOMPLET.
+     *
+     * @param forceClosure if true, force closure even with open tasks
+     */
     public ProjetDTO changeStatut(Long id, StatutProjet statut) {
+        return changeStatut(id, statut, false);
+    }
+
+    public ProjetDTO changeStatut(Long id, StatutProjet statut, boolean forceClosure) {
         Projet projet = findEntityById(id);
-        projet.setStatut(statut);
-        if (statut == StatutProjet.CLOTURE && projet.getDateCloture() == null) {
+
+        // ── CORRECTION 3: Check open tasks before closure ────────────────
+        if (statut == StatutProjet.CLOTURE || statut == StatutProjet.CLOTURE_INCOMPLET) {
+            List<com.antigone.rh.entity.Tache> taches = tacheRepository.findByProjetId(id);
+            long openTasks = taches.stream()
+                    .filter(t -> t.getStatut() != com.antigone.rh.enums.StatutTache.DONE)
+                    .count();
+
+            if (openTasks > 0 && !forceClosure) {
+                // Return error with details about open tasks for frontend modal
+                List<String> openTaskDetails = taches.stream()
+                        .filter(t -> t.getStatut() != com.antigone.rh.enums.StatutTache.DONE)
+                        .map(t -> {
+                            String emp = "Non assigné";
+                            try {
+                                if (t.getAssignee() != null)
+                                    emp = t.getAssignee().getPrenom() + " " + t.getAssignee().getNom();
+                            } catch (Exception ignored) {}
+                            return t.getTitre() + " → " + t.getStatut() + " → " + emp;
+                        })
+                        .collect(Collectors.toList());
+
+                throw new IllegalStateException(
+                        "CLOTURE_INCOMPLETE:" + openTasks + ":"
+                        + String.join("|", openTaskDetails));
+            }
+
             projet.setDateCloture(LocalDateTime.now());
+
+            if (openTasks > 0) {
+                // Forced closure with open tasks → CLOTURE_INCOMPLET
+                projet.setStatut(StatutProjet.CLOTURE_INCOMPLET);
+                projet.setClotureForcee(true);
+                projet.setTachesAbandonnees((int) openTasks);
+                log.warn("⚠ Projet #{} clôturé avec {} tâches non terminées (clôture forcée)", id, openTasks);
+            } else {
+                // All tasks done → clean CLOTURE
+                projet.setStatut(StatutProjet.CLOTURE);
+                projet.setClotureForcee(false);
+                projet.setTachesAbandonnees(0);
+                log.info("✅ Projet #{} clôturé proprement — 100% des tâches terminées", id);
+            }
+        } else {
+            projet.setStatut(statut);
         }
+
         return toDTO(projetRepository.save(projet));
     }
 
@@ -343,6 +407,8 @@ public class ProjetService {
                 .membres(membresDTO)
                 .clientId(clientId)
                 .clientNom(clientNom)
+                .clotureForcee(projet.getClotureForcee())
+                .tachesAbandonnees(projet.getTachesAbandonnees())
                 .build();
     }
 

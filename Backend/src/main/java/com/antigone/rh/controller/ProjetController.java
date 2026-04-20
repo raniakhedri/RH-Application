@@ -55,10 +55,14 @@ public class ProjetController {
 
     @PatchMapping("/{id}/statut")
     public ResponseEntity<ApiResponse<ProjetDTO>> changeStatut(@PathVariable Long id,
-            @RequestParam String statut) {
+            @RequestParam String statut,
+            @RequestParam(required = false, defaultValue = "false") boolean force) {
         try {
             StatutProjet statutEnum = StatutProjet.valueOf(statut.toUpperCase());
-            return ResponseEntity.ok(ApiResponse.ok("Statut mis à jour", projetService.changeStatut(id, statutEnum)));
+            return ResponseEntity.ok(ApiResponse.ok("Statut mis à jour", projetService.changeStatut(id, statutEnum, force)));
+        } catch (IllegalStateException e) {
+            // CORRECTION 3: Return structured error for closure with open tasks
+            return ResponseEntity.status(409).body(ApiResponse.error(e.getMessage()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Statut invalide: " + statut));
         }
