@@ -12,6 +12,7 @@ export const mediaPlanService = {
     delete: (id: number) => api.delete<ApiResponse<void>>(`/media-plans/${id}`),
     approve: (id: number, managerId: number) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/approve?managerId=${managerId}`),
     disapprove: (id: number) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/disapprove`),
+    resubmit: (id: number) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/resubmit`),
     getGoogleAuthUrl: () => api.get<ApiResponse<string>>('/media-plans/google-drive/auth-url'),
     getGoogleAuthStatus: () => api.get<ApiResponse<boolean>>('/media-plans/google-drive/status'),
 };

@@ -3,6 +3,7 @@ package com.antigone.rh.service;
 import com.antigone.rh.dto.CalendrierProjetDTO;
 import com.antigone.rh.entity.CalendrierProjet;
 import com.antigone.rh.entity.Employe;
+import com.antigone.rh.enums.TypeContenuShooting;
 import com.antigone.rh.repository.CalendrierProjetRepository;
 import com.antigone.rh.repository.EmployeRepository;
 import jakarta.transaction.Transactional;
@@ -21,13 +22,16 @@ public class CalendrierProjetService {
     private final EmployeRepository employeRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final MediaPlanShootingWorkflowService mediaPlanShootingWorkflowService;
 
     public List<CalendrierProjetDTO> getSlotsBetween(LocalDate start, LocalDate end) {
-        return repository.findByDateSlotBetween(start, end).stream().map(this::toDTO).collect(Collectors.toList());
+        List<CalendrierProjet.SlotStatus> visible = List.of(CalendrierProjet.SlotStatus.EN_ATTENTE, CalendrierProjet.SlotStatus.VALIDE);
+        return repository.findByDateSlotBetweenAndStatutIn(start, end, visible).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     public List<CalendrierProjetDTO> getManagerSlotsBetween(Long managerId, LocalDate start, LocalDate end) {
-        return repository.findByManagerIdAndDateSlotBetween(managerId, start, end).stream().map(this::toDTO).collect(Collectors.toList());
+        List<CalendrierProjet.SlotStatus> visible = List.of(CalendrierProjet.SlotStatus.EN_ATTENTE, CalendrierProjet.SlotStatus.VALIDE);
+        return repository.findByManagerIdAndDateSlotBetweenAndStatutIn(managerId, start, end, visible).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     @Transactional
@@ -40,6 +44,9 @@ public class CalendrierProjetService {
                 .manager(manager)
                 .socialManager(null)
                 .projectName(dto.getProjectName())
+            .description(dto.getDescription())
+            .localisation(dto.getLocalisation())
+            .typeDeContenu(parseTypeContenuOrNull(dto.getTypeDeContenu()))
                 .urgent(dto.isUrgent())
                 .type(CalendrierProjet.SlotType.BUSY)
                 .statut(CalendrierProjet.SlotStatus.VALIDE)
@@ -63,6 +70,9 @@ public class CalendrierProjetService {
                 .manager(manager)
                 .socialManager(socialManager)
                 .projectName(dto.getProjectName())
+            .description(dto.getDescription())
+            .localisation(dto.getLocalisation())
+            .typeDeContenu(parseTypeContenuOrNull(dto.getTypeDeContenu()))
                 .urgent(dto.isUrgent())
                 .type(CalendrierProjet.SlotType.BOOKED)
                 .statut(CalendrierProjet.SlotStatus.EN_ATTENTE)
@@ -93,6 +103,9 @@ public class CalendrierProjetService {
         
         slot = repository.save(slot);
 
+        // If this slot is linked to a MediaPlan shooting line, propagate status and trigger project creation.
+        mediaPlanShootingWorkflowService.onCalendrierSlotStatusUpdated(slot);
+
         if(slot.getSocialManager() != null) {
             String message = "La planification pour le projet '" + slot.getProjectName() + "' a été " + newStatus;
             notificationService.create(slot.getSocialManager(), "REPONSE_PLANIFICATION", message, null);
@@ -103,6 +116,21 @@ public class CalendrierProjetService {
 
     @Transactional
     public void deleteSlot(Long id) {
+        CalendrierProjet slot = repository.findById(id).orElse(null);
+        if (slot == null) {
+            repository.deleteById(id);
+            return;
+        }
+
+        // For shooting slots linked to a MediaPlan line, a refusal should be tracked,
+        // not hard-deleted.
+        if (slot.getMediaPlanLigne() != null) {
+            slot.setStatut(CalendrierProjet.SlotStatus.REJETE);
+            slot = repository.save(slot);
+            mediaPlanShootingWorkflowService.onCalendrierSlotStatusUpdated(slot);
+            return;
+        }
+
         repository.deleteById(id);
     }
 
@@ -113,9 +141,33 @@ public class CalendrierProjetService {
         dto.setManagerId(entity.getManager().getId());
         if(entity.getSocialManager() != null) dto.setSocialManagerId(entity.getSocialManager().getId());
         dto.setProjectName(entity.getProjectName());
+        dto.setDescription(entity.getDescription());
+        dto.setLocalisation(entity.getLocalisation());
+        dto.setTypeDeContenu(entity.getTypeDeContenu() != null ? entity.getTypeDeContenu().name() : null);
+        if (entity.getMediaPlanLigne() != null) {
+            dto.setMediaPlanLigneId(entity.getMediaPlanLigne().getId());
+            dto.setTitre(entity.getMediaPlanLigne().getTitre());
+            if (entity.getMediaPlanLigne().getClient() != null) {
+                dto.setClientId(entity.getMediaPlanLigne().getClient().getId());
+                dto.setClientNom(entity.getMediaPlanLigne().getClient().getNom());
+            }
+        }
         dto.setUrgent(entity.isUrgent());
         dto.setType(entity.getType().name());
         dto.setStatut(entity.getStatut().name());
         return dto;
+    }
+
+    private TypeContenuShooting parseTypeContenuOrNull(String value) {
+        if (value == null) return null;
+        String v = value.trim();
+        if (v.isBlank()) return null;
+
+        String normalized = v.toUpperCase();
+        if ("PHOTO".equals(normalized)) return TypeContenuShooting.PHOTO;
+        if ("VIDEO".equals(normalized)) return TypeContenuShooting.VIDEO;
+        if ("BOTH".equals(normalized)) return TypeContenuShooting.BOTH;
+
+        throw new RuntimeException("Type de contenu invalide: '" + value + "' (attendu: PHOTO, VIDEO, BOTH)");
     }
 }

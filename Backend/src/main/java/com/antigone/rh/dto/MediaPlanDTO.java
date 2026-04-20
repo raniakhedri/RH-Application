@@ -24,6 +24,16 @@ public class MediaPlanDTO {
     private String etatPublication;
     private String rectifs;
     private String remarques;
+
+    private Boolean isShooting;
+    private String shootingDescription;
+    private String shootingLocalisation;
+    private String shootingDate;
+    private String shootingTypeDeContenu;
+    private String shootingStatus;
+    private String shootingStatusReason;
+    private Long calendrierProjetId;
+
     private String statut;
     private Long clientId;
     private String clientNom;

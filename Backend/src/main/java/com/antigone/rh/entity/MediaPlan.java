@@ -2,6 +2,8 @@ package com.antigone.rh.entity;
 
 import com.antigone.rh.enums.EtatPublication;
 import com.antigone.rh.enums.StatutMediaPlan;
+import com.antigone.rh.enums.StatutShooting;
+import com.antigone.rh.enums.TypeContenuShooting;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -59,6 +61,35 @@ public class MediaPlan {
     @Column(columnDefinition = "TEXT")
     private String remarques;
 
+    // =====================
+    // SHOOTING (Calendrier de tournage)
+    // =====================
+
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean isShooting = false;
+
+    @Column(columnDefinition = "TEXT")
+    private String shootingDescription;
+
+    private String shootingLocalisation;
+
+    private LocalDate shootingDate;
+
+    @Enumerated(EnumType.STRING)
+    private TypeContenuShooting shootingTypeDeContenu;
+
+    @Enumerated(EnumType.STRING)
+    private StatutShooting shootingStatus;
+
+    @Column(columnDefinition = "TEXT")
+    private String shootingStatusReason;
+
+    @OneToOne(mappedBy = "mediaPlanLigne", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private CalendrierProjet calendrierProjet;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
@@ -76,7 +107,7 @@ public class MediaPlan {
     @EqualsAndHashCode.Exclude
     private Employe createur;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false)
     private LocalDateTime dateCreation;
 
     @PrePersist

@@ -655,6 +655,24 @@ export const StatutMediaPlanLabels: Record<StatutMediaPlan, string> = {
   [StatutMediaPlan.DESAPPROUVE]: 'Désapprouvé',
 };
 
+export enum TypeContenuShooting {
+  PHOTO = 'PHOTO',
+  VIDEO = 'VIDEO',
+  BOTH = 'BOTH',
+}
+
+export const TypeContenuShootingLabels: Record<TypeContenuShooting, string> = {
+  [TypeContenuShooting.PHOTO]: 'Photo',
+  [TypeContenuShooting.VIDEO]: 'Vidéo',
+  [TypeContenuShooting.BOTH]: 'Vidéo + photos',
+};
+
+export enum StatutShooting {
+  EN_ATTENTE = 'EN_ATTENTE',
+  VALIDE = 'VALIDE',
+  REJETE = 'REJETE',
+}
+
 export interface MediaPlan {
   id: number;
   datePublication: string | null;
@@ -670,6 +688,14 @@ export interface MediaPlan {
   etatPublication: string | null;
   rectifs: string | null;
   remarques: string | null;
+  isShooting: boolean;
+  shootingDescription: string | null;
+  shootingLocalisation: string | null;
+  shootingDate: string | null;
+  shootingTypeDeContenu: TypeContenuShooting | null;
+  shootingStatus: StatutShooting | null;
+  shootingStatusReason: string | null;
+  calendrierProjetId: number | null;
   statut: string;
   clientId: number;
   clientNom: string | null;
@@ -693,6 +719,11 @@ export interface MediaPlanRequest {
   etatPublication?: string;
   rectifs?: string;
   remarques?: string;
+  isShooting?: boolean;
+  shootingDescription?: string;
+  shootingLocalisation?: string;
+  shootingDate?: string;
+  shootingTypeDeContenu?: TypeContenuShooting;
   clientId: number;
   createurId: number;
 }

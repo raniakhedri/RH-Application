@@ -14,7 +14,7 @@ import { calendrierProjetService } from '../api/calendrierProjetService';
 import { projetService } from '../api/projetService';
 import { tacheService } from '../api/tacheService';
 import { useEffect } from 'react';
-import { StatutProjet, StatutTache } from '../types';
+import { StatutProjet, StatutTache, TypeContenuShooting, TypeContenuShootingLabels } from '../types';
 import DeadlinesCalendar from './DeadlinesCalendar';
 import ReunionsCalendar from './ReunionsCalendar';
 
@@ -33,6 +33,14 @@ interface BookedSlot {
   projectName: string;
   urgent?: boolean;
   statut?: string;
+  // Shooting-linked slot details (optional)
+  description?: string;
+  localisation?: string;
+  typeDeContenu?: string;
+  mediaPlanLigneId?: number;
+  titre?: string;
+  clientId?: number;
+  clientNom?: string;
 }
 interface ManagerDef {
   id: number;
@@ -351,7 +359,12 @@ const CalendrierCore: React.FC<CoreProps> = ({
         setBookedSlots(p => p.map(s => s.id === validateTarget.id ? { ...s, statut: 'VALIDE' } : s));
         showToast('Projet validé !', 'success');
       } else {
-        await calendrierProjetService.deleteSlot(validateTarget.id);
+        // Shooting slots should be rejected (tracked) instead of deleted.
+        if (validateTarget.mediaPlanLigneId) {
+          await calendrierProjetService.updateSlotStatus(validateTarget.id, 'REJETE');
+        } else {
+          await calendrierProjetService.deleteSlot(validateTarget.id);
+        }
         setBookedSlots(p => p.filter(s => s.id !== validateTarget.id));
         showToast('Projet refusé', 'success');
       }
@@ -818,9 +831,32 @@ const CalendrierCore: React.FC<CoreProps> = ({
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
             <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Validation de planification</h3>
             <p className="text-sm text-gray-600 mb-6">
-              Le Social Media Manager a planifié le projet <strong>{validateTarget.projectName}</strong> le <strong>{validateTarget.date}</strong>.<br/>
+              {validateTarget.mediaPlanLigneId ? (
+                <>Demande de shooting pour <strong>{validateTarget.clientNom || 'Client'}</strong> : <strong>{validateTarget.titre || validateTarget.projectName}</strong> le <strong>{validateTarget.date}</strong>.<br/></>
+              ) : (
+                <>Le Social Media Manager a planifié le projet <strong>{validateTarget.projectName}</strong> le <strong>{validateTarget.date}</strong>.<br/></>
+              )}
               Souhaitez-vous le valider ?
             </p>
+
+            {validateTarget.mediaPlanLigneId && (
+              <div className="text-left bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-700 p-3 mb-5">
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Détails shooting</p>
+                <div className="space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                  <div><span className="text-gray-400 dark:text-gray-500 dark:text-gray-400">Type :</span> {(() => {
+                    const raw = validateTarget.typeDeContenu;
+                    if (!raw) return '-';
+                    const normalized = raw.toUpperCase();
+                    if (normalized === 'PHOTO' || normalized === 'VIDEO' || normalized === 'BOTH') {
+                      return TypeContenuShootingLabels[normalized as TypeContenuShooting];
+                    }
+                    return raw;
+                  })()}</div>
+                  <div><span className="text-gray-400 dark:text-gray-500 dark:text-gray-400">Localisation :</span> {validateTarget.localisation || '-'}</div>
+                  <div className="whitespace-pre-wrap"><span className="text-gray-400 dark:text-gray-500 dark:text-gray-400">Description :</span> {validateTarget.description || '-'}</div>
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               <button onClick={() => setValidateTarget(null)} className="flex-1 bg-black-100 text-gray-700 dark:text-gray-200 py-2.5 hover:bg-gray-700 py-2.5 rounded-xl font-medium shadow-sm shadow-blue-200">Annuler</button>
               <button onClick={() => handleValidate(false)} className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 py-2.5 rounded-xl font-medium">Refuser</button>

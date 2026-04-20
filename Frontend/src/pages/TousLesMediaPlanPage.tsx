@@ -21,6 +21,8 @@ import {
     Referentiel,
     EtatPublicationLabels,
     StatutMediaPlanLabels,
+    StatutShooting,
+    TypeContenuShootingLabels,
 } from '../types';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
@@ -43,6 +45,7 @@ const COLUMNS = [
     { key: 'etatPublication', label: 'État Pub.', defaultWidth: 110 },
     { key: 'rectifs', label: 'Rectifs', defaultWidth: 110 },
     { key: 'remarques', label: 'Remarques', defaultWidth: 120 },
+    { key: 'shooting', label: 'Shooting', defaultWidth: 90 },
     { key: 'statut', label: 'Statut', defaultWidth: 100 },
 ];
 
@@ -71,6 +74,7 @@ const resizeHandleHoverStyle: React.CSSProperties = {
 
 const getStatusInfo = (plans: MediaPlan[]) => {
     if (plans.length === 0) return { label: 'Vide', color: 'gray' };
+    if (plans.some(p => p.isShooting && p.shootingStatus === StatutShooting.REJETE)) return { label: 'Désapprouvé', color: 'red' };
     if (plans.every(p => p.statut === 'APPROUVE')) return { label: 'Approuvé', color: 'green' };
     if (plans.some(p => p.statut === 'DESAPPROUVE')) return { label: 'Désapprouvé', color: 'red' };
     if (plans.some(p => p.statut === 'EN_ATTENTE')) return { label: 'En attente', color: 'warning' };
@@ -235,7 +239,14 @@ const TousLesMediaPlanPage: React.FC = () => {
 
     const batches = useMemo((): PlanBatch[] => {
         let filtered = mediaPlans;
-        if (filterStatut) filtered = filtered.filter(mp => mp.statut === filterStatut);
+        if (filterStatut) {
+            filtered = filtered.filter(mp => {
+                if (filterStatut === 'DESAPPROUVE') {
+                    return mp.statut === 'DESAPPROUVE' || (mp.isShooting && mp.shootingStatus === StatutShooting.REJETE);
+                }
+                return mp.statut === filterStatut;
+            });
+        }
         if (search) {
             const s = search.toLowerCase();
             filtered = filtered.filter(mp =>
@@ -342,9 +353,17 @@ const TousLesMediaPlanPage: React.FC = () => {
         });
     };
 
-    const getStatusBadge = (statut: string) => {
+    const getStatusBadge = (mp: MediaPlan) => {
+        const displayStatut = (mp.isShooting && mp.shootingStatus === StatutShooting.REJETE) ? 'DESAPPROUVE' : mp.statut;
         const colors: Record<string, string> = { EN_ATTENTE: 'warning', APPROUVE: 'success', DESAPPROUVE: 'danger' };
-        return <Badge variant={(colors[statut] || 'neutral') as any}>{StatutMediaPlanLabels[statut as keyof typeof StatutMediaPlanLabels] || statut}</Badge>;
+        return <Badge variant={(colors[displayStatut] || 'neutral') as any}>{StatutMediaPlanLabels[displayStatut as keyof typeof StatutMediaPlanLabels] || displayStatut}</Badge>;
+    };
+
+    const getShootingStatusBadge = (statut: StatutShooting | null) => {
+        if (!statut) return null;
+        const colors: Record<string, string> = { EN_ATTENTE: 'warning', VALIDE: 'success', REJETE: 'danger' };
+        const labels: Record<string, string> = { EN_ATTENTE: 'En attente', VALIDE: 'Validé', REJETE: 'Rejeté' };
+        return <Badge variant={(colors[statut] || 'neutral') as any}>{labels[statut] || statut}</Badge>;
     };
 
     const inputClass = 'w-full bg-transparent border-0 text-sm text-gray-700 dark:text-gray-300 px-1 py-2.5 cursor-default opacity-70';
@@ -371,50 +390,93 @@ const TousLesMediaPlanPage: React.FC = () => {
     );
 
     const renderRow = (mp: MediaPlan) => (
-        <tr key={mp.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50" style={{ height: '104px' }}>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[0] }}>
-                <span className={inputClass}>{mp.datePublication || '-'}</span>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[1] }}>
-                <span className={inputClass}>{mp.heure || '-'}</span>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[2] }}>
-                <span className={inputClass}>{mp.format || '-'}</span>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[3] }}>
-                <span className={inputClass}>{mp.type || '-'}</span>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[4] }}>
-                <span className={`${inputClass} font-medium truncate block`}>{mp.titre || '-'}</span>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[5] }}>
-                <span className={`${inputClass} truncate block`}>{renderCellValue(mp.texteSurVisuel)}</span>
-            </td >
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[6] }}>
-                <span className={`${inputClass} truncate block`}>{renderCellValue(mp.inspiration)}</span>
-            </td >
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[7] }}>
-                <span className={`${inputClass} truncate block`}>{renderCellValue(mp.autresElements)}</span>
-            </td >
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[8] }}>
-                <span className={inputClass}>{mp.platforme || '-'}</span>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[9] }}>
-                <span className={`${inputClass} truncate block`}>{renderCellValue(mp.lienDrive)}</span>
-            </td >
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[10] }}>
-                <Badge variant="neutral">{EtatPublicationLabels[mp.etatPublication as keyof typeof EtatPublicationLabels] || mp.etatPublication || '-'}</Badge>
-            </td>
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[11] }}>
-                <span className={`${inputClass} truncate block`}>{renderCellValue(mp.rectifs)}</span>
-            </td >
-            <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[12] }}>
-                <span className={`${inputClass} truncate block`}>{renderCellValue(mp.remarques)}</span>
-            </td >
-            <td className="px-2 py-1 overflow-hidden" style={{ width: colWidths[13] }}>
-                {getStatusBadge(mp.statut)}
-            </td>
-        </tr >
+        <React.Fragment key={mp.id}>
+            <tr className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50" style={{ height: '104px' }}>
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[0] }}>
+                    <span className={inputClass}>{mp.datePublication || '-'}</span>
+                </td>
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[1] }}>
+                    <span className={inputClass}>{mp.heure || '-'}</span>
+                </td>
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[2] }}>
+                    <span className={inputClass}>{mp.format || '-'}</span>
+                </td>
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[3] }}>
+                    <span className={inputClass}>{mp.type || '-'}</span>
+                </td>
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[4] }}>
+                    <span className={`${inputClass} font-medium truncate block`}>{mp.titre || '-'}</span>
+                </td>
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[5] }}>
+                    <span className={`${inputClass} truncate block`}>{renderCellValue(mp.texteSurVisuel)}</span>
+                </td >
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[6] }}>
+                    <span className={`${inputClass} truncate block`}>{renderCellValue(mp.inspiration)}</span>
+                </td >
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[7] }}>
+                    <span className={`${inputClass} truncate block`}>{renderCellValue(mp.autresElements)}</span>
+                </td >
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[8] }}>
+                    <span className={inputClass}>{mp.platforme || '-'}</span>
+                </td>
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[9] }}>
+                    <span className={`${inputClass} truncate block`}>{renderCellValue(mp.lienDrive)}</span>
+                </td >
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[10] }}>
+                    <Badge variant="neutral">{EtatPublicationLabels[mp.etatPublication as keyof typeof EtatPublicationLabels] || mp.etatPublication || '-'}</Badge>
+                </td>
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[11] }}>
+                    <span className={`${inputClass} truncate block`}>{renderCellValue(mp.rectifs)}</span>
+                </td >
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[12] }}>
+                    <span className={`${inputClass} truncate block`}>{renderCellValue(mp.remarques)}</span>
+                </td >
+                <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[13] }}>
+                    <div className="flex items-center justify-center">
+                        <input type="checkbox" checked={!!mp.isShooting} disabled className="h-4 w-4 accent-brand-500" />
+                    </div>
+                </td>
+                <td className="px-2 py-1 overflow-hidden" style={{ width: colWidths[14] }}>
+                    {getStatusBadge(mp)}
+                </td>
+            </tr >
+
+            {mp.isShooting && (
+                <tr className="bg-brand-50/20 dark:bg-brand-900/10">
+                    <td colSpan={COLUMNS.length} className="px-3 py-3 border-b border-gray-100 dark:border-gray-800">
+                        <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">SHOOTING</div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-2 text-sm text-gray-700 dark:text-gray-200">
+                            <div>
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500">Description</div>
+                                <div className="mt-0.5 whitespace-pre-wrap">{mp.shootingDescription || '-'}</div>
+                            </div>
+                            <div>
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500">Localisation</div>
+                                <div className="mt-0.5">{mp.shootingLocalisation || '-'}</div>
+                            </div>
+                            <div>
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500">Date</div>
+                                <div className="mt-0.5">{mp.shootingDate || '-'}</div>
+                            </div>
+                            <div>
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500">Type de contenu</div>
+                                <div className="mt-0.5">{mp.shootingTypeDeContenu ? TypeContenuShootingLabels[mp.shootingTypeDeContenu] : '-'}</div>
+                            </div>
+                        </div>
+
+                        {(mp.shootingStatus || mp.shootingStatusReason) && (
+                            <div className="mt-3 flex items-center gap-2">
+                                <span className="text-[11px] text-gray-400 dark:text-gray-500">Statut shooting</span>
+                                {getShootingStatusBadge(mp.shootingStatus)}
+                                {mp.shootingStatus === StatutShooting.REJETE && mp.shootingStatusReason && (
+                                    <span className="text-xs text-red-600 dark:text-red-400">({mp.shootingStatusReason})</span>
+                                )}
+                            </div>
+                        )}
+                    </td>
+                </tr>
+            )}
+        </React.Fragment>
     );
 
     if (loading) {

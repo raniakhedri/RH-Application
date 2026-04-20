@@ -70,6 +70,11 @@ public class MediaPlanController {
         return ResponseEntity.ok(ApiResponse.ok("Media plan désapprouvé", mediaPlanService.disapprove(id)));
     }
 
+    @PatchMapping("/{id}/resubmit")
+    public ResponseEntity<ApiResponse<MediaPlanDTO>> resubmit(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Media plan renvoyé", mediaPlanService.resubmit(id)));
+    }
+
     // ── Google Drive Auth ────────────────────────────────────────────────────
     @GetMapping("/google-drive/auth-url")
     public ResponseEntity<ApiResponse<String>> getGoogleAuthUrl() throws java.io.IOException {
