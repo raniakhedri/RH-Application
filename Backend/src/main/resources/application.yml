@@ -2,8 +2,9 @@ server:
   port: ${PORT:8080}
 
 app:
-  # CORS allowed origins — set FRONTEND_URL on Render; locally falls back to both Vite ports
-  frontend-url: ${FRONTEND_URL:${FRONTEND_BASE_URL:http://localhost:3000,http://localhost:5173}}
+  # CORS allowed origins — set FRONTEND_URL on Render; locally allow Projets (3000) + RH (3001)
+  # Legacy Vite ports are also kept for compatibility (5173/5174)
+  frontend-url: ${FRONTEND_URL:${FRONTEND_BASE_URL:http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5174}}
   mail:
     from: ${MAIL_USERNAME:yosr.khriji27@gmail.com}
     enabled: true
