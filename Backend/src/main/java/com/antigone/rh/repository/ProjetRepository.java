@@ -16,6 +16,10 @@ public interface ProjetRepository extends JpaRepository<Projet, Long> {
 
     List<Projet> findByChefDeProjetId(Long chefId);
 
+    /** Projects where the employee is one of the (possibly multiple) chefs de projet. */
+    @Query("SELECT DISTINCT p FROM Projet p JOIN p.chefsDeProjet c WHERE c.id = :employeId")
+    List<Projet> findByChefsDeProjetId(@Param("employeId") Long employeId);
+
     List<Projet> findByCreateurId(Long createurId);
 
     boolean existsByNomAndClientId(String nom, Long clientId);

@@ -62,10 +62,11 @@ public class ProjetService {
         // a member
         List<Projet> parCreateur = projetRepository.findByCreateurId(employeId);
         List<Projet> parChef = projetRepository.findByChefDeProjetId(employeId);
+        List<Projet> parChefs = projetRepository.findByChefsDeProjetId(employeId);
         List<Projet> parMembre = projetRepository.findByMembreId(employeId);
-        return java.util.stream.Stream.concat(
-                java.util.stream.Stream.concat(parCreateur.stream(), parChef.stream()),
-                parMembre.stream())
+
+        return java.util.stream.Stream.of(parCreateur, parChef, parChefs, parMembre)
+            .flatMap(List::stream)
                 .collect(java.util.stream.Collectors.toMap(
                         Projet::getId,
                         p -> p,
