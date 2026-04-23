@@ -8,7 +8,6 @@ import EmployesPage from './pages/EmployesPage';
 import OrganigrammePage from './pages/OrganigrammePage';
 import DemandesPage from './pages/DemandesPage';
 import NewDemandePage from './pages/NewDemandePage';
-import NewDemandePapierPage from './pages/NewDemandePapierPage';
 import DemandesPapierPage from './pages/DemandesPapierPage';
 import ValidationsPage from './pages/ValidationsPage';
 import ReferentielsPage from './pages/ReferentielsPage';
@@ -65,7 +64,6 @@ const App: React.FC = () => {
           <Route path="demandes" element={<PermissionRoute permission="VIEW_DEMANDES"><DemandesPage /></PermissionRoute>} />
           <Route path="demandes/new" element={<PermissionRoute permission="VIEW_DEMANDES"><NewDemandePage /></PermissionRoute>} />
           <Route path="demandes/edit/:id" element={<NewDemandePage />} />
-          <Route path="demandes/papier" element={<PermissionRoute permission="VIEW_MES_DEMANDES"><NewDemandePapierPage /></PermissionRoute>} />
           <Route path="demandes/liste-papier" element={<PermissionRoute permission="VIEW_VALIDATIONS"><DemandesPapierPage /></PermissionRoute>} />
           <Route path="mes-demandes" element={<MesDemandesPage />} />
           <Route path="mes-demandes/papier" element={<PermissionRoute permission="VIEW_MES_DEMANDES"><MesDemandesPapierPage /></PermissionRoute>} />

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { HiOutlineSearch, HiOutlinePlus, HiOutlineEye, HiOutlinePencil, HiOutlineBan } from 'react-icons/hi';
+import React, { useState, useEffect } from 'react';
+import { HiOutlineSearch, HiOutlineEye, HiOutlinePencil, HiOutlineBan } from 'react-icons/hi';
 import { demandePapierService } from '../api/demandePapierService';
 import { referentielService } from '../api/referentielService';
 import { useAuth } from '../context/AuthContext';
@@ -69,27 +69,14 @@ const MesDemandesPapierPage: React.FC = () => {
     const [editingDemande, setEditingDemande] = useState<DemandeResponse | null>(null);
     const [editRaison, setEditRaison] = useState('');
     const [editLibelle, setEditLibelle] = useState('');
-    const [editLoading, setEditLoading] = useState(false);
-
-    // New demande modal state
-    const [showNewModal, setShowNewModal] = useState(false);
     const [referentiels, setReferentiels] = useState<Referentiel[]>([]);
-    const [selectedLibelle, setSelectedLibelle] = useState('');
-    const [raison, setRaison] = useState('');
-    const [newError, setNewError] = useState('');
-    const [newSuccess, setNewSuccess] = useState(false);
-    const [newLoading, setNewLoading] = useState(false);
-    const [loadingRef, setLoadingRef] = useState(false);
-    const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [editLoading, setEditLoading] = useState(false);
 
     const inputClass =
         'h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300';
 
     useEffect(() => {
         loadDemandes();
-        return () => {
-            if (successTimerRef.current) clearTimeout(successTimerRef.current);
-        };
     }, [user?.employeId]);
 
     const loadDemandes = async () => {
@@ -102,51 +89,6 @@ const MesDemandesPapierPage: React.FC = () => {
             console.error('Erreur chargement mes demandes papier:', err);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const openNewModal = async () => {
-        setShowNewModal(true);
-        setLoadingRef(true);
-        setRaison('');
-        setNewError('');
-        setNewSuccess(false);
-        try {
-            const res = await referentielService.getActiveByType('TYPE_DEMANDE');
-            const data = res.data.data || [];
-            setReferentiels(data);
-            if (data.length > 0) setSelectedLibelle(data[0].libelle);
-        } catch (err) {
-            console.error('Erreur chargement types de demande:', err);
-        } finally {
-            setLoadingRef(false);
-        }
-    };
-
-    const handleNewSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user) return;
-        setNewError('');
-        setNewSuccess(false);
-        setNewLoading(true);
-        try {
-            await demandePapierService.create({
-                raison: `[${selectedLibelle}] ${raison}`,
-                employeId: user.employeId,
-            });
-            setRaison('');
-            if (referentiels.length > 0) setSelectedLibelle(referentiels[0].libelle);
-            setNewSuccess(true);
-            if (successTimerRef.current) clearTimeout(successTimerRef.current);
-            successTimerRef.current = setTimeout(() => {
-                setShowNewModal(false);
-                setNewSuccess(false);
-                loadDemandes(); // refresh list
-            }, 1500);
-        } catch (err: any) {
-            setNewError(err.response?.data?.message || 'Erreur lors de la création');
-        } finally {
-            setNewLoading(false);
         }
     };
 
@@ -290,10 +232,6 @@ const MesDemandesPapierPage: React.FC = () => {
                         Historique de vos demandes administratives
                     </p>
                 </div>
-                <Button onClick={openNewModal}>
-                    <HiOutlinePlus size={18} className="mr-1" />
-                    Nouvelle Demande
-                </Button>
             </div>
 
             {/* Filters */}
@@ -424,68 +362,6 @@ const MesDemandesPapierPage: React.FC = () => {
                 </div>
             </Modal>
 
-            {/* New Demande Modal */}
-            <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="Nouvelle Demande Papier">
-                <div className="space-y-4">
-                    {newSuccess && (
-                        <div className="flex items-center gap-3 rounded-xl border border-success-200 bg-success-50 px-4 py-3 text-theme-sm text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400">
-                            <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Demande créée avec succès !
-                        </div>
-                    )}
-                    {newError && (
-                        <div className="rounded-lg border border-error-200 bg-error-50 p-3 text-theme-sm text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
-                            {newError}
-                        </div>
-                    )}
-                    <form onSubmit={handleNewSubmit} className="space-y-4">
-                        <div>
-                            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
-                                Type de demande
-                            </label>
-                            {loadingRef ? (
-                                <div className="h-11 flex items-center text-theme-sm text-gray-400">Chargement...</div>
-                            ) : referentiels.length === 0 ? (
-                                <div className="h-11 flex items-center text-theme-sm text-error-500">
-                                    Aucun type disponible. Créez-en dans les Référentiels.
-                                </div>
-                            ) : (
-                                <select
-                                    value={selectedLibelle}
-                                    onChange={(e) => setSelectedLibelle(e.target.value)}
-                                    className={inputClass}
-                                    required
-                                >
-                                    {referentiels.map((ref) => (
-                                        <option key={ref.id} value={ref.libelle}>{ref.libelle}</option>
-                                    ))}
-                                </select>
-                            )}
-                        </div>
-                        <div>
-                            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">
-                                Raison
-                            </label>
-                            <textarea
-                                value={raison}
-                                onChange={(e) => setRaison(e.target.value)}
-                                rows={4}
-                                className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
-                                placeholder="Décrivez la raison de votre demande..."
-                                required
-                            />
-                        </div>
-                        <div className="flex justify-end gap-3 pt-2">
-                            <Button variant="outline" type="button" onClick={() => setShowNewModal(false)}>Annuler</Button>
-                            <Button type="submit" disabled={newLoading || loadingRef || referentiels.length === 0}>
-                                {newLoading ? 'Création...' : 'Créer la demande'}
-                            </Button>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
         </div>
     );
 };

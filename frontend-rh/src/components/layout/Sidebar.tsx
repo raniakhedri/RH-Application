@@ -66,7 +66,6 @@ const menuGroups = [
         children: [
           { label: 'Mes demandes congés', path: '/mes-demandes' },
           { label: 'Mes demandes papiers', path: '/mes-demandes-papier' },
-          { label: 'Nouvelle demande papier', path: '/demandes/papier' },
         ],
       },
       { key: 'mon-calendrier', label: 'Mon calendrier', path: '/mon-calendrier', icon: <HiOutlineCalendar size={20} />, permission: 'VIEW_MON_CALENDRIER' },

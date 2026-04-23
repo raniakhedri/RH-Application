@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { tacheService } from '../api/tacheService';
 import { demandeService } from '../api/demandeService';
 import { compteService } from '../api/compteService';
@@ -121,6 +122,7 @@ const DriveLinkButton: React.FC<{ clientId: number }> = ({ clientId }) => {
 
 const MesTachesPage: React.FC = () => {
     const { user } = useAuth();
+    const location = useLocation();
     const [taches, setTaches] = useState<TacheDetail[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -341,6 +343,17 @@ const MesTachesPage: React.FC = () => {
         }
         return Array.from(cMap.values());
     }, [projectGroups]);
+
+    useEffect(() => {
+        const projectIdFromQuery = Number(new URLSearchParams(location.search).get('projectId'));
+        if (!Number.isFinite(projectIdFromQuery) || projectIdFromQuery <= 0) return;
+
+        const selectedFromQuery = projectGroups.find((project) => project.projetId === projectIdFromQuery);
+        if (!selectedFromQuery) return;
+
+        setSelectedClientId(selectedFromQuery.clientId ?? null);
+        setSelectedProject(selectedFromQuery);
+    }, [location.search, projectGroups]);
 
     const handleChangeStatut = async (id: number, statut: StatutTache) => {
         try {

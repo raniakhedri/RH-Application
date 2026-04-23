@@ -316,11 +316,11 @@ const AdminProjetTachesPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header — back goes to admin/projets */}
+            {/* Header — back goes to admin projects dashboard */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => navigate('/admin/projets')}
+                        onClick={() => navigate('/admin/dashboard-projets')}
                         className="flex items-center gap-1.5 rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                         <HiOutlineArrowLeft size={20} />
