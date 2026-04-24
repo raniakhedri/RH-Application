@@ -145,11 +145,24 @@ public class EquipeService {
     }
 
     public List<EmployeDTO> findMembresByProjet(Long projetId) {
-        List<Equipe> equipes = equipeRepository.findByProjetId(projetId);
         Set<Employe> allMembers = new LinkedHashSet<>();
+
+        // 1. Members from equipes assigned to this project
+        List<Equipe> equipes = equipeRepository.findByProjetId(projetId);
         for (Equipe equipe : equipes) {
             allMembers.addAll(equipe.getMembres());
         }
+
+        // 2. Direct project members (projet_membres table) + chef de projet
+        projetRepository.findById(projetId).ifPresent(projet -> {
+            if (projet.getChefDeProjet() != null) {
+                allMembers.add(projet.getChefDeProjet());
+            }
+            if (projet.getMembres() != null) {
+                allMembers.addAll(projet.getMembres());
+            }
+        });
+
         return allMembers.stream().map(employeService::toDTO).collect(Collectors.toList());
     }
 
