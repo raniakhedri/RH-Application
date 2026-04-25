@@ -31,7 +31,12 @@ const RolesPage: React.FC = () => {
         roleService.getAllPermissions(),
       ]);
       setRoles(rolesRes.data.data || []);
-      setAllPermissions(permsRes.data.data || []);
+      const filteredPermissions = (permsRes.data.data || []).filter((perm) => {
+        const permissionCode = perm.permission?.toLowerCase?.() || '';
+        const permissionLabel = perm.label?.toLowerCase?.() || '';
+        return !permissionCode.includes('papier') && !permissionLabel.includes('papier');
+      });
+      setAllPermissions(filteredPermissions);
     } catch (err) {
       console.error('Erreur chargement:', err);
     } finally {

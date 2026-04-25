@@ -3,8 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import MainLayout from './components/layout/MainLayout';
 import LoginPage from './pages/LoginPage';
+import AccueilProjetsPage from './pages/AccueilProjetsPage';
 import ProjetsPage from './pages/ProjetsPage';
-import TachesPage from './pages/TachesPage';
 import EquipesPage from './pages/EquipesPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -13,7 +13,6 @@ import MonProfilPage from './pages/MonProfilPage';
 import MesTachesPage from './pages/MesTachesPage';
 import ProjetTachesPage from './pages/ProjetTachesPage';
 import AdminProjetTachesPage from './pages/AdminProjetTachesPage';
-import TousProjetsAdminPage from './pages/TousProjetsAdminPage';
 import CalendrierProjetsAdminPage from './pages/CalendrierProjetsAdminPage';
 import ClientsPage from './pages/ClientsPage';
 import MediaPlanPage from './pages/MediaPlanPage';
@@ -42,7 +41,7 @@ const PermissionRoute: React.FC<{ permission: string; children: React.ReactNode 
 const AnyPermissionRoute: React.FC<{ permissions: string[]; children: React.ReactNode }> = ({ permissions, children }) => {
   const { user } = useAuth();
   const hasAny = permissions.some(p => user?.permissions?.includes(p));
-  if (!hasAny) return <Navigate to="/projets" replace />;
+  if (!hasAny) return <Navigate to="/accueil" replace />;
   return <>{children}</>;
 };
 
@@ -96,16 +95,15 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<SmartRedirect />} />
-          <Route path="dashboard" element={<SmartRedirect />} />
+          <Route index element={<Navigate to="/accueil" replace />} />
+          <Route path="dashboard" element={<Navigate to="/accueil" replace />} />
+          <Route path="accueil" element={<AccueilProjetsPage />} />
           <Route path="projets" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetsPage /></PermissionRoute>} />
-          <Route path="taches" element={<PermissionRoute permission="VIEW_PROJETS"><TachesPage /></PermissionRoute>} />
           <Route path="equipes" element={<PermissionRoute permission="VIEW_EQUIPES"><EquipesPage /></PermissionRoute>} />
           <Route path="mon-profil" element={<MonProfilPage />} />
           <Route path="mes-taches" element={<MesTachesPage />} />
           <Route path="projets/:projetId/taches" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetTachesPage /></PermissionRoute>} />
-          <Route path="admin/calendrier-projets" element={<AnyPermissionRoute permissions={['VIEW_CALENDRIER_PROJETS', 'VIEW_DEADLINES', 'VIEW_REUNIONS']}><CalendrierProjetsAdminPage /></AnyPermissionRoute>} />
-          <Route path="admin/projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><TousProjetsAdminPage /></PermissionRoute>} />
+          <Route path="admin/calendrier-projets" element={<AnyPermissionRoute permissions={['VIEW_CALENDRIER_PROJETS','VIEW_DEADLINES','VIEW_REUNIONS']}><CalendrierProjetsAdminPage /></AnyPermissionRoute>} />
           <Route path="admin/projets/:projetId/taches" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjetTachesPage /></PermissionRoute>} />
           <Route path="admin/clients" element={<PermissionRoute permission="VIEW_CLIENTS"><ClientsPage /></PermissionRoute>} />
           <Route path="media-plan" element={<PermissionRoute permission="VIEW_MEDIA_PLAN"><MediaPlanPage /></PermissionRoute>} />
@@ -119,7 +117,7 @@ const App: React.FC = () => {
           <Route path="client/projets" element={<ClientRoute pageKey="PROJETS"><ClientProjectsDashboardPage /></ClientRoute>} />
           <Route path="client/fichiers" element={<ClientRoute pageKey="FICHIERS"><ClientDriveFilesPage /></ClientRoute>} />
         </Route>
-        <Route path="*" element={<Navigate to="/projets" replace />} />
+        <Route path="*" element={<Navigate to="/accueil" replace />} />
       </Routes>
     </NotificationProvider>
   );

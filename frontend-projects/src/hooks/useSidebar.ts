@@ -14,7 +14,7 @@ interface SidebarContextType {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [openSubmenu, setOpenSubmenuState] = useState<string | null>(null);
@@ -34,8 +34,6 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (window.innerWidth < 1024) {
         setIsExpanded(false);
         setIsMobileOpen(false);
-      } else {
-        setIsExpanded(true);
       }
     };
     handleResize();

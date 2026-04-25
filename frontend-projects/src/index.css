@@ -1,12 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap') layer(base);
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap') layer(base);
 
 @import 'tailwindcss';
 
 @custom-variant dark (&:is(.dark *));
 
+:root {
+  --bg: #f5f4f1;
+  --surface: #ffffff;
+  --brand: #e86a2e;
+  --brand-hover: #d05e24;
+  --brand-light: rgba(232, 106, 46, 0.1);
+  --brand-mid: #f5a87a;
+  --text-1: #1a1814;
+  --text-2: #5c5a55;
+  --text-3: #9c9a94;
+  --border: #e8e6e0;
+  --sidebar-w: 80px;
+  --panel-w: 280px;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --font: 'Plus Jakarta Sans', sans-serif;
+  --transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
 @theme {
   --font-*: initial;
-  --font-outfit: Outfit, sans-serif;
+  --font-outfit: 'Plus Jakarta Sans', sans-serif;
 
   --breakpoint-*: initial;
   --breakpoint-2xsm: 375px;
@@ -167,7 +187,44 @@
   }
 
   body {
-    @apply relative font-normal font-outfit z-1 bg-gray-50 text-gray-700;
+    @apply relative font-normal z-1;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-1);
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }
 

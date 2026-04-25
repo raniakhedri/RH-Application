@@ -16,6 +16,8 @@ import {
   HiOutlineRefresh,
 } from 'react-icons/hi';
 import { adminDashboardProjectService, ProjetDetailAdminDTO, AlerteDTO, TacheManagerDTO, EmployeSectionDTO, TacheTimelineDTO } from '../api/adminDashboardProjectService';
+import { tacheService } from '../api/tacheService';
+import { equipeService } from '../api/equipeService';
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -216,7 +218,7 @@ const AdminProjectDetailPage: React.FC = () => {
       {activeTab === 'employes' && <EmployesTab employes={detail.employes} />}
       {activeTab === 'indicateurs' && <IndicateursTab managers={detail.managers} />}
       {activeTab === 'timeline' && <TimelineTab timeline={detail.timeline} dateDebut={detail.dateDebut} dateFin={detail.dateFin} />}
-      {activeTab === 'alertes' && <AlertesTab alertes={detail.alertes} />}
+      {activeTab === 'alertes' && <AlertesTab alertes={detail.alertes} projetId={detail.projetId} onReload={() => loadDetail(detail.projetId)} />}
     </div>
   );
 };
@@ -592,9 +594,83 @@ const TimelineTab: React.FC<{
   );
 };
 
-/* ── Alertes Tab (CORRECTION 7 — enriched alert cards) ────────────────── */
+/* ── Alertes Tab (with working action buttons) ────────────────────────── */
 
-const AlertesTab: React.FC<{ alertes: AlerteDTO[] }> = ({ alertes }) => {
+const AlertesTab: React.FC<{ alertes: AlerteDTO[]; projetId: number; onReload: () => void }> = ({ alertes, projetId, onReload }) => {
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [reassignModal, setReassignModal] = useState<{ tacheId: number; tacheNom: string } | null>(null);
+  const [deadlineModal, setDeadlineModal] = useState<{ tacheId: number; tacheNom: string; currentDeadline: string | null } | null>(null);
+  const [membres, setMembres] = useState<{ id: number; prenom: string; nom: string }[]>([]);
+  const [membresLoading, setMembresLoading] = useState(false);
+  const [newDeadline, setNewDeadline] = useState('');
+
+  // Load project members when reassign modal opens
+  useEffect(() => {
+    if (!reassignModal) return;
+    setMembresLoading(true);
+    setMembres([]);
+    equipeService.getMembresByProjet(projetId)
+      .then(res => {
+        const data = res.data.data || [];
+        setMembres(data.map((e: any) => ({ id: e.id, prenom: e.prenom, nom: e.nom })));
+      })
+      .catch((err) => {
+        console.error('Erreur chargement membres:', err);
+        setMembres([]);
+      })
+      .finally(() => setMembresLoading(false));
+  }, [reassignModal, projetId]);
+
+  const showToast = (msg: string, type: 'success' | 'error') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleRelance = async (tacheId: number, tacheNom: string) => {
+    const key = `relance-${tacheId}`;
+    setLoadingAction(key);
+    try {
+      await tacheService.relance(tacheId);
+      showToast(`Relance envoyée pour "${tacheNom}"`, 'success');
+    } catch {
+      showToast(`Erreur lors de l'envoi de la relance`, 'error');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleReassign = async (tacheId: number, employeId: number) => {
+    setLoadingAction(`reassign-${tacheId}`);
+    try {
+      await tacheService.assign(tacheId, employeId);
+      showToast('Tâche réassignée avec succès', 'success');
+      setReassignModal(null);
+      onReload();
+    } catch {
+      showToast('Erreur lors de la réassignation', 'error');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleDeadlineUpdate = async () => {
+    if (!deadlineModal || !newDeadline) return;
+    setLoadingAction(`deadline-${deadlineModal.tacheId}`);
+    try {
+      await tacheService.updateDeadline(deadlineModal.tacheId, newDeadline);
+      showToast('Deadline mise à jour', 'success');
+      setDeadlineModal(null);
+      setNewDeadline('');
+      onReload();
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || 'Erreur lors de la modification';
+      showToast(msg, 'error');
+    } finally {
+      setLoadingAction(null);
+    }
+  }
+
   if (alertes.length === 0) return (
     <div className="py-16 text-center">
       <HiOutlineCheckCircle size={48} className="mx-auto text-emerald-400 opacity-40 mb-3" />
@@ -602,7 +678,6 @@ const AlertesTab: React.FC<{ alertes: AlerteDTO[] }> = ({ alertes }) => {
     </div>
   );
 
-  // CORRECTION 7: Group alerts by project then manager
   const grouped = alertes.reduce<Record<string, AlerteDTO[]>>((acc, a) => {
     const key = a.managerNom || 'Non assigné';
     if (!acc[key]) acc[key] = [];
@@ -611,70 +686,175 @@ const AlertesTab: React.FC<{ alertes: AlerteDTO[] }> = ({ alertes }) => {
   }, {});
 
   return (
-    <div className="space-y-6">
-      {Object.entries(grouped).map(([mgrNom, mgrAlertes]) => (
-        <div key={mgrNom}>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
-            👔 {mgrNom} <span className="text-gray-400">({mgrAlertes.length})</span>
-          </h3>
-          <div className="space-y-3">
-            {mgrAlertes.map((a, i) => (
-              <div key={i} className={`rounded-2xl border p-5 ${a.niveau === 'CRITIQUE' ? 'border-red-200 bg-red-50/50 dark:border-red-500/20 dark:bg-red-500/5' : 'border-amber-200 bg-amber-50/50 dark:border-amber-500/20 dark:bg-amber-500/5'}`}>
-                <div className="flex items-start gap-3">
-                  {a.niveau === 'CRITIQUE'
-                    ? <HiOutlineExclamationCircle size={22} className="text-red-500 shrink-0 mt-0.5" />
-                    : <HiOutlineExclamation size={22} className="text-amber-500 shrink-0 mt-0.5" />
-                  }
-                  <div className="flex-1">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase ${a.niveau === 'CRITIQUE' ? 'bg-red-200 text-red-800 dark:bg-red-500/30 dark:text-red-300' : 'bg-amber-200 text-amber-800 dark:bg-amber-500/30 dark:text-amber-300'}`}>
-                        {a.niveau === 'CRITIQUE' ? '🔴' : '⚠'} {a.niveau}
-                        {a.retardJours > 0 && ` — +${a.retardJours}j`}
-                      </span>
-                    </div>
+    <>
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-6 right-6 z-[9999] flex items-center gap-2 rounded-xl px-5 py-3 shadow-xl text-sm font-medium transition-all animate-in slide-in-from-right ${
+          toast.type === 'success'
+            ? 'bg-emerald-500 text-white'
+            : 'bg-red-500 text-white'
+        }`}>
+          {toast.type === 'success' ? <HiOutlineCheckCircle size={18} /> : <HiOutlineExclamationCircle size={18} />}
+          {toast.msg}
+        </div>
+      )}
 
-                    {/* CORRECTION 7: Enriched detail card */}
-                    <div className="rounded-xl border border-gray-200/50 bg-white/60 dark:border-gray-700/30 dark:bg-gray-900/20 p-4 space-y-1.5 text-sm">
-                      {a.tacheNom && (
-                        <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Tâche</span><span className="font-medium text-gray-700 dark:text-gray-300">{a.tacheNom}</span></div>
-                      )}
-                      {a.employeNom && (
-                        <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Employé</span><span className="font-medium text-gray-700 dark:text-gray-300">{a.employeNom}</span></div>
-                      )}
-                      {a.managerNom && (
-                        <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Manager</span><span className="font-medium text-gray-700 dark:text-gray-300">{a.managerNom}</span></div>
-                      )}
-                      <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Problème</span><span className="text-gray-700 dark:text-gray-300">{a.probleme}</span></div>
-                      {a.retardJours > 0 && (
-                        <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Retard</span><span className="font-bold text-red-600">+{a.retardJours} jour(s)</span></div>
-                      )}
-                    </div>
+      <div className="space-y-6">
+        {Object.entries(grouped).map(([mgrNom, mgrAlertes]) => (
+          <div key={mgrNom}>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+              👔 {mgrNom} <span className="text-gray-400">({mgrAlertes.length})</span>
+            </h3>
+            <div className="space-y-3">
+              {mgrAlertes.map((a, i) => (
+                <div key={i} className={`rounded-2xl border p-5 ${a.niveau === 'CRITIQUE' ? 'border-red-200 bg-red-50/50 dark:border-red-500/20 dark:bg-red-500/5' : 'border-amber-200 bg-amber-50/50 dark:border-amber-500/20 dark:bg-amber-500/5'}`}>
+                  <div className="flex items-start gap-3">
+                    {a.niveau === 'CRITIQUE'
+                      ? <HiOutlineExclamationCircle size={22} className="text-red-500 shrink-0 mt-0.5" />
+                      : <HiOutlineExclamation size={22} className="text-amber-500 shrink-0 mt-0.5" />
+                    }
+                    <div className="flex-1">
+                      {/* Header */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase ${a.niveau === 'CRITIQUE' ? 'bg-red-200 text-red-800 dark:bg-red-500/30 dark:text-red-300' : 'bg-amber-200 text-amber-800 dark:bg-amber-500/30 dark:text-amber-300'}`}>
+                          {a.niveau === 'CRITIQUE' ? '🔴' : '⚠'} {a.niveau}
+                          {a.retardJours > 0 && ` — +${a.retardJours}j`}
+                        </span>
+                      </div>
 
-                    {/* CORRECTION 7: Suggested actions */}
-                    <div className="mt-3 rounded-lg bg-white/50 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700/30 px-4 py-3">
-                      <p className="text-xs font-semibold text-gray-500 mb-2">Actions suggérées :</p>
-                      <div className="flex flex-wrap gap-2">
-                        <button className="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-[11px] font-medium text-brand-700 hover:bg-brand-100 dark:bg-brand-500/10 dark:text-brand-400 transition-colors">
-                          <HiOutlineMail size={14} /> Relancer l'employé
-                        </button>
-                        <button className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-[11px] font-medium text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 transition-colors">
-                          <HiOutlineRefresh size={14} /> Réassigner
-                        </button>
-                        <button className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-[11px] font-medium text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 transition-colors">
-                          <HiOutlineCalendar size={14} /> Modifier deadline
-                        </button>
+                      {/* Detail card */}
+                      <div className="rounded-xl border border-gray-200/50 bg-white/60 dark:border-gray-700/30 dark:bg-gray-900/20 p-4 space-y-1.5 text-sm">
+                        {a.tacheNom && (
+                          <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Tâche</span><span className="font-medium text-gray-700 dark:text-gray-300">{a.tacheNom}</span></div>
+                        )}
+                        {a.employeNom && (
+                          <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Employé</span><span className="font-medium text-gray-700 dark:text-gray-300">{a.employeNom}</span></div>
+                        )}
+                        {a.managerNom && (
+                          <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Manager</span><span className="font-medium text-gray-700 dark:text-gray-300">{a.managerNom}</span></div>
+                        )}
+                        <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Problème</span><span className="text-gray-700 dark:text-gray-300">{a.probleme}</span></div>
+                        {a.retardJours > 0 && (
+                          <div className="flex gap-2"><span className="text-gray-400 w-20 shrink-0">Retard</span><span className="font-bold text-red-600">+{a.retardJours} jour(s)</span></div>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="mt-3 rounded-lg bg-white/50 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700/30 px-4 py-3">
+                        <p className="text-xs font-semibold text-gray-500 mb-2">Actions suggérées :</p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            disabled={!a.tacheId || loadingAction === `relance-${a.tacheId}`}
+                            onClick={() => a.tacheId && handleRelance(a.tacheId, a.tacheNom || '')}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-[11px] font-medium text-brand-700 hover:bg-brand-100 dark:bg-brand-500/10 dark:text-brand-400 transition-colors disabled:opacity-50"
+                          >
+                            {loadingAction === `relance-${a.tacheId}`
+                              ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" />
+                              : <HiOutlineMail size={14} />
+                            }
+                            Relancer l'employé
+                          </button>
+                          <button
+                            disabled={!a.tacheId}
+                            onClick={() => a.tacheId && setReassignModal({ tacheId: a.tacheId, tacheNom: a.tacheNom || '' })}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-[11px] font-medium text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 transition-colors disabled:opacity-50"
+                          >
+                            <HiOutlineRefresh size={14} /> Réassigner
+                          </button>
+                          <button
+                            disabled={!a.tacheId}
+                            onClick={() => a.tacheId && setDeadlineModal({ tacheId: a.tacheId, tacheNom: a.tacheNom || '', currentDeadline: null })}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-[11px] font-medium text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 transition-colors disabled:opacity-50"
+                          >
+                            <HiOutlineCalendar size={14} /> Modifier deadline
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Reassign Modal ── */}
+      {reassignModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setReassignModal(null)}>
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-900" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-1">Réassigner la tâche</h3>
+            <p className="text-sm text-gray-400 mb-4">"{reassignModal.tacheNom}"</p>
+
+            {membresLoading ? (
+              <div className="py-6 text-center">
+                <div className="h-6 w-6 mx-auto animate-spin rounded-full border-2 border-gray-200 border-t-brand-500 mb-2" />
+                <p className="text-sm text-gray-400">Chargement des membres...</p>
               </div>
-            ))}
+            ) : membres.length === 0 ? (
+              <div className="py-6 text-center text-sm text-gray-400">Aucun membre trouvé dans ce projet</div>
+            ) : (
+              <div className="max-h-[300px] overflow-y-auto space-y-1.5">
+                {membres.map(m => (
+                  <button
+                    key={m.id}
+                    disabled={loadingAction === `reassign-${reassignModal.tacheId}`}
+                    onClick={() => handleReassign(reassignModal.tacheId, m.id)}
+                    className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors disabled:opacity-50"
+                  >
+                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-brand-400 to-violet-500 flex items-center justify-center text-xs font-bold text-white shadow">
+                      {m.prenom[0]}{m.nom[0]}
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{m.prenom} {m.nom}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end">
+              <button onClick={() => setReassignModal(null)}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                Annuler
+              </button>
+            </div>
           </div>
         </div>
-      ))}
-    </div>
+      )}
+
+      {/* ── Deadline Modal ── */}
+      {deadlineModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { setDeadlineModal(null); setNewDeadline(''); }}>
+          <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-900" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-1">Modifier la deadline</h3>
+            <p className="text-sm text-gray-400 mb-4">"{deadlineModal.tacheNom}"</p>
+
+            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">Nouvelle deadline</label>
+            <input
+              type="date"
+              value={newDeadline}
+              onChange={e => setNewDeadline(e.target.value)}
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-700 shadow-sm focus:border-brand-500 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+            />
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button onClick={() => { setDeadlineModal(null); setNewDeadline(''); }}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                Annuler
+              </button>
+              <button
+                disabled={!newDeadline || loadingAction === `deadline-${deadlineModal.tacheId}`}
+                onClick={handleDeadlineUpdate}
+                className="rounded-lg bg-brand-500 px-5 py-2 text-sm font-medium text-white hover:bg-brand-600 transition-colors disabled:opacity-50"
+              >
+                {loadingAction === `deadline-${deadlineModal.tacheId}` ? 'Mise à jour...' : 'Confirmer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
 export default AdminProjectDetailPage;
+

@@ -12,4 +12,7 @@ export const tacheService = {
   assign: (id: number, employeId: number) => api.patch<ApiResponse<Tache>>(`/taches/${id}/assign/${employeId}`),
   changeStatut: (id: number, statut: StatutTache) => api.patch<ApiResponse<Tache>>(`/taches/${id}/statut?statut=${statut}`),
   delete: (id: number) => api.delete<ApiResponse<void>>(`/taches/${id}`),
+  relance: (id: number) => api.post<ApiResponse<void>>(`/taches/${id}/relance`),
+  updateDeadline: (id: number, dateEcheance: string) => api.patch<ApiResponse<Tache>>(`/taches/${id}/deadline`, { dateEcheance }),
 };
+

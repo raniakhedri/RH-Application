@@ -217,6 +217,59 @@ public class TacheService {
         }
     }
 
+    /**
+     * Sends a reminder notification to the employee assigned to a late task.
+     */
+    public void relancerEmploye(Long tacheId) {
+        Tache tache = findById(tacheId);
+        if (tache.getAssignee() == null) {
+            throw new RuntimeException("Aucun employé assigné à cette tâche");
+        }
+
+        String projetNom = tache.getProjet() != null ? tache.getProjet().getNom() : "Inconnu";
+        notificationService.createUrgent(
+                tache.getAssignee(),
+                "⚠ Relance — Tâche en retard",
+                "La tâche \"" + tache.getTitre() + "\" du projet \"" + projetNom
+                        + "\" nécessite votre attention urgente."
+                        + (tache.getDateEcheance() != null
+                                ? " Deadline : " + tache.getDateEcheance() + "."
+                                : ""),
+                null);
+        log.info("Relance envoyée à l'employé {} pour la tâche #{}", tache.getAssignee().getId(), tacheId);
+    }
+
+    /**
+     * Updates the deadline of a task and notifies the assignee.
+     */
+    public Tache updateDeadline(Long tacheId, LocalDate newDeadline) {
+        Tache tache = findById(tacheId);
+        LocalDate oldDeadline = tache.getDateEcheance();
+        tache.setDateEcheance(newDeadline);
+
+        // Validate against project dates
+        if (tache.getProjet() != null) {
+            validateTacheDate(tache, tache.getProjet());
+        }
+
+        Tache saved = tacheRepository.save(tache);
+
+        // Notify assignee about deadline change
+        if (tache.getAssignee() != null) {
+            String projetNom = tache.getProjet() != null ? tache.getProjet().getNom() : "Inconnu";
+            notificationService.createSimple(
+                    tache.getAssignee(),
+                    "📅 Deadline modifiée",
+                    "La deadline de la tâche \"" + tache.getTitre() + "\" (projet \"" + projetNom
+                            + "\") a été modifiée"
+                            + (oldDeadline != null ? " du " + oldDeadline : "")
+                            + " au " + newDeadline + ".");
+        }
+
+        log.info("Deadline de la tâche #{} modifiée : {} → {}", tacheId, oldDeadline, newDeadline);
+        return saved;
+    }
+
     public void delete(Long id) {
         tacheRepository.deleteById(id);
     }

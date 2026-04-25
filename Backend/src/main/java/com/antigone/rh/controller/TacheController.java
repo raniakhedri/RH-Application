@@ -9,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/taches")
@@ -67,5 +69,19 @@ public class TacheController {
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         tacheService.delete(id);
         return ResponseEntity.ok(ApiResponse.ok("Tâche supprimée", null));
+    }
+
+    @PostMapping("/{id}/relance")
+    public ResponseEntity<ApiResponse<Void>> relance(@PathVariable Long id) {
+        tacheService.relancerEmploye(id);
+        return ResponseEntity.ok(ApiResponse.ok("Relance envoyée", null));
+    }
+
+    @PatchMapping("/{id}/deadline")
+    public ResponseEntity<ApiResponse<Tache>> updateDeadline(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        LocalDate newDeadline = LocalDate.parse(body.get("dateEcheance"));
+        return ResponseEntity.ok(ApiResponse.ok("Deadline mise à jour", tacheService.updateDeadline(id, newDeadline)));
     }
 }
