@@ -77,6 +77,7 @@ const getStatusInfo = (plans: MediaPlan[]) => {
     if (plans.some(p => p.isShooting && p.shootingStatus === StatutShooting.REJETE)) return { label: 'Désapprouvé', color: 'red' };
     if (plans.every(p => p.statut === 'APPROUVE')) return { label: 'Approuvé', color: 'green' };
     if (plans.some(p => p.statut === 'DESAPPROUVE')) return { label: 'Désapprouvé', color: 'red' };
+    if (plans.some(p => p.statut === 'EN_ATTENTE_CLIENT')) return { label: 'En attente client', color: 'purple' };
     if (plans.some(p => p.statut === 'EN_ATTENTE')) return { label: 'En attente', color: 'warning' };
     return { label: 'Brouillon', color: 'brand' };
 };
@@ -320,6 +321,21 @@ const TousLesMediaPlanPage: React.FC = () => {
         });
     };
 
+    const handleRequestClientValidationBatch = async (batch: PlanBatch) => {
+        confirm(`Demander la validation client pour les ${batch.plans.length} ligne(s) de ce plan ?`, async () => {
+            try {
+                for (const mp of batch.plans) {
+                    if (mp.statut !== 'EN_ATTENTE_CLIENT' && mp.statut !== 'APPROUVE') {
+                        await mediaPlanService.requestClientValidation(mp.id);
+                    }
+                }
+                if (selectedClientId) loadMediaPlans(selectedClientId);
+            } catch (e: any) {
+                alert(e.response?.data?.message || 'Erreur');
+            }
+        });
+    };
+
     const openAssignModal = async () => {
         try {
             const res = await mediaPlanAssignmentService.getSocialMediaEmployees();
@@ -355,8 +371,16 @@ const TousLesMediaPlanPage: React.FC = () => {
 
     const getStatusBadge = (mp: MediaPlan) => {
         const displayStatut = (mp.isShooting && mp.shootingStatus === StatutShooting.REJETE) ? 'DESAPPROUVE' : mp.statut;
-        const colors: Record<string, string> = { EN_ATTENTE: 'warning', APPROUVE: 'success', DESAPPROUVE: 'danger' };
-        return <Badge variant={(colors[displayStatut] || 'neutral') as any}>{StatutMediaPlanLabels[displayStatut as keyof typeof StatutMediaPlanLabels] || displayStatut}</Badge>;
+        const colors: Record<string, string> = {
+            EN_ATTENTE: 'warning',
+            EN_ATTENTE_CLIENT: 'neutral', // will be styled purple inline
+            APPROUVE: 'success',
+            DESAPPROUVE: 'danger'
+        };
+        if (displayStatut === 'EN_ATTENTE_CLIENT') {
+            return <span className="inline-flex items-center rounded-full bg-purple-50 dark:bg-purple-900/20 px-2.5 py-0.5 text-xs font-semibold text-purple-700 dark:text-purple-300">En attente client</span>;
+        }
+        return <Badge variant={(colors[displayStatut] || 'neutral') as any}>{StatutMediaPlanLabels[displayStatut] || displayStatut}</Badge>;
     };
 
     const getShootingStatusBadge = (statut: StatutShooting | null) => {
@@ -391,7 +415,8 @@ const TousLesMediaPlanPage: React.FC = () => {
 
     const renderRow = (mp: MediaPlan) => (
         <React.Fragment key={mp.id}>
-            <tr className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50" style={{ height: '104px' }}>
+            <tr className={`transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 ${mp.statut === 'DESAPPROUVE' ? 'bg-red-50 dark:bg-red-900/10' : ''
+                }`} style={{ height: '104px' }}>
                 <td className="px-2 py-1 border-r border-gray-100 dark:border-gray-800 overflow-hidden" style={{ width: colWidths[0] }}>
                     <span className={inputClass}>{mp.datePublication || '-'}</span>
                 </td>
@@ -583,6 +608,7 @@ const TousLesMediaPlanPage: React.FC = () => {
                             className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm dark:text-white">
                             <option value="">Tous les statuts</option>
                             <option value="EN_ATTENTE">En attente</option>
+                            <option value="EN_ATTENTE_CLIENT">En attente client</option>
                             <option value="APPROUVE">Approuvé</option>
                             <option value="DESAPPROUVE">Désapprouvé</option>
                         </select>
@@ -681,6 +707,12 @@ const TousLesMediaPlanPage: React.FC = () => {
                                             <button onClick={() => handleDisapproveBatch(activeBatch)}
                                                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm font-medium dark:bg-red-900/10 dark:border-red-900/50 dark:text-red-400 hover:bg-red-100 transition-colors">
                                                 <HiOutlineX size={16} /> Désapprouver
+                                            </button>
+                                        )}
+                                        {!allApproved && !activeBatch.plans.every(p => p.statut === 'EN_ATTENTE_CLIENT') && (
+                                            <button onClick={(e) => { e.stopPropagation(); handleRequestClientValidationBatch(activeBatch); }}
+                                                className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-purple-200 bg-purple-50 text-purple-700 text-sm font-medium dark:bg-purple-900/10 dark:border-purple-900/50 dark:text-purple-300 hover:bg-purple-100 transition-colors">
+                                                💬 Validation du client requise
                                             </button>
                                         )}
                                     </>

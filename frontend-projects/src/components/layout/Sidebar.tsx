@@ -246,6 +246,9 @@ const Sidebar: React.FC = () => {
   const notifMenuRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const rhAppUrl = (import.meta.env.VITE_RH_APP_URL as string | undefined)?.trim();
+  const isClient = !!user?.isClient;
+  const userPermissions = user?.permissions || [];
+  const canViewValidations = userPermissions.includes('VIEW_VALIDATIONS');
 
   useEffect(() => {
     if (!user?.employeId || !userPermissions.includes('VIEW_MEDIA_PLAN')) {
@@ -707,6 +710,99 @@ const Sidebar: React.FC = () => {
                   </button>
                 </div>
               )}
+  // ── Client portal menu (shown only when isClient) ─────────────────────────
+  // A page is visible when clientPages is empty/null (unrestricted) OR contains this page key
+  const hasPage = (pageKey: string) => {
+    const pages = user?.clientPages;
+    if (!pages || pages.length === 0) return true; // no restriction
+    return pages.includes(pageKey);
+  };
+
+  const clientMenuGroups = [
+    {
+      title: 'MON ESPACE',
+      items: ([
+        hasPage('MEDIA_PLANS') && {
+          key: 'client-media-plans',
+          label: 'Mes Media Plans',
+          path: '/client/media-plans',
+          icon: <HiOutlinePhotograph size={20} />,
+        },
+        hasPage('PROJETS') && {
+          key: 'client-projets',
+          label: 'Mes Projets',
+          path: '/client/projets',
+          icon: <HiOutlineBriefcase size={20} />,
+        },
+        hasPage('FICHIERS') && {
+          key: 'client-fichiers',
+          label: 'Mes Fichiers',
+          path: '/client/fichiers',
+          icon: <HiOutlineCollection size={20} />,
+        },
+      ].filter(Boolean)) as NavItemDef[],
+    },
+  ];
+
+  // ── Employee menus (shown only when NOT a client) ─────────────────────────
+  const filteredMenuGroups = isClient ? [] : menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .filter((item) => {
+          if (item.permissions) return item.permissions.some(p => userPermissions.includes(p));
+          return !item.permission || userPermissions.includes(item.permission);
+        })
+        .map((item) => {
+          if (item.key === 'media-plan' && assignedClients.length > 0) {
+            return {
+              ...item,
+              children: assignedClients.map((c) => ({
+                label: c.nom,
+                path: `/media-plan/${c.id}`,
+              })),
+            };
+          }
+          return item;
+        }),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  const activeMenuGroups = isClient ? clientMenuGroups : filteredMenuGroups;
+
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + '/');
+
+  const sidebarWidth = isExpanded || isHovered ? 'w-[290px]' : 'w-[90px]';
+  const showText = isExpanded || isHovered;
+
+  return (
+    <>
+      {/* Mobile backdrop */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-[9998] bg-gray-900/50 lg:hidden"
+          onClick={toggleMobileSidebar}
+        />
+      )}
+
+      <aside
+        onMouseEnter={() => !isExpanded && setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`fixed left-0 top-0 z-[9999] flex h-screen flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-900
+          ${sidebarWidth}
+          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+      >
+        {/* Logo area */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+          <Logo3D size={40} />
+          {showText && (
+            <div className="overflow-hidden">
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Antigone</h1>
+              <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+                {isClient ? user?.nom || 'Client' : 'Module Projets'}
+              </p>
             </div>
           )}
         </div>
@@ -819,6 +915,16 @@ const Sidebar: React.FC = () => {
             <div key={group.title} className="pc-panel-group">
               <p className="pc-panel-group-title">{group.title}</p>
               <ul className="pc-panel-list">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto custom-scrollbar px-4 py-4">
+          {activeMenuGroups.map((group) => (
+            <div key={group.title} className="mb-4">
+              {showText && (
+                <h3 className="mb-2 px-3 text-theme-xs font-semibold uppercase text-gray-400 dark:text-gray-500">
+                  {group.title}
+                </h3>
+              )}
+              <ul className="space-y-0.5">
                 {group.items.map((item) => (
                   <PanelItem
                     key={item.key}
@@ -834,6 +940,22 @@ const Sidebar: React.FC = () => {
           ))}
         </div>
       </section>
+        </nav>
+
+        {/* Agent download button - only shown if agent is not active */}
+        {!agentActive && !isClient && (
+          <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-3">
+            <a
+              href={`${API_BASE}/api/agent/download`}
+              download
+              className="flex items-center gap-3 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600"
+            >
+              <HiOutlineDownload size={20} className="shrink-0" />
+              {showText && <span>Installer l'Agent</span>}
+            </a>
+          </div>
+        )}
+      </aside>
     </>
   );
 };

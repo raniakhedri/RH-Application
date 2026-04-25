@@ -201,6 +201,12 @@ export interface LoginResponse {
   genre: string | null;
   message: string;
   imageUrl: string | null;
+  /** Set to true when a client (not an employee) is logged in */
+  isClient?: boolean;
+  /** ID of the logged-in client (only present when isClient === true) */
+  clientId?: number;
+  /** Page keys accessible to this client: ['MEDIA_PLANS','PROJETS','FICHIERS'] */
+  clientPages?: string[];
 }
 
 export interface DemandeRequest {
@@ -632,6 +638,7 @@ export interface HistoriqueEmploye {
 // =====================
 export enum StatutMediaPlan {
   EN_ATTENTE = 'EN_ATTENTE',
+  EN_ATTENTE_CLIENT = 'EN_ATTENTE_CLIENT',
   APPROUVE = 'APPROUVE',
   DESAPPROUVE = 'DESAPPROUVE',
 }
@@ -650,8 +657,9 @@ export const EtatPublicationLabels: Record<EtatPublication, string> = {
   [EtatPublication.PAS_ENCORE]: 'Pas encore',
 };
 
-export const StatutMediaPlanLabels: Record<StatutMediaPlan, string> = {
+export const StatutMediaPlanLabels: Record<string, string> = {
   [StatutMediaPlan.EN_ATTENTE]: 'En attente',
+  [StatutMediaPlan.EN_ATTENTE_CLIENT]: 'En attente client',
   [StatutMediaPlan.APPROUVE]: 'Approuvé',
   [StatutMediaPlan.DESAPPROUVE]: 'Désapprouvé',
 };

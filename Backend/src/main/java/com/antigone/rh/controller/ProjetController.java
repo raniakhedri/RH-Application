@@ -28,6 +28,11 @@ public class ProjetController {
         return ResponseEntity.ok(ApiResponse.ok(projetService.findByEmploye(employeId)));
     }
 
+    @GetMapping("/by-client/{clientId}")
+    public ResponseEntity<ApiResponse<List<ProjetDTO>>> getByClient(@PathVariable Long clientId) {
+        return ResponseEntity.ok(ApiResponse.ok(projetService.findByClient(clientId)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProjetDTO>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(projetService.findById(id)));
@@ -59,7 +64,8 @@ public class ProjetController {
             @RequestParam(required = false, defaultValue = "false") boolean force) {
         try {
             StatutProjet statutEnum = StatutProjet.valueOf(statut.toUpperCase());
-            return ResponseEntity.ok(ApiResponse.ok("Statut mis à jour", projetService.changeStatut(id, statutEnum, force)));
+            return ResponseEntity
+                    .ok(ApiResponse.ok("Statut mis à jour", projetService.changeStatut(id, statutEnum, force)));
         } catch (IllegalStateException e) {
             // CORRECTION 3: Return structured error for closure with open tasks
             return ResponseEntity.status(409).body(ApiResponse.error(e.getMessage()));

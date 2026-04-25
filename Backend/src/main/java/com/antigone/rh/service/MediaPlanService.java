@@ -109,11 +109,11 @@ public class MediaPlanService {
                         : EtatPublication.PAS_ENCORE)
                 .rectifs(request.getRectifs())
                 .remarques(request.getRemarques())
-            .isShooting(Boolean.TRUE.equals(request.getIsShooting()))
-            .shootingDescription(request.getShootingDescription())
-            .shootingLocalisation(request.getShootingLocalisation())
-            .shootingDate(parseLocalDateOrNull(request.getShootingDate()))
-            .shootingTypeDeContenu(parseTypeContenuOrNull(request.getShootingTypeDeContenu()))
+                .isShooting(Boolean.TRUE.equals(request.getIsShooting()))
+                .shootingDescription(request.getShootingDescription())
+                .shootingLocalisation(request.getShootingLocalisation())
+                .shootingDate(parseLocalDateOrNull(request.getShootingDate()))
+                .shootingTypeDeContenu(parseTypeContenuOrNull(request.getShootingTypeDeContenu()))
                 .statut(StatutMediaPlan.EN_ATTENTE)
                 .client(client)
                 .createur(createur)
@@ -397,6 +397,157 @@ public class MediaPlanService {
         return toDTO(mediaPlanRepository.save(mp));
     }
 
+    /**
+     * Request client validation: set status = EN_ATTENTE_CLIENT.
+     * The media plan will be shown to the client for approval.
+     */
+    public MediaPlanDTO requestClientValidation(Long mediaPlanId) {
+        MediaPlan mp = mediaPlanRepository.findById(mediaPlanId)
+                .orElseThrow(() -> new ResourceNotFoundException("MediaPlan", mediaPlanId));
+        mp.setStatut(StatutMediaPlan.EN_ATTENTE_CLIENT);
+        return toDTO(mediaPlanRepository.save(mp));
+    }
+
+    /**
+     * Client approves a single ligne: sets APPROUVE, then checks if the entire
+     * batch for this client is now fully decided. If no EN_ATTENTE_CLIENT lignes
+     * remain for the client, project + task creation is triggered for all approved
+     * video lignes that don't yet have a project.
+     */
+    public MediaPlanDTO clientApprove(Long mediaPlanId) {
+        MediaPlan mp = mediaPlanRepository.findById(mediaPlanId)
+                .orElseThrow(() -> new ResourceNotFoundException("MediaPlan", mediaPlanId));
+        if (mp.getStatut() != StatutMediaPlan.EN_ATTENTE_CLIENT) {
+            throw new RuntimeException("Ce media plan n'est pas en attente de validation client");
+        }
+        mp.setStatut(StatutMediaPlan.APPROUVE);
+        mediaPlanRepository.save(mp);
+        checkBatchCompletion(mp.getClient());
+        return toDTO(mp);
+    }
+
+    /**
+     * Client approves a full batch at once: marks all EN_ATTENTE_CLIENT lignes as
+     * APPROUVE, then triggers batch completion check (project/task creation).
+     */
+    public List<MediaPlanDTO> clientApproveAll(List<Long> ids) {
+        List<MediaPlanDTO> results = new ArrayList<>();
+        com.antigone.rh.entity.Client client = null;
+        for (Long id : ids) {
+            MediaPlan mp = mediaPlanRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("MediaPlan", id));
+            if (mp.getStatut() == StatutMediaPlan.EN_ATTENTE_CLIENT) {
+                mp.setStatut(StatutMediaPlan.APPROUVE);
+                mediaPlanRepository.save(mp);
+            }
+            if (client == null)
+                client = mp.getClient();
+            results.add(toDTO(mp));
+        }
+        // Trigger project creation if the whole batch is now complete
+        checkBatchCompletion(client);
+        return results;
+    }
+
+    /**
+     * Client refuses a single ligne: sets DESAPPROUVE.
+     * The admin can then edit and re-send it (requestClientValidation) so the
+     * client only sees the modified lignes again.
+     */
+    public MediaPlanDTO clientDisapprove(Long mediaPlanId) {
+        MediaPlan mp = mediaPlanRepository.findById(mediaPlanId)
+                .orElseThrow(() -> new ResourceNotFoundException("MediaPlan", mediaPlanId));
+        if (mp.getStatut() != StatutMediaPlan.EN_ATTENTE_CLIENT) {
+            throw new RuntimeException("Ce media plan n'est pas en attente de validation client");
+        }
+        mp.setStatut(StatutMediaPlan.DESAPPROUVE);
+        return toDTO(mediaPlanRepository.save(mp));
+    }
+
+    /**
+     * After any client approval action, check whether all lignes for this client
+     * have been decided (none left in EN_ATTENTE_CLIENT). If so, create a
+     * Projet + default tasks for every APPROUVE video ligne that does not yet
+     * have a project linked to it.
+     */
+    private void checkBatchCompletion(com.antigone.rh.entity.Client client) {
+        if (client == null)
+            return;
+
+        List<MediaPlan> allPlans = mediaPlanRepository.findByClientId(client.getId());
+
+        // If any ligne is still pending, the batch is not complete yet
+        boolean anyPending = allPlans.stream()
+                .anyMatch(p -> p.getStatut() == StatutMediaPlan.EN_ATTENTE_CLIENT);
+        if (anyPending)
+            return;
+
+        // All decided: create projects for approved video lignes without an existing
+        // project
+        Long fallbackManagerId = null; // lazy-initialised below if needed
+        for (MediaPlan mp : allPlans) {
+            if (mp.getStatut() != StatutMediaPlan.APPROUVE)
+                continue;
+            if (mp.getFormat() == null || !mp.getFormat().toLowerCase().contains("video"))
+                continue;
+            if (mp.isShooting())
+                continue;
+
+            // Skip if a project already exists for this ligne
+            if (projetRepository.findFirstByMediaPlanLigneId(mp.getId()).isPresent())
+                continue;
+
+            // Find best-matching manager
+            Long managerId = findManagerByFormat(mp.getFormat());
+            if (managerId == null) {
+                if (fallbackManagerId == null) {
+                    fallbackManagerId = employeRepository.findAll().stream()
+                            .filter(e -> e.getSubordonnes() != null && !e.getSubordonnes().isEmpty())
+                            .map(com.antigone.rh.entity.Employe::getId)
+                            .findFirst()
+                            .orElse(null);
+                }
+                managerId = fallbackManagerId;
+            }
+            if (managerId == null)
+                continue;
+
+            ProjetRequest projetReq = new ProjetRequest();
+            projetReq.setNom("👉 Mediaplan: " + (mp.getTitre() != null ? mp.getTitre() : "Sans titre"));
+            projetReq.setDateDebut(LocalDate.now());
+            projetReq.setTypeProjet("INDETERMINE");
+            projetReq.setStatut("PLANIFIE");
+            projetReq.setIsMediaPlanProject(true);
+            projetReq.setMediaPlanLigneId(mp.getId());
+            projetReq.setClientId(client.getId());
+
+            List<Long> chefIds = new ArrayList<>();
+            chefIds.add(managerId);
+            Long deptManagerId = findManagerByFormat(mp.getFormat());
+            if (deptManagerId != null && !chefIds.contains(deptManagerId))
+                chefIds.add(deptManagerId);
+            projetReq.setChefDeProjetIds(chefIds);
+            projetReq.setCreateurId(managerId);
+
+            com.antigone.rh.dto.ProjetDTO pDTO = projetService.create(projetReq);
+            com.antigone.rh.entity.Projet createdProjet = projetRepository.findById(pDTO.getId()).orElse(null);
+            if (createdProjet != null) {
+                String titre = mp.getTitre() != null ? mp.getTitre() : "Vidéo";
+                for (String tName : new String[] {
+                        "Tournage - " + titre,
+                        "Montage - " + titre,
+                        "Validation & Publication - " + titre }) {
+                    com.antigone.rh.entity.Tache t = new com.antigone.rh.entity.Tache();
+                    t.setTitre(tName);
+                    t.setStatut(com.antigone.rh.enums.StatutTache.TODO);
+                    t.setProjet(createdProjet);
+                    t.setUrgente(false);
+                    tacheRepository.save(t);
+                }
+            }
+        }
+    }
+
     // ── Google Drive Auth Bridges ────────────────────────────────────────────
     public String getGoogleAuthUrl() throws IOException {
         return googleDriveService.getAuthorizationUrl();
@@ -457,6 +608,16 @@ public class MediaPlanService {
                 .orElse(null);
     }
 
+    /**
+     * Updates the rectifs (client feedback / corrections) field for a single ligne.
+     */
+    public MediaPlanDTO updateRectifs(Long mediaPlanId, String rectifs) {
+        MediaPlan mp = mediaPlanRepository.findById(mediaPlanId)
+                .orElseThrow(() -> new ResourceNotFoundException("MediaPlan", mediaPlanId));
+        mp.setRectifs(rectifs);
+        return toDTO(mediaPlanRepository.save(mp));
+    }
+
     // =============================================
     // MAPPER
     // =============================================
@@ -481,7 +642,8 @@ public class MediaPlanService {
                 .shootingDescription(mp.getShootingDescription())
                 .shootingLocalisation(mp.getShootingLocalisation())
                 .shootingDate(mp.getShootingDate() != null ? mp.getShootingDate().toString() : null)
-                .shootingTypeDeContenu(mp.getShootingTypeDeContenu() != null ? mp.getShootingTypeDeContenu().name() : null)
+                .shootingTypeDeContenu(
+                        mp.getShootingTypeDeContenu() != null ? mp.getShootingTypeDeContenu().name() : null)
                 .shootingStatus(mp.getShootingStatus() != null ? mp.getShootingStatus().name() : null)
                 .shootingStatusReason(mp.getShootingStatusReason())
                 .calendrierProjetId(mp.getCalendrierProjet() != null ? mp.getCalendrierProjet().getId() : null)
@@ -496,9 +658,11 @@ public class MediaPlanService {
     }
 
     private LocalDate parseLocalDateOrNull(String value) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         String v = value.trim();
-        if (v.isBlank()) return null;
+        if (v.isBlank())
+            return null;
         try {
             return LocalDate.parse(v);
         } catch (Exception e) {
@@ -507,14 +671,19 @@ public class MediaPlanService {
     }
 
     private TypeContenuShooting parseTypeContenuOrNull(String value) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         String v = value.trim();
-        if (v.isBlank()) return null;
+        if (v.isBlank())
+            return null;
 
         String normalized = v.toUpperCase();
-        if ("PHOTO".equals(normalized)) return TypeContenuShooting.PHOTO;
-        if ("VIDEO".equals(normalized)) return TypeContenuShooting.VIDEO;
-        if ("BOTH".equals(normalized)) return TypeContenuShooting.BOTH;
+        if ("PHOTO".equals(normalized))
+            return TypeContenuShooting.PHOTO;
+        if ("VIDEO".equals(normalized))
+            return TypeContenuShooting.VIDEO;
+        if ("BOTH".equals(normalized))
+            return TypeContenuShooting.BOTH;
 
         throw new RuntimeException("Type de contenu invalide: '" + value + "' (attendu: PHOTO, VIDEO, BOTH)");
     }

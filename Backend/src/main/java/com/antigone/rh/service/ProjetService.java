@@ -62,10 +62,11 @@ public class ProjetService {
         // a member
         List<Projet> parCreateur = projetRepository.findByCreateurId(employeId);
         List<Projet> parChef = projetRepository.findByChefDeProjetId(employeId);
+        List<Projet> parChefs = projetRepository.findByChefsDeProjetId(employeId);
         List<Projet> parMembre = projetRepository.findByMembreId(employeId);
-        return java.util.stream.Stream.concat(
-                java.util.stream.Stream.concat(parCreateur.stream(), parChef.stream()),
-                parMembre.stream())
+
+        return java.util.stream.Stream.of(parCreateur, parChef, parChefs, parMembre)
+                .flatMap(List::stream)
                 .collect(java.util.stream.Collectors.toMap(
                         Projet::getId,
                         p -> p,
@@ -78,6 +79,12 @@ public class ProjetService {
 
     public List<ProjetDTO> findByDepartement(String departement) {
         return projetRepository.findByDepartement(departement).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<ProjetDTO> findByClient(Long clientId) {
+        return projetRepository.findByClientId(clientId).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
@@ -299,14 +306,15 @@ public class ProjetService {
                             try {
                                 if (t.getAssignee() != null)
                                     emp = t.getAssignee().getPrenom() + " " + t.getAssignee().getNom();
-                            } catch (Exception ignored) {}
+                            } catch (Exception ignored) {
+                            }
                             return t.getTitre() + " → " + t.getStatut() + " → " + emp;
                         })
                         .collect(Collectors.toList());
 
                 throw new IllegalStateException(
                         "CLOTURE_INCOMPLETE:" + openTasks + ":"
-                        + String.join("|", openTaskDetails));
+                                + String.join("|", openTaskDetails));
             }
 
             projet.setDateCloture(LocalDateTime.now());

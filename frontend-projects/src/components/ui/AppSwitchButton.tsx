@@ -65,10 +65,11 @@ const hoverButtonStyle: React.CSSProperties = {
 
 const AppSwitchButton: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
   const [hoveredOption, setHoveredOption] = React.useState<AppKind | null>(null);
+  const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) return null;
+  if (user?.isClient) return null;  // Clients never switch apps
 
   const appKind = resolveAppKind();
   const targetLabel = appKind === 'projects' ? 'RH' : 'Projets';

@@ -20,6 +20,9 @@ import TousLesMediaPlanPage from './pages/TousLesMediaPlanPage';
 import RapportProjetPage from './pages/RapportProjetPage';
 import AdminProjectDashboardPage from './pages/AdminProjectDashboardPage';
 import AdminProjectDetailPage from './pages/AdminProjectDetailPage';
+import ClientMediaPlansPage from './pages/ClientMediaPlansPage';
+import ClientProjectsDashboardPage from './pages/ClientProjectsDashboardPage';
+import ClientDriveFilesPage from './pages/ClientDriveFilesPage';
 import { NotificationProvider } from './context/NotificationContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -40,6 +43,40 @@ const AnyPermissionRoute: React.FC<{ permissions: string[]; children: React.Reac
   const hasAny = permissions.some(p => user?.permissions?.includes(p));
   if (!hasAny) return <Navigate to="/accueil" replace />;
   return <>{children}</>;
+};
+
+/** Only accessible to clients (isClient === true) who have permission for this pageKey */
+const ClientRoute: React.FC<{ children: React.ReactNode; pageKey?: string }> = ({ children, pageKey }) => {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user?.isClient) return <Navigate to="/projets" replace />;
+  // If a specific pageKey is required, check the client's allowed pages
+  if (pageKey) {
+    const allowed = user?.clientPages ?? [];
+    if (allowed.length > 0 && !allowed.includes(pageKey)) {
+      // Redirect to first allowed page
+      const fallback = allowed.includes('MEDIA_PLANS') ? '/client/media-plans'
+        : allowed.includes('PROJETS') ? '/client/projets'
+        : allowed.includes('FICHIERS') ? '/client/fichiers'
+        : '/login';
+      return <Navigate to={fallback} replace />;
+    }
+  }
+  return <>{children}</>;
+};
+
+/** Redirect root "/" to the right home page depending on user type */
+const SmartRedirect: React.FC = () => {
+  const { user } = useAuth();
+  if (user?.isClient) {
+    const pages = user.clientPages ?? [];
+    const path = pages.includes('MEDIA_PLANS') ? '/client/media-plans'
+      : pages.includes('PROJETS') ? '/client/projets'
+      : pages.includes('FICHIERS') ? '/client/fichiers'
+      : '/client/media-plans';
+    return <Navigate to={path} replace />;
+  }
+  return <Navigate to="/projets" replace />;
 };
 
 const App: React.FC = () => {
@@ -75,6 +112,10 @@ const App: React.FC = () => {
           <Route path="rapport-projet" element={<PermissionRoute permission="VIEW_PROJETS"><RapportProjetPage /></PermissionRoute>} />
           <Route path="admin/dashboard-projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjectDashboardPage /></PermissionRoute>} />
           <Route path="admin/dashboard-projets/:projetId" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjectDetailPage /></PermissionRoute>} />
+          {/* ── Client portal ── */}
+          <Route path="client/media-plans" element={<ClientRoute pageKey="MEDIA_PLANS"><ClientMediaPlansPage /></ClientRoute>} />
+          <Route path="client/projets" element={<ClientRoute pageKey="PROJETS"><ClientProjectsDashboardPage /></ClientRoute>} />
+          <Route path="client/fichiers" element={<ClientRoute pageKey="FICHIERS"><ClientDriveFilesPage /></ClientRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/accueil" replace />} />
       </Routes>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../api/authService';
@@ -11,9 +11,17 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login, user, isAuthenticated } = useAuth();
+  const { login, logout, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const projectsAppUrl = (import.meta.env.VITE_PROJECTS_APP_URL as string | undefined)?.trim();
+  // Track whether auth was set during THIS page visit (not loaded from stale storage)
+  const justLoggedIn = useRef(false);
+
+  // Clear any stale auth state from a previous session when login page mounts
+  useEffect(() => {
+    logout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const redirectToProjectsHome = useCallback(() => {
     if (projectsAppUrl) {
@@ -24,8 +32,9 @@ const LoginPage: React.FC = () => {
     navigate('/dashboard', { replace: true });
   }, [navigate, projectsAppUrl]);
 
+  // Only redirect when the user freshly logged in during this page visit
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !justLoggedIn.current) return;
     if (user?.mustChangePassword) {
       navigate('/change-password', { replace: true });
       return;
@@ -38,22 +47,53 @@ const LoginPage: React.FC = () => {
     setError('');
     setLoading(true);
 
+    // 1) Try employee login
     try {
       const response = await authService.login({ username, password });
       if (response.data.success && response.data.data) {
-        const userData = response.data.data;
-        login(userData);
-        if (userData.mustChangePassword) {
-          navigate('/change-password');
-        } else {
-          redirectToProjectsHome();
-        }
-      } else {
-        setError(response.data.message || 'Erreur de connexion');
+        justLoggedIn.current = true;
+        login(response.data.data);
+        // useEffect (watching isAuthenticated + justLoggedIn.current) will handle redirect
+        return;
       }
+      // 200 OK but credentials wrong — don't fall through to client login
+      setError(response.data.message || 'Identifiants invalides');
+      setLoading(false);
+      return;
+    } catch {
+      // 4xx/network error → try client login below
+    }
+
+    // 2) Try client login
+    try {
+      const clientRes = await authService.clientLogin(username, password);
+      if (clientRes.data.success && clientRes.data.data) {
+        const c = clientRes.data.data;
+        justLoggedIn.current = true;
+        login({
+          compteId: 0,
+          employeId: 0,
+          username: c.loginClient,
+          nom: c.nom,
+          prenom: '',
+          email: c.email || '',
+          roles: c.roles,
+          permissions: c.permissions,
+          mustChangePassword: false,
+          genre: null,
+          message: '',
+          imageUrl: null,
+          isClient: true,
+          clientId: c.clientId,
+          clientPages: c.clientPages ?? [],
+        });
+        // useEffect will handle redirect
+        return;
+      }
+      setError(clientRes.data.message || 'Identifiants invalides');
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Identifiants invalides');
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e.response?.data?.message || 'Identifiants invalides');
     } finally {
       setLoading(false);
     }
