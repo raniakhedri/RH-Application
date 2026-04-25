@@ -10,9 +10,10 @@ const resolveAppKind = (): 'projects' | 'rh' => {
 
 const AppSwitchButton: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) return null;
+  if (user?.isClient) return null;  // Clients never switch apps
 
   const appKind = resolveAppKind();
   const targetUrl = appKind === 'projects'

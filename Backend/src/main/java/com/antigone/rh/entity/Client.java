@@ -39,6 +39,14 @@ public class Client {
     private String loginClient;
     private String passwordClient;
 
+    /**
+     * Comma-separated list of page keys the client is allowed to access.
+     * Known keys: MEDIA_PLANS, PROJETS, FICHIERS
+     * Empty/null means no portal pages are accessible.
+     */
+    @Column(columnDefinition = "TEXT")
+    private String clientPages;
+
     // ── Legacy fields (kept for backward compat) ──────────────────────────────
     /** Description libre (anciennement utilisé) */
     @Column(columnDefinition = "TEXT")

@@ -15,6 +15,8 @@ export interface ClientDTO {
     // Account
     hasAccount?: boolean;
     loginClient?: string;
+    /** Comma-separated page keys (e.g. "MEDIA_PLANS,PROJETS,FICHIERS") */
+    clientPages?: string;
     /** Only returned once at creation */
     generatedPassword?: string;
     // Legacy
@@ -29,6 +31,24 @@ const BASE = '/clients';
 
 const getAllClients = () => api.get<{ data: ClientDTO[] }>(BASE);
 const getClientById = (id: number) => api.get<{ data: ClientDTO }>(`${BASE}/${id}`);
+const getClientPortalDriveLink = (id: number) => api.get<{ data: string }>(`${BASE}/${id}/client-portal-drive-link`);
+const getDriveFiles = (id: number) => api.get<{ data: MonthFilesGroup[] }>(`${BASE}/${id}/drive-files`);
+
+export interface DriveFile {
+    id: string;
+    name: string;
+    mimeType: string;
+    webViewLink: string;
+    thumbnailLink?: string;
+    size?: number;
+    modifiedTime?: string;
+    subFolder?: string;
+}
+
+export interface MonthFilesGroup {
+    monthLabel: string;
+    files: DriveFile[];
+}
 
 const createClient = (data: {
     nom: string;
@@ -41,6 +61,7 @@ const createClient = (data: {
     contactEmail?: string;
     contactTelephone?: string;
     createAccount?: boolean;
+    clientPages?: string;
     file?: File;
 }) => {
     const form = new FormData();
@@ -54,6 +75,7 @@ const createClient = (data: {
     if (data.contactEmail) form.append('contactEmail', data.contactEmail);
     if (data.contactTelephone) form.append('contactTelephone', data.contactTelephone);
     form.append('createAccount', String(data.createAccount ?? false));
+    if (data.clientPages != null) form.append('clientPages', data.clientPages);
     if (data.file) form.append('file', data.file);
     return api.post<{ data: ClientDTO }>(BASE, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -71,6 +93,7 @@ const updateClient = (id: number, data: {
     contactEmail?: string;
     contactTelephone?: string;
     regeneratePassword?: boolean;
+    clientPages?: string;
     file?: File;
 }) => {
     const form = new FormData();
@@ -84,6 +107,7 @@ const updateClient = (id: number, data: {
     form.append('contactEmail', data.contactEmail ?? '');
     form.append('contactTelephone', data.contactTelephone ?? '');
     form.append('regeneratePassword', String(data.regeneratePassword ?? false));
+    if (data.clientPages != null) form.append('clientPages', data.clientPages);
     if (data.file) form.append('file', data.file);
     return api.put<{ data: ClientDTO }>(`${BASE}/${id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -95,6 +119,8 @@ const deleteClient = (id: number) => api.delete(`${BASE}/${id}`);
 export const clientService = {
     getAllClients,
     getClientById,
+    getClientPortalDriveLink,
+    getDriveFiles,
     createClient,
     updateClient,
     deleteClient,

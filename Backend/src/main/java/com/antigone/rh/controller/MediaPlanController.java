@@ -75,6 +75,36 @@ public class MediaPlanController {
         return ResponseEntity.ok(ApiResponse.ok("Media plan renvoyé", mediaPlanService.resubmit(id)));
     }
 
+    @PatchMapping("/{id}/request-client-validation")
+    public ResponseEntity<ApiResponse<MediaPlanDTO>> requestClientValidation(@PathVariable Long id) {
+        return ResponseEntity
+                .ok(ApiResponse.ok("En attente de validation client", mediaPlanService.requestClientValidation(id)));
+    }
+
+    @PatchMapping("/{id}/client-approve")
+    public ResponseEntity<ApiResponse<MediaPlanDTO>> clientApprove(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Approuvé par le client", mediaPlanService.clientApprove(id)));
+    }
+
+    @PostMapping("/client-approve-all")
+    public ResponseEntity<ApiResponse<List<MediaPlanDTO>>> clientApproveAll(@RequestBody List<Long> ids) {
+        return ResponseEntity
+                .ok(ApiResponse.ok("Batch approuvé par le client", mediaPlanService.clientApproveAll(ids)));
+    }
+
+    @PatchMapping("/{id}/client-disapprove")
+    public ResponseEntity<ApiResponse<MediaPlanDTO>> clientDisapprove(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Désapprouvé par le client", mediaPlanService.clientDisapprove(id)));
+    }
+
+    @PatchMapping("/{id}/rectifs")
+    public ResponseEntity<ApiResponse<MediaPlanDTO>> updateRectifs(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body) {
+        return ResponseEntity.ok(ApiResponse.ok("Rectifs mis à jour",
+                mediaPlanService.updateRectifs(id, body.get("rectifs"))));
+    }
+
     // ── Google Drive Auth ────────────────────────────────────────────────────
     @GetMapping("/google-drive/auth-url")
     public ResponseEntity<ApiResponse<String>> getGoogleAuthUrl() throws java.io.IOException {

@@ -13,6 +13,11 @@ export const mediaPlanService = {
     approve: (id: number, managerId: number) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/approve?managerId=${managerId}`),
     disapprove: (id: number) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/disapprove`),
     resubmit: (id: number) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/resubmit`),
+    requestClientValidation: (id: number) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/request-client-validation`),
+    clientApprove: (id: number) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/client-approve`),
+    clientApproveAll: (ids: number[]) => api.post<ApiResponse<MediaPlan[]>>(`/media-plans/client-approve-all`, ids),
+    clientDisapprove: (id: number) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/client-disapprove`),
+    updateRectifs: (id: number, rectifs: string) => api.patch<ApiResponse<MediaPlan>>(`/media-plans/${id}/rectifs`, { rectifs }),
     getGoogleAuthUrl: () => api.get<ApiResponse<string>>('/media-plans/google-drive/auth-url'),
     getGoogleAuthStatus: () => api.get<ApiResponse<boolean>>('/media-plans/google-drive/status'),
 };

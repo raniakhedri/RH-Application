@@ -35,11 +35,20 @@ interface ClientForm {
     contactPoste: string;
     contactEmail: string;
     contactTelephone: string;
+    /** Page keys selected in the multi-select */
+    clientPages: string[];
 }
+
+const ALL_CLIENT_PAGES = [
+    { key: 'MEDIA_PLANS', label: 'Mes Media Plans', desc: 'Media plans approuvés' },
+    { key: 'PROJETS', label: 'Mes Projets', desc: 'Tableau de bord des projets' },
+    { key: 'FICHIERS', label: 'Mes Fichiers', desc: 'Fichiers Google Drive' },
+];
 
 const emptyForm: ClientForm = {
     nom: '', email: '', telephone: '', adresse: '', notes: '',
     contactNom: '', contactPoste: '', contactEmail: '', contactTelephone: '',
+    clientPages: ['MEDIA_PLANS', 'PROJETS', 'FICHIERS'],
 };
 
 /* ─── Page ─────────────────────────────────────────────────────────────────── */
@@ -124,6 +133,7 @@ const ClientsPage: React.FC = () => {
             contactPoste: c.contactPoste ?? '',
             contactEmail: c.contactEmail ?? '',
             contactTelephone: c.contactTelephone ?? '',
+            clientPages: c.clientPages ? c.clientPages.split(',').map(p => p.trim()).filter(Boolean) : ['MEDIA_PLANS', 'PROJETS', 'FICHIERS'],
         });
         setSelectedFile(null);
         setError(null);
@@ -167,8 +177,10 @@ const ClientsPage: React.FC = () => {
         setSaving(true); setError(null);
         try {
             if (editing) {
+                const pages = form.clientPages.join(',');
                 const res = await clientService.updateClient(editing.id, {
                     ...form,
+                    clientPages: pages,
                     regeneratePassword,
                     file: selectedFile ?? undefined,
                 });
@@ -178,8 +190,10 @@ const ClientsPage: React.FC = () => {
                     setShowCredModal(true);
                 }
             } else {
+                const pages = form.clientPages.join(',');
                 const res = await clientService.createClient({
                     ...form,
+                    clientPages: pages,
                     createAccount,
                     file: selectedFile ?? undefined,
                 });
@@ -518,6 +532,38 @@ const ClientsPage: React.FC = () => {
                     {/* ── Compte client ── */}
                     {activeSection === 'account' && (
                         <div className="space-y-4">
+                            {/* Pages visibles - shown regardless of account status */}
+                            <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                                <div>
+                                    <p className="text-theme-sm font-semibold text-gray-700 dark:text-gray-300 mb-0.5">Pages accessibles</p>
+                                    <p className="text-theme-xs text-gray-400">Sélectionnez les pages que ce client pourra voir après connexion.</p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {ALL_CLIENT_PAGES.map(page => (
+                                        <label key={page.key} className="flex items-start gap-3 cursor-pointer rounded-lg p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={form.clientPages.includes(page.key)}
+                                                onChange={e => {
+                                                    setForm(prev => ({
+                                                        ...prev,
+                                                        clientPages: e.target.checked
+                                                            ? [...prev.clientPages, page.key]
+                                                            : prev.clientPages.filter(k => k !== page.key),
+                                                    }));
+                                                }}
+                                                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                                            />
+                                            <div>
+                                                <p className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">{page.label}</p>
+                                                <p className="text-theme-xs text-gray-400">{page.desc}</p>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Création/édition compte */}
                             {!editing ? (
                                 /* Création : checkbox pour créer un compte */
                                 <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">

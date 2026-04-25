@@ -16,7 +16,10 @@ public interface ProjetRepository extends JpaRepository<Projet, Long> {
 
     List<Projet> findByChefDeProjetId(Long chefId);
 
-    /** Projects where the employee is one of the (possibly multiple) chefs de projet. */
+    /**
+     * Projects where the employee is one of the (possibly multiple) chefs de
+     * projet.
+     */
     @Query("SELECT DISTINCT p FROM Projet p JOIN p.chefsDeProjet c WHERE c.id = :employeId")
     List<Projet> findByChefsDeProjetId(@Param("employeId") Long employeId);
 
@@ -44,4 +47,9 @@ public interface ProjetRepository extends JpaRepository<Projet, Long> {
      */
     @Query("SELECT DISTINCT p FROM Projet p LEFT JOIN p.membres m LEFT JOIN p.chefsDeProjet c WHERE m.departement = :dept OR c.departement = :dept")
     List<Projet> findByDepartement(@Param("dept") String dept);
+
+    /**
+     * Projects assigned to a specific client (for the client portal).
+     */
+    List<Projet> findByClientId(Long clientId);
 }

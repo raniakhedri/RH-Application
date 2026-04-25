@@ -21,6 +21,9 @@ import TousLesMediaPlanPage from './pages/TousLesMediaPlanPage';
 import RapportProjetPage from './pages/RapportProjetPage';
 import AdminProjectDashboardPage from './pages/AdminProjectDashboardPage';
 import AdminProjectDetailPage from './pages/AdminProjectDetailPage';
+import ClientMediaPlansPage from './pages/ClientMediaPlansPage';
+import ClientProjectsDashboardPage from './pages/ClientProjectsDashboardPage';
+import ClientDriveFilesPage from './pages/ClientDriveFilesPage';
 import { NotificationProvider } from './context/NotificationContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -43,6 +46,40 @@ const AnyPermissionRoute: React.FC<{ permissions: string[]; children: React.Reac
   return <>{children}</>;
 };
 
+/** Only accessible to clients (isClient === true) who have permission for this pageKey */
+const ClientRoute: React.FC<{ children: React.ReactNode; pageKey?: string }> = ({ children, pageKey }) => {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user?.isClient) return <Navigate to="/projets" replace />;
+  // If a specific pageKey is required, check the client's allowed pages
+  if (pageKey) {
+    const allowed = user?.clientPages ?? [];
+    if (allowed.length > 0 && !allowed.includes(pageKey)) {
+      // Redirect to first allowed page
+      const fallback = allowed.includes('MEDIA_PLANS') ? '/client/media-plans'
+        : allowed.includes('PROJETS') ? '/client/projets'
+        : allowed.includes('FICHIERS') ? '/client/fichiers'
+        : '/login';
+      return <Navigate to={fallback} replace />;
+    }
+  }
+  return <>{children}</>;
+};
+
+/** Redirect root "/" to the right home page depending on user type */
+const SmartRedirect: React.FC = () => {
+  const { user } = useAuth();
+  if (user?.isClient) {
+    const pages = user.clientPages ?? [];
+    const path = pages.includes('MEDIA_PLANS') ? '/client/media-plans'
+      : pages.includes('PROJETS') ? '/client/projets'
+      : pages.includes('FICHIERS') ? '/client/fichiers'
+      : '/client/media-plans';
+    return <Navigate to={path} replace />;
+  }
+  return <Navigate to="/projets" replace />;
+};
+
 const App: React.FC = () => {
   return (
     <NotificationProvider>
@@ -59,15 +96,15 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/projets" replace />} />
-          <Route path="dashboard" element={<Navigate to="/projets" replace />} />
+          <Route index element={<SmartRedirect />} />
+          <Route path="dashboard" element={<SmartRedirect />} />
           <Route path="projets" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetsPage /></PermissionRoute>} />
           <Route path="taches" element={<PermissionRoute permission="VIEW_PROJETS"><TachesPage /></PermissionRoute>} />
           <Route path="equipes" element={<PermissionRoute permission="VIEW_EQUIPES"><EquipesPage /></PermissionRoute>} />
           <Route path="mon-profil" element={<MonProfilPage />} />
           <Route path="mes-taches" element={<MesTachesPage />} />
           <Route path="projets/:projetId/taches" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetTachesPage /></PermissionRoute>} />
-          <Route path="admin/calendrier-projets" element={<AnyPermissionRoute permissions={['VIEW_CALENDRIER_PROJETS','VIEW_DEADLINES','VIEW_REUNIONS']}><CalendrierProjetsAdminPage /></AnyPermissionRoute>} />
+          <Route path="admin/calendrier-projets" element={<AnyPermissionRoute permissions={['VIEW_CALENDRIER_PROJETS', 'VIEW_DEADLINES', 'VIEW_REUNIONS']}><CalendrierProjetsAdminPage /></AnyPermissionRoute>} />
           <Route path="admin/projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><TousProjetsAdminPage /></PermissionRoute>} />
           <Route path="admin/projets/:projetId/taches" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjetTachesPage /></PermissionRoute>} />
           <Route path="admin/clients" element={<PermissionRoute permission="VIEW_CLIENTS"><ClientsPage /></PermissionRoute>} />
@@ -77,6 +114,10 @@ const App: React.FC = () => {
           <Route path="rapport-projet" element={<PermissionRoute permission="VIEW_PROJETS"><RapportProjetPage /></PermissionRoute>} />
           <Route path="admin/dashboard-projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjectDashboardPage /></PermissionRoute>} />
           <Route path="admin/dashboard-projets/:projetId" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjectDetailPage /></PermissionRoute>} />
+          {/* ── Client portal ── */}
+          <Route path="client/media-plans" element={<ClientRoute pageKey="MEDIA_PLANS"><ClientMediaPlansPage /></ClientRoute>} />
+          <Route path="client/projets" element={<ClientRoute pageKey="PROJETS"><ClientProjectsDashboardPage /></ClientRoute>} />
+          <Route path="client/fichiers" element={<ClientRoute pageKey="FICHIERS"><ClientDriveFilesPage /></ClientRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/projets" replace />} />
       </Routes>

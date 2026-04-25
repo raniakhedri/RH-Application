@@ -23,3 +23,7 @@ ALTER TABLE clients DROP COLUMN IF EXISTS da_validated;
 -- Project permissions
 INSERT INTO permissions (permission) SELECT 'MANAGE_ALL_PROJETS' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'MANAGE_ALL_PROJETS');
 INSERT INTO permissions (permission) SELECT 'VIEW_PROJETS_CREATE_TACHES' WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE permission = 'VIEW_PROJETS_CREATE_TACHES');
+
+-- Allow EN_ATTENTE_CLIENT as a valid media plan status (drop old 3-value constraint, add updated 4-value one)
+ALTER TABLE media_plans DROP CONSTRAINT IF EXISTS media_plans_statut_check;
+ALTER TABLE media_plans ADD CONSTRAINT media_plans_statut_check CHECK (statut IN ('EN_ATTENTE', 'EN_ATTENTE_CLIENT', 'APPROUVE', 'DESAPPROUVE'));
