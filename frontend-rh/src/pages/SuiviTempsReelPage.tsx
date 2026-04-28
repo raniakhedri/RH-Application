@@ -82,9 +82,9 @@ const SuiviTempsReelPage: React.FC = () => {
           <p className="text-sm text-green-600 dark:text-green-400">Présents</p>
           <p className="text-3xl font-bold text-green-700 dark:text-green-300">{stats.presents}</p>
         </div>
-        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800">
-          <p className="text-sm text-orange-600 dark:text-orange-400">En retard</p>
-          <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">{stats.retards}</p>
+        <div className="bg-brand- dark:bg-brand-/20 rounded-xl p-4 border border-brand- dark:border-brand-">
+          <p className="text-sm text-brand- dark:text-brand-">En retard</p>
+          <p className="text-3xl font-bold text-brand- dark:text-brand-">{stats.retards}</p>
         </div>
         <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">
           <p className="text-sm text-red-600 dark:text-red-400">Absents</p>
@@ -156,7 +156,7 @@ const SuiviTempsReelPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Retard</p>
-                  <p className={`text-sm font-medium ${emp.retardMinutes > 0 ? 'text-orange-600' : 'dark:text-gray-200'}`}>
+                  <p className={`text-sm font-medium ${emp.retardMinutes > 0 ? 'text-brand-' : 'dark:text-gray-200'}`}>
                     {emp.retardMinutes || 0} min
                   </p>
                 </div>

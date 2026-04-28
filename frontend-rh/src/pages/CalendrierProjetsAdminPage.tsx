@@ -150,27 +150,6 @@ const CalendrierProjetsAdminPage: React.FC = () => {
 
   return (
     <div>
-      {/* ── Tab Bar ── */}
-      {tabs.length > 1 && (
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6">
-          <div className="max-w-6xl mx-auto flex gap-1">
-            {tabs.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all
-                  ${activeTab === tab.key
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'}`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ── Tab Content ── */}
       {activeTab === 'tournage' && hasAccess && (
         <CalendrierCore
@@ -533,7 +512,7 @@ const CalendrierCore: React.FC<CoreProps> = ({
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500 dark:text-gray-400">Jours occupés</span>
-                  <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">{busyCount}</span>
+                  <span className="text-xs font-bold text-brand- bg-brand- px-2 py-0.5 rounded-full">{busyCount}</span>
                 </div>
                 {(role==='social' || !canManagerMode) && (
                   <div className="flex items-center justify-between">
@@ -550,7 +529,7 @@ const CalendrierCore: React.FC<CoreProps> = ({
               <div className="space-y-2">
                 {role==='manager' ? (
                   <>
-                    <LegendRow color="bg-orange-100 border border-orange-300" label="Occupé (projet)"/>
+                    <LegendRow color="bg-brand- border border-brand-" label="Occupé (projet)"/>
                     <LegendRow color="bg-white border border-gray-200" label="Disponible"/>
                     <LegendRow color="bg-blue-500 dark:bg-blue-900/500" label="Aujourd'hui" round/>
                   </>
@@ -558,7 +537,7 @@ const CalendrierCore: React.FC<CoreProps> = ({
                   <>
                     <LegendRow color="bg-emerald-100 border border-emerald-300" label="Disponible"/>
                     <LegendRow color="bg-blue-100 border border-blue-300" label="Projet planifié"/>
-                    <LegendRow color="bg-orange-100 border border-orange-300" label="Occupé (indispo)"/>
+                    <LegendRow color="bg-brand- border border-brand-" label="Occupé (indispo)"/>
                   </>
                 )}
               </div>
@@ -570,11 +549,11 @@ const CalendrierCore: React.FC<CoreProps> = ({
                 <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Mes projets</p>
                 <div className="space-y-2 max-h-52 overflow-y-auto">
                   {busySlots.filter(s=>s.managerId===managerId).map((s,i)=>(
-                    <div key={i} className="flex items-start gap-2 p-2 bg-orange-50 rounded-lg border border-orange-100">
-                      <HiOutlineBriefcase size={13} className="text-orange-400 mt-0.5 shrink-0"/>
+                    <div key={i} className="flex items-start gap-2 p-2 bg-brand- rounded-lg border border-brand-">
+                      <HiOutlineBriefcase size={13} className="text-brand- mt-0.5 shrink-0"/>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-orange-800 truncate">{s.projectName}</p>
-                        <p className="text-[10px] text-orange-400">{s.date}{s.urgent ? ' 🔴' : ''}</p>
+                        <p className="text-xs font-medium text-brand- truncate">{s.projectName}</p>
+                        <p className="text-[10px] text-brand-">{s.date}{s.urgent ? ' 🔴' : ''}</p>
                       </div>
                     </div>
                   ))}
@@ -658,20 +637,20 @@ const CalendrierCore: React.FC<CoreProps> = ({
                         ${isClickable ? 'cursor-pointer' : 'cursor-default'}
                         ${isAttente ? 'bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/40' :
                            isValide ? 'bg-blue-50 dark:bg-blue-900/20' :
-                           busy ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/40' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                           busy ? 'bg-brand- dark:bg-brand-/20 hover:bg-brand- dark:hover:bg-brand-/40' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
                     >
                       <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold
                         ${isToday ? 'bg-blue-500 dark:bg-blue-900/200 text-white' : 
                           isAttente ? 'text-yellow-600' :
                           isValide ? 'text-blue-600' :
-                          busy ? 'text-orange-600' : 'text-gray-600'}`}>
+                          busy ? 'text-brand-' : 'text-gray-600'}`}>
                         {date.getDate()}
                       </span>
                       
                       {busy && (
                         <div className="mt-1.5 space-y-0.5">
-                          <div className="bg-orange-100 dark:bg-orange-900/40 border-orange-200 dark:border-orange-800 rounded px-1.5 py-0.5">
-                            <p className="text-[10px] font-semibold text-orange-700 truncate leading-tight">{busy.projectName}</p>
+                          <div className="bg-brand- dark:bg-brand-/40 border-brand- dark:border-brand- rounded px-1.5 py-0.5">
+                            <p className="text-[10px] font-semibold text-brand- truncate leading-tight">{busy.projectName}</p>
                           </div>
                           {busy.urgent && <p className="text-[9px] text-red-400 font-medium pl-0.5">🔴 Urgent</p>}
                         </div>
@@ -711,14 +690,14 @@ const CalendrierCore: React.FC<CoreProps> = ({
                     onClick={()=>canBook ? handleSocialDayClick(key) : undefined}
                     className={`min-h-[85px] border-r border-b border-gray-100 dark:border-gray-700 p-2 transition-all duration-150 relative group
                       ${booked  ? 'bg-blue-50 dark:bg-blue-900/20' :
-                        busy    ? 'bg-orange-50 opacity-70' :
+                        busy    ? 'bg-brand- opacity-70' :
                         canBook ? 'bg-emerald-50 dark:bg-emerald-900/20 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/40' :
                                   'bg-white dark:bg-gray-800'}`}
                   >
                     <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold
                       ${isToday  ? 'bg-blue-50 dark:bg-blue-900/200 text-white'  :
                         booked   ? 'text-blue-600'           :
-                        busy     ? 'text-orange-500'         :
+                        busy     ? 'text-brand-'         :
                         avail    ? 'text-emerald-700'        : 'text-gray-400 dark:text-gray-500 dark:text-gray-400'}`}>
                       {date.getDate()}
                     </span>
@@ -731,8 +710,8 @@ const CalendrierCore: React.FC<CoreProps> = ({
                     )}
                     {busy && !booked && (
                       <div className="mt-1.5 flex items-center gap-1">
-                        <HiOutlineLockClosed size={10} className="text-orange-400"/>
-                        <span className="text-[10px] text-orange-500 font-medium">Occupé</span>
+                        <HiOutlineLockClosed size={10} className="text-brand-"/>
+                        <span className="text-[10px] text-brand- font-medium">Occupé</span>
                       </div>
                     )}
                     {avail && !booked && !busy && (
@@ -816,7 +795,7 @@ const CalendrierCore: React.FC<CoreProps> = ({
               <button
                 onClick={confirmModal}
                 className={`flex-1 px-4 py-2.5 rounded-xl text-white text-sm font-medium shadow-sm transition-colors
-                  ${modalMode==='busy' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  ${modalMode==='busy' ? 'bg-brand- hover:bg-brand-' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
                 {modalMode==='busy' ? 'Marquer occupé' : 'Confirmer'}
               </button>

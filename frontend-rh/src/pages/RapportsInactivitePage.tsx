@@ -418,12 +418,12 @@ const RapportsInactivitePage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className={`text-sm font-medium ${rapport.totalInactiviteMinutes > 0 ? 'text-red-600' : 'text-orange-500'}`}>
+                      <span className={`text-sm font-medium ${rapport.totalInactiviteMinutes > 0 ? 'text-red-600' : 'text-brand-'}`}>
                         {formatMinutes(rapport.totalInactiviteMinutes)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className={`text-sm font-medium ${(rapport.retardCumule || 0) > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                      <span className={`text-sm font-medium ${(rapport.retardCumule || 0) > 0 ? 'text-brand-' : 'text-gray-400'}`}>
                         {(rapport.retardCumule || 0) > 0 ? formatMinutes(rapport.retardCumule) : '0'}
                       </span>
                     </td>
@@ -485,8 +485,8 @@ const RapportsInactivitePage: React.FC = () => {
 
             {/* Stats grid */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="text-center p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
-                <p className="text-lg font-bold text-orange-600">{formatMinutes(selectedRapport.retardCumule || 0)}</p>
+              <div className="text-center p-3 rounded-lg bg-brand- dark:bg-brand-/20">
+                <p className="text-lg font-bold text-brand-">{formatMinutes(selectedRapport.retardCumule || 0)}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Retard cumulé</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-900/20">

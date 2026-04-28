@@ -344,14 +344,14 @@ const RapportProjetPage: React.FC = () => {
             <PhaseCard
               title="TEMPS INACTIF MANAGERS — Délai avant distribution"
               icon={<HiOutlineClock />}
-              color="border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10"
+              color="border-brand- dark:border-brand- bg-brand-/50 dark:bg-brand-/10"
             >
               <div className="space-y-4">
                 {rapport.tempsInactifManagers.map(m => (
                   <div key={m.managerId} className={`rounded-xl border p-4 ${m.retard ? 'border-red-200 bg-red-50/50 dark:border-red-500/20 dark:bg-red-500/5' : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-dark'}`}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold text-sm ${m.retard ? 'bg-gradient-to-br from-red-400 to-orange-500' : 'bg-gradient-to-br from-purple-400 to-violet-500'}`}>
+                        <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold text-sm ${m.retard ? 'bg-gradient-to-br from-red-400 to-brand-' : 'bg-gradient-to-br from-purple-400 to-violet-500'}`}>
                           {m.managerNom.charAt(0)}
                         </div>
                         <div>
@@ -378,7 +378,7 @@ const RapportProjetPage: React.FC = () => {
                       </div>
                       <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-2.5">
                         <p className="text-gray-400 mb-0.5">Non assignées</p>
-                        <p className={`font-bold ${m.tachesNonAssignees > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                        <p className={`font-bold ${m.tachesNonAssignees > 0 ? 'text-brand- dark:text-brand-' : 'text-gray-700 dark:text-gray-300'}`}>
                           {m.tachesNonAssignees} tâche{m.tachesNonAssignees > 1 ? 's' : ''}
                         </p>
                       </div>
@@ -470,7 +470,7 @@ const RapportProjetPage: React.FC = () => {
                       {/* Header */}
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2.5">
-                          <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md ${isAnomaly ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-500/20' : 'bg-gradient-to-br from-cyan-400 to-blue-500 shadow-cyan-500/20'}`}>
+                          <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md ${isAnomaly ? 'bg-gradient-to-br from-amber-400 to-brand- shadow-amber-500/20' : 'bg-gradient-to-br from-cyan-400 to-blue-500 shadow-cyan-500/20'}`}>
                             {emp.employeNom.charAt(0)}
                           </div>
                           <div>
@@ -564,7 +564,7 @@ const RapportProjetPage: React.FC = () => {
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
                             r.source === 'Admin' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
                             r.source === 'Manager' ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400' :
-                            'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400'
+                            'bg-brand- text-brand- dark:bg-brand-/20 dark:text-brand-'
                           }`}>
                             {r.source}
                           </span>
@@ -582,11 +582,11 @@ const RapportProjetPage: React.FC = () => {
               </div>
 
               {/* Recommendations */}
-              <div className="px-5 py-4 bg-orange-50 dark:bg-orange-900/10 border-t border-orange-200 dark:border-orange-800">
-                <p className="text-sm font-semibold text-orange-700 dark:text-orange-400 mb-2">
+              <div className="px-5 py-4 bg-brand- dark:bg-brand-/10 border-t border-brand- dark:border-brand-">
+                <p className="text-sm font-semibold text-brand- dark:text-brand- mb-2">
                   💡 Recommandations
                 </p>
-                <ul className="list-disc list-inside space-y-1 text-xs text-orange-700 dark:text-orange-400">
+                <ul className="list-disc list-inside space-y-1 text-xs text-brand- dark:text-brand-">
                   {rapport.retards.some(r => r.source === 'Admin') && (
                     <li>Réduire le temps de mise en place Admin — envisager des templates de tâches prédéfinis.</li>
                   )}

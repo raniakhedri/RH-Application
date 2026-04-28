@@ -23,7 +23,7 @@ const ResetPasswordPage: React.FC = () => {
   })();
 
   const strengthLabels = ['', 'Très faible', 'Faible', 'Moyen', 'Fort', 'Très fort'];
-  const strengthColors = ['', 'bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-400', 'bg-green-500'];
+  const strengthColors = ['', 'bg-red-500', 'bg-brand-', 'bg-yellow-500', 'bg-green-400', 'bg-green-500'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

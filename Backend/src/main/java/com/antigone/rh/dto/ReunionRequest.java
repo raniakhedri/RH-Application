@@ -14,6 +14,7 @@ public class ReunionRequest {
     private LocalTime heureFin;
     private TypeReunion typeReunion;
     private String plateforme;
+    private String lienReunion;
     private String lieu;
     /** ID of the internal participant (employee) */
     private Long participantId;

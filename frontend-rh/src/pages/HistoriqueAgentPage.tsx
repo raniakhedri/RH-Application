@@ -41,7 +41,7 @@ const getStatutBadge = (statut: string) => {
 const getStatutColor = (statut: string): string => {
   switch (statut) {
     case 'PRESENT': return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
-    case 'RETARD': return 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800';
+    case 'RETARD': return 'bg-brand- dark:bg-brand-/20 border-brand- dark:border-brand-';
     case 'ABSENT': return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
     case 'EN_CONGE': return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
     case 'EN_AUTORISATION': return 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800';
@@ -239,7 +239,7 @@ const HistoriqueAgentPage: React.FC = () => {
           {stats && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <StatCard icon={<HiOutlineBan size={20} />} label="Total absences" value={`${stats.absents} jour${stats.absents > 1 ? 's' : ''}`} bgColor="bg-red-50 dark:bg-red-900/20" iconColor="text-red-500" borderColor="border-red-200 dark:border-red-800" valueColor="text-red-700 dark:text-red-300" />
-              <StatCard icon={<HiOutlineClock size={20} />} label="Total retard" value={`${stats.totalRetardMin} min`} bgColor="bg-orange-50 dark:bg-orange-900/20" iconColor="text-orange-500" borderColor="border-orange-200 dark:border-orange-800" valueColor="text-orange-700 dark:text-orange-300" />
+              <StatCard icon={<HiOutlineClock size={20} />} label="Total retard" value={`${stats.totalRetardMin} min`} bgColor="bg-brand- dark:bg-brand-/20" iconColor="text-brand-" borderColor="border-brand- dark:border-brand-" valueColor="text-brand- dark:text-brand-" />
               <StatCard icon={<HiOutlineEyeOff size={20} />} label="Total inactif" value={`${stats.totalInactifMin} min`} bgColor="bg-purple-50 dark:bg-purple-900/20" iconColor="text-purple-500" borderColor="border-purple-200 dark:border-purple-800" valueColor="text-purple-700 dark:text-purple-300" />
             </div>
           )}
@@ -270,7 +270,7 @@ const HistoriqueAgentPage: React.FC = () => {
                         <td className="px-4 py-3.5 text-gray-700 dark:text-gray-300">{formatTime(jour.heureEntree)}</td>
                         <td className="px-4 py-3.5 text-gray-700 dark:text-gray-300">{formatTime(jour.heureSortie)}</td>
                         <td className="px-4 py-3.5">
-                          <span className={jour.retardMinutes > 0 ? 'text-orange-600 font-semibold' : 'text-gray-400'}>
+                          <span className={jour.retardMinutes > 0 ? 'text-brand- font-semibold' : 'text-gray-400'}>
                             {jour.retardMinutes > 0 ? `${jour.retardMinutes} min` : '-'}
                           </span>
                         </td>
@@ -343,7 +343,7 @@ const TimelineCard: React.FC<{ jour: JourDetail }> = ({ jour }) => {
           {jour.teletravail && <Badge variant="info">🏠 Télétravail</Badge>}
         </div>
         {jour.retardMinutes > 0 && (
-          <div className="flex items-center gap-1.5 text-sm font-semibold text-orange-600">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-brand-">
             <HiOutlineClock size={16} />
             {jour.retardMinutes} min retard
           </div>

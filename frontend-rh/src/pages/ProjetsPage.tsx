@@ -475,7 +475,7 @@ const ProjetsPage: React.FC = () => {
                         {chefs.slice(0, 3).map((c, i) => (
                           <div key={c.id} className="relative h-7 w-7 overflow-hidden rounded-full ring-2 ring-white dark:ring-[#1a1c22]">
                             {congeAujourdhuiIds.has(c.id) && (
-                              <div className="absolute right-0 top-0 h-2 w-2 rounded-full border border-[#1a1c22] bg-orange-500 z-10" title="En congé"></div>
+                              <div className="absolute right-0 top-0 h-2 w-2 rounded-full border border-[#1a1c22] bg-brand- z-10" title="En congé"></div>
                             )}
                             {c.imageUrl ? (
                               <img src={c.imageUrl} alt={c.nom} className="h-full w-full object-cover" />
@@ -807,7 +807,7 @@ const ProjetsPage: React.FC = () => {
           {/* ── Add another project ── */}
           <button
             onClick={addRow}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-orange-300 py-3 text-theme-sm font-medium text-orange-600 hover:bg-orange-50/40 dark:border-orange-500/30 dark:text-orange-400 dark:hover:bg-orange-500/5 transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand- py-3 text-theme-sm font-medium text-brand- hover:bg-brand-/40 dark:border-brand-/30 dark:text-brand- dark:hover:bg-brand-/5 transition-colors"
           >
             <HiOutlinePlus size={16} /> Ajouter un autre projet
           </button>

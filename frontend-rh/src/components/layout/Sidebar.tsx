@@ -232,10 +232,12 @@ const Sidebar: React.FC = () => {
   const {
     isExpanded,
     isMobileOpen,
+    isRailVisible,
     openSubmenu,
     setOpenSubmenu,
     toggleSidebar,
     toggleMobileSidebar,
+    toggleRail,
   } = useSidebar();
 
   const userPermissions = useMemo(
@@ -504,7 +506,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <>
-      <aside className={`pc-icon-rail-shell ${isMobileOpen ? 'is-mobile-open' : ''}`}>
+      <aside className={`pc-icon-rail-shell ${isMobileOpen ? 'is-mobile-open' : ''} ${!isRailVisible ? 'rail-hidden' : ''}`}>
         <button
           type="button"
           className="pc-logo-btn"
@@ -610,9 +612,8 @@ const Sidebar: React.FC = () => {
                     <button
                       key={notif.id}
                       onClick={() => handleNotificationClick(notif)}
-                      className={`flex w-full items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
-                        !notif.lu ? 'bg-brand-50/50 dark:bg-brand-500/5' : ''
-                      }`}
+                      className={`flex w-full items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 ${!notif.lu ? 'bg-brand-50/50 dark:bg-brand-500/5' : ''
+                        }`}
                     >
                       {(() => {
                         const { icon: Icon, bg, color } = getNotificationIcon(notif.titre || '');
@@ -682,7 +683,7 @@ const Sidebar: React.FC = () => {
                   ) : (
                     <div
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                      style={{ background: 'linear-gradient(135deg, #E86A2E, #F5A87A)' }}
+                      style={{ background: 'linear-gradient(135deg, #683b77, #ab78c3)' }}
                     >
                       {userInitials}
                     </div>
@@ -748,9 +749,9 @@ const Sidebar: React.FC = () => {
         </div>
       </aside>
 
-      {isExpanded && <button type="button" className="pc-panel-overlay" onClick={closeAllPanels} aria-label="Fermer le panel" />}
+      {isExpanded && isRailVisible && <button type="button" className="pc-panel-overlay" onClick={closeAllPanels} aria-label="Fermer le panel" />}
 
-      <section className={`pc-secondary-panel ${isExpanded ? 'open' : ''}`} aria-hidden={!isExpanded}>
+      <section className={`pc-secondary-panel ${isExpanded && isRailVisible ? 'open' : ''}`} aria-hidden={!isExpanded || !isRailVisible}>
         <header className="pc-secondary-header">
           <div>
             <p className="pc-secondary-title">{panelTitle}</p>

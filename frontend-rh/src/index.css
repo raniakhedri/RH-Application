@@ -7,10 +7,10 @@
 :root {
   --bg: #f5f4f1;
   --surface: #ffffff;
-  --brand: #e86a2e;
-  --brand-hover: #d05e24;
-  --brand-light: rgba(232, 106, 46, 0.1);
-  --brand-mid: #f5a87a;
+  --brand: #683b77;
+  --brand-hover: #562f64;
+  --brand-light: rgba(104, 59, 119, 0.1);
+  --brand-mid: #ab78c3;
   --text-1: #1a1814;
   --text-2: #5c5a55;
   --text-3: #9c9a94;
@@ -54,19 +54,19 @@
   --text-theme-xs: 12px;
   --text-theme-xs--line-height: 18px;
 
-  /* Antigone Brand Colors (Orange Primary) */
-  --color-brand-25: #fff8f2;
-  --color-brand-50: #fff1e6;
-  --color-brand-100: #ffddc2;
-  --color-brand-200: #ffc299;
-  --color-brand-300: #ffa066;
-  --color-brand-400: #ff8533;
-  --color-brand-500: #f36904;
-  --color-brand-600: #cc5500;
-  --color-brand-700: #a64400;
-  --color-brand-800: #803300;
-  --color-brand-900: #5c2500;
-  --color-brand-950: #3d1800;
+  /* Antigone Brand Colors (Now Purple for RH) */
+  --color-brand-25: var(--color-secondary-25);
+  --color-brand-50: var(--color-secondary-50);
+  --color-brand-100: var(--color-secondary-100);
+  --color-brand-200: var(--color-secondary-200);
+  --color-brand-300: var(--color-secondary-300);
+  --color-brand-400: var(--color-secondary-400);
+  --color-brand-500: var(--color-secondary-500);
+  --color-brand-600: var(--color-secondary-600);
+  --color-brand-700: var(--color-secondary-700);
+  --color-brand-800: var(--color-secondary-800);
+  --color-brand-900: var(--color-secondary-900);
+  --color-brand-950: var(--color-secondary-950);
 
   /* Secondary Purple */
   --color-secondary-25: #faf5fc;
