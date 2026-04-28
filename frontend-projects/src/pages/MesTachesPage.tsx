@@ -345,14 +345,31 @@ const MesTachesPage: React.FC = () => {
     }, [projectGroups]);
 
     useEffect(() => {
-        const projectIdFromQuery = Number(new URLSearchParams(location.search).get('projectId'));
-        if (!Number.isFinite(projectIdFromQuery) || projectIdFromQuery <= 0) return;
+        const urlParams = new URLSearchParams(location.search);
 
-        const selectedFromQuery = projectGroups.find((project) => project.projetId === projectIdFromQuery);
-        if (!selectedFromQuery) return;
+        const projectIdFromQuery = Number(urlParams.get('projectId'));
+        if (Number.isFinite(projectIdFromQuery) && projectIdFromQuery > 0) {
+            const selectedFromQuery = projectGroups.find((project) => project.projetId === projectIdFromQuery);
+            if (selectedFromQuery) {
+                setSelectedClientId(selectedFromQuery.clientId ?? null);
+                setSelectedProject(selectedFromQuery);
+                return;
+            }
+        }
 
-        setSelectedClientId(selectedFromQuery.clientId ?? null);
-        setSelectedProject(selectedFromQuery);
+        const clientIdStr = urlParams.get('clientId');
+        if (clientIdStr !== null) {
+            if (clientIdStr === 'internal') {
+                setSelectedClientId(null);
+                setSelectedProject(null);
+            } else {
+                const clientIdFromQuery = Number(clientIdStr);
+                if (Number.isFinite(clientIdFromQuery)) {
+                    setSelectedClientId(clientIdFromQuery);
+                    setSelectedProject(null);
+                }
+            }
+        }
     }, [location.search, projectGroups]);
 
     const handleChangeStatut = async (id: number, statut: StatutTache) => {
@@ -415,10 +432,24 @@ const MesTachesPage: React.FC = () => {
         }
     };
 
+    const filteredTaches = React.useMemo(() => {
+        return taches.filter(tache => {
+            if (selectedProject) {
+                return tache.projetId === selectedProject.projetId;
+            }
+            if (selectedClientId !== undefined) {
+                const projInfo = projectGroups.find(p => p.projetId === tache.projetId);
+                const tacheClientId = projInfo?.clientId ?? null;
+                return tacheClientId === selectedClientId;
+            }
+            return true;
+        });
+    }, [taches, selectedProject, selectedClientId, projectGroups]);
+
     const grouped = {
-        TODO: [...taches.filter(t => t.statut === 'TODO')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
-        IN_PROGRESS: [...taches.filter(t => t.statut === 'IN_PROGRESS')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
-        DONE: [...taches.filter(t => t.statut === 'DONE')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
+        TODO: [...filteredTaches.filter(t => t.statut === 'TODO')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
+        IN_PROGRESS: [...filteredTaches.filter(t => t.statut === 'IN_PROGRESS')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
+        DONE: [...filteredTaches.filter(t => t.statut === 'DONE')].sort((a, b) => (b.urgente ? 1 : 0) - (a.urgente ? 1 : 0)),
     };
 
     return (
