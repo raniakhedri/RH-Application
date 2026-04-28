@@ -17,7 +17,7 @@ export interface ClientDTO {
     loginClient?: string;
     /** Only returned once at creation */
     generatedPassword?: string;
-    // Legacy
+    clientPages?: string;
     description?: string;
     responsable?: string;
     fileName?: string;
@@ -41,6 +41,7 @@ const createClient = (data: {
     contactEmail?: string;
     contactTelephone?: string;
     createAccount?: boolean;
+    clientPages?: string;
     file?: File;
 }) => {
     const form = new FormData();
@@ -54,6 +55,7 @@ const createClient = (data: {
     if (data.contactEmail) form.append('contactEmail', data.contactEmail);
     if (data.contactTelephone) form.append('contactTelephone', data.contactTelephone);
     form.append('createAccount', String(data.createAccount ?? false));
+    if (data.clientPages) form.append('clientPages', data.clientPages);
     if (data.file) form.append('file', data.file);
     return api.post<{ data: ClientDTO }>(BASE, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -71,6 +73,7 @@ const updateClient = (id: number, data: {
     contactEmail?: string;
     contactTelephone?: string;
     regeneratePassword?: boolean;
+    clientPages?: string;
     file?: File;
 }) => {
     const form = new FormData();
@@ -84,6 +87,7 @@ const updateClient = (id: number, data: {
     form.append('contactEmail', data.contactEmail ?? '');
     form.append('contactTelephone', data.contactTelephone ?? '');
     form.append('regeneratePassword', String(data.regeneratePassword ?? false));
+    form.append('clientPages', data.clientPages ?? '');
     if (data.file) form.append('file', data.file);
     return api.put<{ data: ClientDTO }>(`${BASE}/${id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },

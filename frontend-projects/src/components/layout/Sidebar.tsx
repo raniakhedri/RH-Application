@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   HiOutlineBell,
@@ -8,7 +8,9 @@ import {
   HiOutlineChevronDown,
   HiOutlineClipboardList,
   HiOutlineCheckCircle,
+  HiOutlineCollection,
   HiOutlineDocumentReport,
+  HiOutlineFolder,
   HiOutlineHome,
   HiOutlineInformationCircle,
   HiOutlineLogout,
@@ -136,7 +138,7 @@ const railMainItems: RailItemDef[] = [
     key: 'projets',
     label: 'Projets',
     icon: <HiOutlineBriefcase size={20} />,
-    path: '/projets',
+    path: '/mes-taches',
     permissions: ['VIEW_PROJETS', 'VIEW_MES_PROJETS'],
     matchPrefixes: ['/projets', '/mes-taches'],
     action: 'panel',
@@ -246,6 +248,51 @@ const Sidebar: React.FC = () => {
   const notifMenuRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const rhAppUrl = (import.meta.env.VITE_RH_APP_URL as string | undefined)?.trim();
+  const isClient = !!user?.isClient;
+  const canViewValidations = userPermissions.includes('VIEW_VALIDATIONS');
+
+  // Pages enabled for this client (set by the admin in the RH app).
+  // If clientPages is empty/null ⇒ all pages are accessible.
+  const clientPages: string[] = user?.clientPages ?? [];
+  const hasClientPage = (key: string) =>
+    !clientPages.length || clientPages.includes(key);
+
+  // Build the client portal rail items dynamically from the enabled pages
+  const clientRailItems: RailItemDef[] = useMemo(() => {
+    if (!isClient) return [];
+    const items: RailItemDef[] = [];
+    if (hasClientPage('MEDIA_PLANS')) {
+      items.push({
+        key: 'client-media-plans',
+        label: 'Mes Media Plans',
+        icon: <HiOutlinePhotograph size={20} />,
+        path: '/client/media-plans',
+        matchPrefixes: ['/client/media-plans'],
+        action: 'navigate',
+      });
+    }
+    if (hasClientPage('PROJETS')) {
+      items.push({
+        key: 'client-projets',
+        label: 'Mes Projets',
+        icon: <HiOutlineBriefcase size={20} />,
+        path: '/client/projets',
+        matchPrefixes: ['/client/projets'],
+        action: 'navigate',
+      });
+    }
+    if (hasClientPage('FICHIERS')) {
+      items.push({
+        key: 'client-fichiers',
+        label: 'Mes Fichiers',
+        icon: <HiOutlineCollection size={20} />,
+        path: '/client/fichiers',
+        matchPrefixes: ['/client/fichiers'],
+        action: 'navigate',
+      });
+    }
+    return items;
+  }, [isClient, clientPages.join(',')]);
 
   useEffect(() => {
     if (!user?.employeId || !userPermissions.includes('VIEW_MEDIA_PLAN')) {
@@ -370,12 +417,20 @@ const Sidebar: React.FC = () => {
               };
             }
 
-            if (item.key === 'mes-projets' && recentAssignedProjects.length > 0) {
+            if (item.key === 'mes-projets' && assignedProjects.length > 0) {
+              const clientMap = new Map<number | null, { id: number | null; nom: string }>();
+              assignedProjects.forEach(p => {
+                const cid = p.clientId || null;
+                if (!clientMap.has(cid)) {
+                  clientMap.set(cid, { id: cid, nom: p.clientNom || 'Projets Internes' });
+                }
+              });
+
               return {
                 ...item,
-                children: recentAssignedProjects.map((project) => ({
-                  label: project.nom,
-                  path: `/mes-taches?projectId=${project.id}`,
+                children: Array.from(clientMap.values()).map((client) => ({
+                  label: client.nom,
+                  path: client.id ? `/mes-taches?clientId=${client.id}` : '/mes-taches?clientId=internal',
                 })),
               };
             }
@@ -479,18 +534,18 @@ const Sidebar: React.FC = () => {
       title.includes('planification_projet') ||
       title.includes('planification projet') ||
       title.includes('reunion') ||
-      title.includes('réunion');
+      title.includes('rÃ©union');
 
     const isRhRelated =
       Boolean(notif.demandeId) ||
       title.includes('demande') ||
       title.includes('employe') ||
-      title.includes('employé') ||
+      title.includes('employÃ©') ||
       title.includes('subordonne') ||
-      title.includes('subordonné') ||
+      title.includes('subordonnÃ©') ||
       title.includes('profil') ||
       title.includes('competence') ||
-      title.includes('compétence') ||
+      title.includes('compÃ©tence') ||
       title.includes('document');
 
     if (isPlanningOrMeeting) {
@@ -507,34 +562,34 @@ const Sidebar: React.FC = () => {
   const getNotificationIcon = (title: string) => {
     const value = title.toLowerCase();
 
-    if (value.includes('reunion') || value.includes('réunion')) {
+    if (value.includes('reunion') || value.includes('rÃ©union')) {
       return { icon: HiOutlineCalendar, bg: 'bg-indigo-50 dark:bg-indigo-500/10', color: 'text-indigo-500' };
     }
-    if (value.includes('nouvel employe') || value.includes('nouvel employé') || value.includes('nouveau subordonne') || value.includes('nouveau subordonné')) {
+    if (value.includes('nouvel employe') || value.includes('nouvel employÃ©') || value.includes('nouveau subordonne') || value.includes('nouveau subordonnÃ©')) {
       return { icon: HiOutlineUserAdd, bg: 'bg-brand-50 dark:bg-brand-500/10', color: 'text-brand-500' };
     }
-    if (value.includes('mise a jour') || value.includes('mise à jour') || value.includes('mis a jour') || value.includes('mis à jour')) {
+    if (value.includes('mise a jour') || value.includes('mise Ã  jour') || value.includes('mis a jour') || value.includes('mis Ã  jour')) {
       return { icon: HiOutlinePencilAlt, bg: 'bg-warning-50 dark:bg-warning-500/10', color: 'text-warning-500' };
     }
-    if (value.includes('supprime') || value.includes('supprimé') || value.includes('retir') || value.includes('reaffecte') || value.includes('réaffecté')) {
+    if (value.includes('supprime') || value.includes('supprimÃ©') || value.includes('retir') || value.includes('reaffecte') || value.includes('rÃ©affectÃ©')) {
       return { icon: HiOutlineTrash, bg: 'bg-error-50 dark:bg-error-500/10', color: 'text-error-500' };
     }
     if (value.includes('document')) {
       return { icon: HiOutlineDocumentReport, bg: 'bg-blue-50 dark:bg-blue-500/10', color: 'text-blue-500' };
     }
-    if (value.includes('competence') || value.includes('compétence')) {
+    if (value.includes('competence') || value.includes('compÃ©tence')) {
       return { icon: HiOutlineStar, bg: 'bg-purple-50 dark:bg-purple-500/10', color: 'text-purple-500' };
     }
     if (value.includes('photo')) {
       return { icon: HiOutlinePhotograph, bg: 'bg-cyan-50 dark:bg-cyan-500/10', color: 'text-cyan-500' };
     }
-    if (value.includes('conge') || value.includes('congé') || value.includes('solde')) {
+    if (value.includes('conge') || value.includes('congÃ©') || value.includes('solde')) {
       return { icon: HiOutlineCalendar, bg: 'bg-teal-50 dark:bg-teal-500/10', color: 'text-teal-500' };
     }
-    if (value.includes('refusee') || value.includes('refusée')) {
+    if (value.includes('refusee') || value.includes('refusÃ©e')) {
       return { icon: HiOutlineXCircle, bg: 'bg-error-50 dark:bg-error-500/10', color: 'text-error-500' };
     }
-    if (value.includes('approuvee') || value.includes('approuvée') || value.includes('acceptee') || value.includes('acceptée')) {
+    if (value.includes('approuvee') || value.includes('approuvÃ©e') || value.includes('acceptee') || value.includes('acceptÃ©e')) {
       return { icon: HiOutlineCheckCircle, bg: 'bg-success-50 dark:bg-success-500/10', color: 'text-success-500' };
     }
 
@@ -577,43 +632,65 @@ const Sidebar: React.FC = () => {
         <div className="pc-rail-divider" />
 
         <div className="pc-rail-list">
-          {visibleRailMain.map((item) => {
-            const active = isRailItemActive(item, location.pathname);
-            return (
-              <button
-                key={item.key}
-                type="button"
-                className={`pc-icon-btn ${active ? 'active' : ''}`}
-                onClick={() => handleRailClick(item)}
-                aria-label={item.label}
-              >
-                <span className="pc-icon-wrapper">{item.icon}</span>
-                <span className="iconLabel">{item.label}</span>
-                {item.badge && <span className="pc-icon-badge">{item.badge}</span>}
-              </button>
-            );
-          })}
+          {/* Client portal: show enabled client pages */}
+          {isClient ? (
+            clientRailItems.map((item) => {
+              const active = isRailItemActive(item, location.pathname);
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`pc-icon-btn ${active ? 'active' : ''}`}
+                  onClick={() => handleRailClick(item)}
+                  aria-label={item.label}
+                >
+                  <span className="pc-icon-wrapper">{item.icon}</span>
+                  <span className="iconLabel">{item.label}</span>
+                </button>
+              );
+            })
+          ) : (
+            visibleRailMain.map((item) => {
+              const active = isRailItemActive(item, location.pathname);
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`pc-icon-btn ${active ? 'active' : ''}`}
+                  onClick={() => handleRailClick(item)}
+                  aria-label={item.label}
+                >
+                  <span className="pc-icon-wrapper">{item.icon}</span>
+                  <span className="iconLabel">{item.label}</span>
+                  {item.badge && <span className="pc-icon-badge">{item.badge}</span>}
+                </button>
+              );
+            })
+          )}
         </div>
 
         <div className="pc-rail-divider" />
 
-        <div className="pc-rail-list">
-          {visibleRailSecondary.map((item) => {
-            const active = isRailItemActive(item, location.pathname);
-            return (
-              <button
-                key={item.key}
-                type="button"
-                className={`pc-icon-btn ${active ? 'active' : ''}`}
-                onClick={() => handleRailClick(item)}
-                aria-label={item.label}
-              >
-                <span className="pc-icon-wrapper">{item.icon}</span>
-                <span className="iconLabel">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Secondary items: hidden for clients */}
+        {!isClient && (
+          <div className="pc-rail-list">
+            {visibleRailSecondary.map((item) => {
+              const active = isRailItemActive(item, location.pathname);
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`pc-icon-btn ${active ? 'active' : ''}`}
+                  onClick={() => handleRailClick(item)}
+                  aria-label={item.label}
+                >
+                  <span className="pc-icon-wrapper">{item.icon}</span>
+                  <span className="iconLabel">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="pc-rail-spacer" />
 
@@ -662,9 +739,8 @@ const Sidebar: React.FC = () => {
                     <button
                       key={notif.id}
                       onClick={() => handleNotificationClick(notif)}
-                      className={`flex w-full items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
-                        !notif.lu ? 'bg-brand-50/50 dark:bg-brand-500/5' : ''
-                      }`}
+                      className={`flex w-full items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 ${!notif.lu ? 'bg-brand-50/50 dark:bg-brand-500/5' : ''
+                        }`}
                     >
                       {(() => {
                         const { icon: Icon, bg, color } = getNotificationIcon(notif.titre || '');
@@ -727,14 +803,15 @@ const Sidebar: React.FC = () => {
 
           {showAccountMenu && (
             <div className="pc-account-popup">
-              {/* Header - Profile Section */}
               <div className="pc-account-popup-header">
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex flex-1 items-center gap-3">
                   {user?.imageUrl ? (
-                    <img src={`${API_BASE}${user.imageUrl}`} alt="" className="h-11 w-11 rounded-full object-cover flex-shrink-0" />
+                    <img src={`${API_BASE}${user.imageUrl}`} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
                   ) : (
-                    <div className="h-11 w-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
-                         style={{background: 'linear-gradient(135deg, #E86A2E, #F5A87A)'}}>
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                      style={{ background: 'linear-gradient(135deg, #E86A2E, #F5A87A)' }}
+                    >
                       {userInitials}
                     </div>
                   )}
@@ -746,9 +823,8 @@ const Sidebar: React.FC = () => {
                 </div>
               </div>
 
-              {/* Menu Items */}
               <div className="pc-account-popup-divider" />
-              
+
               <button
                 onClick={() => {
                   setShowAccountMenu(false);
@@ -762,9 +838,8 @@ const Sidebar: React.FC = () => {
 
               <div className="pc-account-popup-divider" />
 
-              {/* Theme Section */}
-              <div className="pc-account-popup-section-label">Thème</div>
-              
+              <div className="pc-account-popup-section-label">Theme</div>
+
               <div className="pc-account-popup-theme-options">
                 <button
                   onClick={() => setTheme('light')}
@@ -772,7 +847,7 @@ const Sidebar: React.FC = () => {
                   title="Mode clair"
                 >
                   <HiOutlineSun size={18} />
-                  <span>Léger</span>
+                  <span>Leger</span>
                 </button>
                 <button
                   onClick={() => setTheme('dark')}
@@ -794,7 +869,7 @@ const Sidebar: React.FC = () => {
                 className="pc-account-popup-item pc-account-popup-item-logout"
               >
                 <HiOutlineLogout size={18} />
-                <span>Se déconnecter</span>
+                <span>Se deconnecter</span>
               </button>
             </div>
           )}

@@ -3,6 +3,7 @@ package com.antigone.rh.controller;
 import com.antigone.rh.dto.ApiResponse;
 import com.antigone.rh.dto.ClientDTO;
 import com.antigone.rh.service.ClientService;
+import com.antigone.rh.service.ClientViewerDriveService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
@@ -22,6 +23,7 @@ public class ClientController {
 
     private final ClientService clientService;
     private final GoogleDriveService googleDriveService;
+    private final ClientViewerDriveService clientViewerDriveService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ClientDTO>>> getAll() {
@@ -43,6 +45,35 @@ public class ClientController {
         return ResponseEntity.ok(ApiResponse.ok("Dossier Drive non trouvé", null));
     }
 
+    /**
+     * Returns the client's root Drive folder link using the viewer-only service
+     * account.
+     * Used by the client portal so clients can view their folder without edit
+     * access.
+     */
+    @GetMapping("/{id}/client-portal-drive-link")
+    public ResponseEntity<ApiResponse<String>> getClientPortalDriveLink(@PathVariable Long id) {
+        ClientDTO dto = clientService.getById(id);
+        String link = clientViewerDriveService.getClientFolderLink(dto.getNom());
+        if (link != null) {
+            return ResponseEntity.ok(ApiResponse.ok("Lien Drive récupéré", link));
+        }
+        return ResponseEntity.ok(ApiResponse.ok("Dossier Drive non trouvé", null));
+    }
+
+    /**
+     * Returns all files inside the client's Drive folder grouped by month.
+     * Used by the client portal "Mes Fichiers" page.
+     */
+    @GetMapping("/{id}/drive-files")
+    public ResponseEntity<ApiResponse<java.util.List<com.antigone.rh.dto.MonthFilesDTO>>> getDriveFiles(
+            @PathVariable Long id) {
+        ClientDTO dto = clientService.getById(id);
+        java.util.List<com.antigone.rh.dto.MonthFilesDTO> grouped = clientViewerDriveService
+                .getClientFilesGroupedByMonth(dto.getNom());
+        return ResponseEntity.ok(ApiResponse.ok("Fichiers Drive récupérés", grouped));
+    }
+
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ClientDTO>> create(
             @RequestParam("nom") String nom,
@@ -55,11 +86,12 @@ public class ClientController {
             @RequestParam(value = "contactEmail", required = false) String contactEmail,
             @RequestParam(value = "contactTelephone", required = false) String contactTelephone,
             @RequestParam(value = "createAccount", defaultValue = "false") boolean createAccount,
+            @RequestParam(value = "clientPages", required = false) String clientPages,
             @RequestParam(value = "file", required = false) MultipartFile file) {
         try {
             ClientDTO dto = clientService.create(nom, email, telephone, adresse, notes,
                     contactNom, contactPoste, contactEmail, contactTelephone,
-                    createAccount, file);
+                    createAccount, clientPages, file);
             return ResponseEntity.ok(ApiResponse.ok("Client créé", dto));
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -80,11 +112,12 @@ public class ClientController {
             @RequestParam(value = "contactEmail", required = false) String contactEmail,
             @RequestParam(value = "contactTelephone", required = false) String contactTelephone,
             @RequestParam(value = "regeneratePassword", defaultValue = "false") boolean regeneratePassword,
+            @RequestParam(value = "clientPages", required = false) String clientPages,
             @RequestParam(value = "file", required = false) MultipartFile file) {
         try {
             ClientDTO dto = clientService.update(id, nom, email, telephone, adresse, notes,
                     contactNom, contactPoste, contactEmail, contactTelephone,
-                    regeneratePassword, file);
+                    regeneratePassword, clientPages, file);
             return ResponseEntity.ok(ApiResponse.ok("Client modifié", dto));
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

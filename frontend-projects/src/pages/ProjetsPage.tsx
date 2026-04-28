@@ -838,7 +838,7 @@ const ProjetsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="mb-2 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Chefs de projet</label>
+            <label className="mb-2 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Chefs des department</label>
             <div className="max-h-44 overflow-y-auto space-y-1.5 rounded-lg border border-gray-200 p-2 dark:border-gray-700">
               {managers.map(m => {
                 const sel = editChefIds.includes(m.id);

@@ -35,11 +35,13 @@ interface ClientForm {
     contactPoste: string;
     contactEmail: string;
     contactTelephone: string;
+    clientPages: string[];
 }
 
 const emptyForm: ClientForm = {
     nom: '', email: '', telephone: '', adresse: '', notes: '',
     contactNom: '', contactPoste: '', contactEmail: '', contactTelephone: '',
+    clientPages: ['MEDIA_PLANS', 'PROJETS', 'FICHIERS'],
 };
 
 /* ─── Page ─────────────────────────────────────────────────────────────────── */
@@ -124,6 +126,7 @@ const ClientsPage: React.FC = () => {
             contactPoste: c.contactPoste ?? '',
             contactEmail: c.contactEmail ?? '',
             contactTelephone: c.contactTelephone ?? '',
+            clientPages: c.clientPages ? c.clientPages.split(',').map((s: string) => s.trim()) : [],
         });
         setSelectedFile(null);
         setError(null);
@@ -169,6 +172,7 @@ const ClientsPage: React.FC = () => {
             if (editing) {
                 const res = await clientService.updateClient(editing.id, {
                     ...form,
+                    clientPages: form.clientPages.join(','),
                     regeneratePassword,
                     file: selectedFile ?? undefined,
                 });
@@ -180,6 +184,7 @@ const ClientsPage: React.FC = () => {
             } else {
                 const res = await clientService.createClient({
                     ...form,
+                    clientPages: form.clientPages.join(','),
                     createAccount,
                     file: selectedFile ?? undefined,
                 });
@@ -222,11 +227,10 @@ const ClientsPage: React.FC = () => {
         <button
             type="button"
             onClick={() => setActiveSection(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-theme-sm font-medium transition-all ${
-                activeSection === id
-                    ? 'bg-brand-500 text-white shadow-sm'
-                    : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-theme-sm font-medium transition-all ${activeSection === id
+                ? 'bg-brand-500 text-white shadow-sm'
+                : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400'
+                }`}
         >
             {icon} {label}
         </button>
@@ -295,7 +299,7 @@ const ClientsPage: React.FC = () => {
                                             </div>
                                             <div>
                                                 <p className="font-semibold text-gray-800 dark:text-white">{c.nom}</p>
-                                                {c.adresse && <p className="text-theme-xs text-gray-400 flex items-center gap-1 mt-0.5"><HiOutlineLocationMarker size={11}/> {c.adresse}</p>}
+                                                {c.adresse && <p className="text-theme-xs text-gray-400 flex items-center gap-1 mt-0.5"><HiOutlineLocationMarker size={11} /> {c.adresse}</p>}
                                             </div>
                                         </div>
                                     </td>
@@ -303,8 +307,8 @@ const ClientsPage: React.FC = () => {
                                     {/* Coordonnées */}
                                     <td className="px-4 py-3.5">
                                         <div className="space-y-0.5">
-                                            {c.email && <p className="text-theme-xs text-gray-500 flex items-center gap-1"><HiOutlineMail size={12}/> {c.email}</p>}
-                                            {c.telephone && <p className="text-theme-xs text-gray-500 flex items-center gap-1"><HiOutlinePhone size={12}/> {c.telephone}</p>}
+                                            {c.email && <p className="text-theme-xs text-gray-500 flex items-center gap-1"><HiOutlineMail size={12} /> {c.email}</p>}
+                                            {c.telephone && <p className="text-theme-xs text-gray-500 flex items-center gap-1"><HiOutlinePhone size={12} /> {c.telephone}</p>}
                                             {!c.email && !c.telephone && <span className="text-theme-xs text-gray-300 italic">—</span>}
                                         </div>
                                     </td>
@@ -314,7 +318,7 @@ const ClientsPage: React.FC = () => {
                                         {c.contactNom ? (
                                             <div>
                                                 <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                                                    <HiOutlineUser size={12}/> {c.contactNom}
+                                                    <HiOutlineUser size={12} /> {c.contactNom}
                                                 </p>
                                                 {c.contactPoste && <p className="text-theme-xs text-gray-400">{c.contactPoste}</p>}
                                             </div>
@@ -328,7 +332,7 @@ const ClientsPage: React.FC = () => {
                                         {c.hasAccount ? (
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-theme-xs font-medium text-green-600 dark:bg-green-500/10 dark:text-green-400">
-                                                    <HiOutlineCheck size={11}/> Actif
+                                                    <HiOutlineCheck size={11} /> Actif
                                                 </span>
                                                 {c.loginClient && <span className="text-theme-xs text-gray-400 font-mono">{c.loginClient}</span>}
                                             </div>
@@ -408,9 +412,9 @@ const ClientsPage: React.FC = () => {
 
                     {/* Tabs */}
                     <div className="flex items-center gap-2 p-1 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                        <SectionTab id="info" label="Informations" icon={<HiOutlineOfficeBuilding size={15}/>} />
-                        <SectionTab id="contact" label="Contact principal" icon={<HiOutlineUser size={15}/>} />
-                        <SectionTab id="account" label="Compte client" icon={<HiOutlineLockClosed size={15}/>} />
+                        <SectionTab id="info" label="Informations" icon={<HiOutlineOfficeBuilding size={15} />} />
+                        <SectionTab id="contact" label="Contact principal" icon={<HiOutlineUser size={15} />} />
+                        <SectionTab id="account" label="Compte client" icon={<HiOutlineLockClosed size={15} />} />
                     </div>
 
                     {/* ── Informations ── */}
@@ -423,7 +427,7 @@ const ClientsPage: React.FC = () => {
                             <div>
                                 <label className={labelClass}>Email</label>
                                 <div className="relative">
-                                    <HiOutlineMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                                    <HiOutlineMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                     <input type="email" value={form.email} onChange={f('email')} className={inputClass + ' pl-10' + (form.email && !isValidEmail(form.email) ? ' border-error-400 focus:border-error-400 focus:ring-error-500/10' : '')} placeholder="email@client.com" />
                                 </div>
                                 {form.email && !isValidEmail(form.email) && (
@@ -433,7 +437,7 @@ const ClientsPage: React.FC = () => {
                             <div>
                                 <label className={labelClass}>Téléphone</label>
                                 <div className="relative">
-                                    <HiOutlinePhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                                    <HiOutlinePhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                     <input type="tel" value={form.telephone} onChange={handlePhone('telephone')} className={inputClass + ' pl-10' + (form.telephone && !isValidPhone(form.telephone) ? ' border-error-400 focus:border-error-400 focus:ring-error-500/10' : '')} placeholder="Ex: +33 6 12 34 56 78" />
                                 </div>
                                 {form.telephone && !isValidPhone(form.telephone) && (
@@ -443,7 +447,7 @@ const ClientsPage: React.FC = () => {
                             <div className="col-span-2">
                                 <label className={labelClass}>Adresse</label>
                                 <div className="relative">
-                                    <HiOutlineLocationMarker className="absolute left-3 top-3 text-gray-400" size={16}/>
+                                    <HiOutlineLocationMarker className="absolute left-3 top-3 text-gray-400" size={16} />
                                     <textarea value={form.adresse} onChange={f('adresse')} rows={2}
                                         className="w-full rounded-lg border border-gray-300 bg-transparent pl-10 pr-4 py-2.5 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 resize-none"
                                         placeholder="Adresse du client..." />
@@ -452,7 +456,7 @@ const ClientsPage: React.FC = () => {
                             <div className="col-span-2">
                                 <label className={labelClass}>Notes</label>
                                 <div className="relative">
-                                    <HiOutlineAnnotation className="absolute left-3 top-3 text-gray-400" size={16}/>
+                                    <HiOutlineAnnotation className="absolute left-3 top-3 text-gray-400" size={16} />
                                     <textarea value={form.notes} onChange={f('notes')} rows={3}
                                         className="w-full rounded-lg border border-gray-300 bg-transparent pl-10 pr-4 py-2.5 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 resize-none"
                                         placeholder="Notes ou remarques..." />
@@ -483,7 +487,7 @@ const ClientsPage: React.FC = () => {
                                 <div className="col-span-2">
                                     <label className={labelClass}>Nom</label>
                                     <div className="relative">
-                                        <HiOutlineUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                                        <HiOutlineUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                         <input type="text" value={form.contactNom} onChange={f('contactNom')} className={inputClass + ' pl-10'} placeholder="Nom du contact" />
                                     </div>
                                 </div>
@@ -494,7 +498,7 @@ const ClientsPage: React.FC = () => {
                                 <div>
                                     <label className={labelClass}>Email</label>
                                     <div className="relative">
-                                        <HiOutlineMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                                        <HiOutlineMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                         <input type="email" value={form.contactEmail} onChange={f('contactEmail')} className={inputClass + ' pl-10' + (form.contactEmail && !isValidEmail(form.contactEmail) ? ' border-error-400 focus:border-error-400 focus:ring-error-500/10' : '')} placeholder="email@contact.com" />
                                     </div>
                                     {form.contactEmail && !isValidEmail(form.contactEmail) && (
@@ -504,7 +508,7 @@ const ClientsPage: React.FC = () => {
                                 <div>
                                     <label className={labelClass}>Téléphone</label>
                                     <div className="relative">
-                                        <HiOutlinePhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
+                                        <HiOutlinePhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                         <input type="tel" value={form.contactTelephone} onChange={handlePhone('contactTelephone')} className={inputClass + ' pl-10' + (form.contactTelephone && !isValidPhone(form.contactTelephone) ? ' border-error-400 focus:border-error-400 focus:ring-error-500/10' : '')} placeholder="Ex: +1 202 555 0100" />
                                     </div>
                                     {form.contactTelephone && !isValidPhone(form.contactTelephone) && (
@@ -538,7 +542,7 @@ const ClientsPage: React.FC = () => {
                                     {createAccount && (
                                         <div className="ml-7 rounded-lg bg-brand-50 dark:bg-brand-500/10 px-4 py-3">
                                             <p className="text-theme-xs text-brand-600 dark:text-brand-400 flex items-center gap-2">
-                                                <HiOutlineLockClosed size={14}/>
+                                                <HiOutlineLockClosed size={14} />
                                                 Le login sera généré à partir du nom du client. Le mot de passe sera aléatoire et affiché une seule fois.
                                             </p>
                                         </div>
@@ -551,7 +555,7 @@ const ClientsPage: React.FC = () => {
                                         <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 dark:bg-green-500/10">
-                                                    <HiOutlineCheck size={18} className="text-green-500"/>
+                                                    <HiOutlineCheck size={18} className="text-green-500" />
                                                 </div>
                                                 <div>
                                                     <p className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">Compte actif</p>
@@ -568,7 +572,7 @@ const ClientsPage: React.FC = () => {
                                                     />
                                                     <div>
                                                         <p className="text-theme-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                                            <HiOutlineRefresh size={14}/> Régénérer le mot de passe
+                                                            <HiOutlineRefresh size={14} /> Régénérer le mot de passe
                                                         </p>
                                                         <p className="text-theme-xs text-gray-400 mt-0.5">
                                                             Un nouveau mot de passe aléatoire sera créé et affiché après la sauvegarde.
@@ -576,10 +580,35 @@ const ClientsPage: React.FC = () => {
                                                     </div>
                                                 </label>
                                             </div>
+
+                                            {/* SÉLECTION DES MODULES ACCESS (MODIFICATION) */}
+                                            <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
+                                                <p className="text-theme-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Modules accessibles</p>
+                                                <div className="space-y-2">
+                                                    {[
+                                                        { id: 'MEDIA_PLANS', label: 'Mes Media Plans' },
+                                                        { id: 'PROJETS', label: 'Mes Projets' },
+                                                        { id: 'FICHIERS', label: 'Mes Fichiers' }
+                                                    ].map(mod => (
+                                                        <label key={mod.id} className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={form.clientPages.includes(mod.id)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) setForm({ ...form, clientPages: [...form.clientPages, mod.id] });
+                                                                    else setForm({ ...form, clientPages: form.clientPages.filter(p => p !== mod.id) });
+                                                                }}
+                                                                className="h-4 w-4 rounded text-brand-500 focus:ring-brand-500 border-gray-300"
+                                                            />
+                                                            <span className="text-theme-sm text-gray-700 dark:text-gray-300">{mod.label}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-4 text-center text-gray-400">
-                                            <HiOutlineLockClosed size={24} className="mx-auto mb-2 opacity-40"/>
+                                            <HiOutlineLockClosed size={24} className="mx-auto mb-2 opacity-40" />
                                             <p className="text-theme-sm">Ce client n'a pas encore de compte.</p>
                                             <p className="text-theme-xs mt-1">Supprimez et recréez le client pour lui attribuer un compte.</p>
                                         </div>
@@ -618,7 +647,7 @@ const ClientsPage: React.FC = () => {
                 <div className="space-y-5 p-1">
                     <div className="flex items-center gap-4 p-4 rounded-xl bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100 dark:bg-green-500/20">
-                            <HiOutlineCheck size={24} className="text-green-600 dark:text-green-400"/>
+                            <HiOutlineCheck size={24} className="text-green-600 dark:text-green-400" />
                         </div>
                         <div>
                             <p className="text-theme-sm font-semibold text-green-700 dark:text-green-400">Compte créé avec succès !</p>
@@ -684,9 +713,9 @@ const ClientsPage: React.FC = () => {
 
                         {/* Coordonnées */}
                         <Section title="Coordonnées">
-                            <InfoRow icon={<HiOutlineMail size={15}/>} label="Email" value={viewing.email} />
-                            <InfoRow icon={<HiOutlinePhone size={15}/>} label="Téléphone" value={viewing.telephone} />
-                            <InfoRow icon={<HiOutlineLocationMarker size={15}/>} label="Adresse" value={viewing.adresse} />
+                            <InfoRow icon={<HiOutlineMail size={15} />} label="Email" value={viewing.email} />
+                            <InfoRow icon={<HiOutlinePhone size={15} />} label="Téléphone" value={viewing.telephone} />
+                            <InfoRow icon={<HiOutlineLocationMarker size={15} />} label="Adresse" value={viewing.adresse} />
                         </Section>
 
                         {viewing.notes && (
@@ -699,10 +728,10 @@ const ClientsPage: React.FC = () => {
 
                         {(viewing.contactNom || viewing.contactEmail || viewing.contactTelephone) && (
                             <Section title="Contact principal">
-                                <InfoRow icon={<HiOutlineUser size={15}/>} label="Nom" value={viewing.contactNom} />
-                                <InfoRow icon={<HiOutlineOfficeBuilding size={15}/>} label="Poste" value={viewing.contactPoste} />
-                                <InfoRow icon={<HiOutlineMail size={15}/>} label="Email" value={viewing.contactEmail} />
-                                <InfoRow icon={<HiOutlinePhone size={15}/>} label="Téléphone" value={viewing.contactTelephone} />
+                                <InfoRow icon={<HiOutlineUser size={15} />} label="Nom" value={viewing.contactNom} />
+                                <InfoRow icon={<HiOutlineOfficeBuilding size={15} />} label="Poste" value={viewing.contactPoste} />
+                                <InfoRow icon={<HiOutlineMail size={15} />} label="Email" value={viewing.contactEmail} />
+                                <InfoRow icon={<HiOutlinePhone size={15} />} label="Téléphone" value={viewing.contactTelephone} />
                             </Section>
                         )}
 
@@ -711,14 +740,14 @@ const ClientsPage: React.FC = () => {
                             {viewing.hasAccount ? (
                                 <>
                                     <div className="flex items-center gap-3 px-4 py-2.5">
-                                        <span className="text-gray-400 shrink-0"><HiOutlineLockClosed size={15}/></span>
+                                        <span className="text-gray-400 shrink-0"><HiOutlineLockClosed size={15} /></span>
                                         <span className="text-theme-xs text-gray-500 w-24 shrink-0">Statut</span>
                                         <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-theme-xs font-medium text-green-600 dark:bg-green-500/10 dark:text-green-400">
-                                            <HiOutlineCheck size={11}/> Actif
+                                            <HiOutlineCheck size={11} /> Actif
                                         </span>
                                     </div>
-                                    <InfoRow icon={<HiOutlineUser size={15}/>} label="Login" value={viewing.loginClient} />
-                                    <InfoRow icon={<HiOutlineLockClosed size={15}/>} label="Mot de passe" value="••••••••" />
+                                    <InfoRow icon={<HiOutlineUser size={15} />} label="Login" value={viewing.loginClient} />
+                                    <InfoRow icon={<HiOutlineLockClosed size={15} />} label="Mot de passe" value="••••••••" />
                                 </>
                             ) : (
                                 <div className="px-4 py-3">
@@ -734,9 +763,9 @@ const ClientsPage: React.FC = () => {
                                         onClick={() => openFile(viewing)}
                                         className="flex items-center gap-2 text-brand-600 hover:text-brand-700 text-theme-sm font-medium hover:underline"
                                     >
-                                        <HiOutlineDocumentText size={16}/>
+                                        <HiOutlineDocumentText size={16} />
                                         {viewing.fileName}
-                                        <HiOutlineDownload size={14}/>
+                                        <HiOutlineDownload size={14} />
                                     </button>
                                 </div>
                             </Section>
@@ -745,7 +774,7 @@ const ClientsPage: React.FC = () => {
                         <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
                             {canEdit && (
                                 <Button size="sm" variant="outline" onClick={() => { setShowViewModal(false); openEdit(viewing); }}>
-                                    <HiOutlinePencil size={14} className="mr-1"/> Modifier
+                                    <HiOutlinePencil size={14} className="mr-1" /> Modifier
                                 </Button>
                             )}
                             <Button size="sm" onClick={() => setShowViewModal(false)}>Fermer</Button>
