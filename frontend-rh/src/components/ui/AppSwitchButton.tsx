@@ -47,9 +47,9 @@ const baseButtonStyle: React.CSSProperties = {
 };
 
 const activeButtonStyle: React.CSSProperties = {
-  background: 'linear-gradient(135deg, #E86A2E 0%, #F5A87A 100%)',
+  background: 'linear-gradient(135deg, #683b77 0%, #ab78c3 100%)',
   color: '#ffffff',
-  boxShadow: '0 8px 18px rgba(232, 106, 46, 0.28)',
+  boxShadow: '0 8px 18px rgba(104, 59, 119, 0.28)',
   transform: 'translateY(-1px)'
 };
 

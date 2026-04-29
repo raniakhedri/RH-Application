@@ -150,27 +150,6 @@ const CalendrierProjetsAdminPage: React.FC = () => {
 
   return (
     <div>
-      {/* ── Tab Bar ── */}
-      {tabs.length > 1 && (
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6">
-          <div className="max-w-6xl mx-auto flex gap-1">
-            {tabs.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all
-                  ${activeTab === tab.key
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'}`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ── Tab Content ── */}
       {activeTab === 'tournage' && hasAccess && (
         <CalendrierCore

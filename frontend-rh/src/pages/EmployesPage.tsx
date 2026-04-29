@@ -1365,7 +1365,7 @@ const colorMap: Record<string, string> = {
   green: 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400',
   blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400',
   purple: 'bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400',
-  orange: 'bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400',
+  orange: 'bg-brand- text-brand- dark:bg-brand-/10 dark:text-brand-',
   cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-400',
 };
 
@@ -1377,7 +1377,7 @@ const StatBox: React.FC<{ label: string; value: string | number; color: string }
 );
 
 const barColors = [
-  'bg-brand-500', 'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500',
+  'bg-brand-500', 'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-brand-',
   'bg-cyan-500', 'bg-pink-500', 'bg-yellow-500', 'bg-red-500', 'bg-indigo-500',
 ];
 

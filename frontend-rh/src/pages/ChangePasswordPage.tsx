@@ -32,7 +32,7 @@ const ChangePasswordPage: React.FC = () => {
 
   const strength = getPasswordStrength(newPassword);
   const strengthLabel = ['', 'Très faible', 'Faible', 'Moyen', 'Fort', 'Très fort'][strength] || '';
-  const strengthColor = ['', 'bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-400', 'bg-green-600'][strength] || '';
+  const strengthColor = ['', 'bg-red-500', 'bg-brand-', 'bg-yellow-500', 'bg-green-400', 'bg-green-600'][strength] || '';
 
   const isValid = oldPassword.length > 0 && newPassword.length >= 8 && newPassword === confirmPassword;
 

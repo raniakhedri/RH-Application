@@ -250,7 +250,7 @@ const DashboardRHPage: React.FC = () => {
           icon={<HiOutlineUsers size={22} />}
           subtitle={`+${stats?.nouveauxCeMois ?? 0} ce mois`}
           subtitleType="positive"
-          iconBg="bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400"
+          iconBg="bg-brand- text-brand- dark:bg-brand-/20 dark:text-brand-"
         />
         <KPICard
           title="Tâches"
@@ -285,7 +285,7 @@ const DashboardRHPage: React.FC = () => {
         <MiniCard label="Projets en cours" value={projetsEnCours} icon={<HiOutlineBriefcase size={16} />} color="text-brand-600 dark:text-brand-400" bg="bg-brand-50 dark:bg-brand-500/10" />
         <MiniCard label="Équipes" value={equipes.length} icon={<HiOutlineUserGroup size={16} />} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-50 dark:bg-indigo-500/10" />
         <MiniCard label="Tâches en retard" value={tachesEnRetard} icon={<HiOutlineExclamation size={16} />} color="text-red-600 dark:text-red-400" bg="bg-red-50 dark:bg-red-500/10" />
-        <MiniCard label="Retards aujourd'hui" value={retardsAujourdhui} icon={<HiOutlineClock size={16} />} color="text-orange-600 dark:text-orange-400" bg="bg-orange-50 dark:bg-orange-500/10" />
+        <MiniCard label="Retards aujourd'hui" value={retardsAujourdhui} icon={<HiOutlineClock size={16} />} color="text-brand- dark:text-brand-" bg="bg-brand- dark:bg-brand-/10" />
       </div>
 
       {/* =========== SECTION 2 : EFFECTIFS & RH =========== */}
@@ -597,7 +597,7 @@ const DashboardRHPage: React.FC = () => {
         <MiniCard label="Présents" value={presentsAujourdhui} icon={<HiOutlineStatusOnline size={16} />} color="text-green-600 dark:text-green-400" bg="bg-green-50 dark:bg-green-500/10" />
         <MiniCard label="Agents actifs" value={agentsActifs} icon={<HiOutlineDesktopComputer size={16} />} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-500/10" />
         <MiniCard label="Sur réseau" value={surReseau} icon={<HiOutlineStatusOnline size={16} />} color="text-teal-600 dark:text-teal-400" bg="bg-teal-50 dark:bg-teal-500/10" />
-        <MiniCard label="Retards" value={retardsAujourdhui} icon={<HiOutlineClock size={16} />} color="text-orange-600 dark:text-orange-400" bg="bg-orange-50 dark:bg-orange-500/10" />
+        <MiniCard label="Retards" value={retardsAujourdhui} icon={<HiOutlineClock size={16} />} color="text-brand- dark:text-brand-" bg="bg-brand- dark:bg-brand-/10" />
         <MiniCard label="Temps actif moy." value={`${tempsActifMoyen}m`} icon={<HiOutlineViewBoards size={16} />} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-50 dark:bg-indigo-500/10" />
       </div>
 

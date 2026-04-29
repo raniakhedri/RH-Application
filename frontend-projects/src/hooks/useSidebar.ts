@@ -4,9 +4,11 @@ interface SidebarContextType {
   isExpanded: boolean;
   isMobileOpen: boolean;
   isHovered: boolean;
+  isRailVisible: boolean;
   openSubmenu: string | null;
   toggleSidebar: () => void;
   toggleMobileSidebar: () => void;
+  toggleRail: () => void;
   setIsHovered: (hovered: boolean) => void;
   setOpenSubmenu: (submenu: string | null) => void;
 }
@@ -17,10 +19,15 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isRailVisible, setIsRailVisible] = useState(true);
   const [openSubmenu, setOpenSubmenuState] = useState<string | null>(null);
 
   const toggleSidebar = useCallback(() => setIsExpanded((prev) => !prev), []);
   const toggleMobileSidebar = useCallback(() => setIsMobileOpen((prev) => !prev), []);
+  const toggleRail = useCallback(() => {
+    setIsRailVisible((prev) => !prev);
+    setIsExpanded(false); // fermer le panel secondaire aussi
+  }, []);
 
   const setOpenSubmenu = useCallback(
     (submenu: string | null) =>
@@ -46,9 +53,11 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
       isExpanded,
       isMobileOpen,
       isHovered,
+      isRailVisible,
       openSubmenu,
       toggleSidebar,
       toggleMobileSidebar,
+      toggleRail,
       setIsHovered,
       setOpenSubmenu,
     },

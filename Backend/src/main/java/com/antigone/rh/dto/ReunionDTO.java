@@ -23,6 +23,7 @@ public class ReunionDTO {
     private LocalTime heureFin;
     private TypeReunion typeReunion;
     private String plateforme;
+    private String lienReunion;
     private String lieu;
     private StatutReunion statut;
 

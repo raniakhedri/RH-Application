@@ -23,7 +23,7 @@ const statutColors: Record<string, string> = {
   PLANIFIE: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
   EN_COURS: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   CLOTURE: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  CLOTURE_INCOMPLET: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+  CLOTURE_INCOMPLET: 'bg-brand-/10 text-brand- dark:text-brand-',
   ANNULE: 'bg-red-500/10 text-red-500 dark:text-red-400',
 };
 const statutLabels: Record<string, string> = {
@@ -145,7 +145,7 @@ const AdminProjectDashboardPage: React.FC = () => {
         {dashboard.alertes.length > 0 && (
           <button
             onClick={() => setShowAlertes(true)}
-            className="relative inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-500/20 hover:shadow-red-500/30 transition-all hover:-translate-y-0.5"
+            className="relative inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-brand- px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-500/20 hover:shadow-red-500/30 transition-all hover:-translate-y-0.5"
           >
             <HiOutlineLightningBolt size={16} />
             {critiques + warnings} Alerte{critiques + warnings > 1 ? 's' : ''}
@@ -188,7 +188,7 @@ const AdminProjectDashboardPage: React.FC = () => {
           value={dashboard.tachesEnRetard}
           icon={dashboard.tachesEnRetard > 0 ? '⚠️' : '✅'}
           sub={dashboard.tachesEnRetard > 0 ? 'Action requise' : 'Tout va bien'}
-          gradient={dashboard.tachesEnRetard > 0 ? 'from-red-500/10 to-orange-500/10 dark:from-red-500/5 dark:to-orange-500/5' : 'from-green-500/10 to-emerald-500/10 dark:from-green-500/5 dark:to-emerald-500/5'}
+          gradient={dashboard.tachesEnRetard > 0 ? 'from-red-500/10 to-brand-/10 dark:from-red-500/5 dark:to-brand-/5' : 'from-green-500/10 to-emerald-500/10 dark:from-green-500/5 dark:to-emerald-500/5'}
           border={dashboard.tachesEnRetard > 0 ? 'border-red-200/50 dark:border-red-500/20' : 'border-green-200/50 dark:border-green-500/20'}
         />
       </div>
@@ -272,7 +272,7 @@ const ClientCard: React.FC<{
 }> = ({ group, isExpanded, onToggle, expandedProjet, onToggleProjet, projetTaches, loadingTaches, onNavigateDetail }) => {
   const progressGradient = group.progression >= 80 ? 'from-emerald-400 to-emerald-500'
     : group.progression >= 50 ? 'from-brand-400 to-brand-500'
-    : group.progression >= 20 ? 'from-amber-400 to-orange-500'
+    : group.progression >= 20 ? 'from-amber-400 to-brand-'
     : 'from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-500';
 
   return (
@@ -284,7 +284,7 @@ const ClientCard: React.FC<{
       {/* Header — always visible */}
       <button onClick={onToggle} className="w-full text-left p-5 flex items-center gap-4 group">
         {/* Client avatar */}
-        <div className={`shrink-0 h-12 w-12 rounded-2xl bg-gradient-to-br ${group.tachesEnRetard > 0 ? 'from-red-400 to-orange-500' : 'from-brand-400 to-violet-500'} flex items-center justify-center text-white font-black text-lg shadow-lg ${group.tachesEnRetard > 0 ? 'shadow-red-500/20' : 'shadow-brand-500/20'}`}>
+        <div className={`shrink-0 h-12 w-12 rounded-2xl bg-gradient-to-br ${group.tachesEnRetard > 0 ? 'from-red-400 to-brand-' : 'from-brand-400 to-violet-500'} flex items-center justify-center text-white font-black text-lg shadow-lg ${group.tachesEnRetard > 0 ? 'shadow-red-500/20' : 'shadow-brand-500/20'}`}>
           {group.clientNom.charAt(0).toUpperCase()}
         </div>
 
@@ -444,7 +444,7 @@ const AlertesDrawer: React.FC<{
     <div className="fixed right-0 top-0 z-[101] h-full w-full max-w-lg bg-white dark:bg-gray-dark shadow-2xl overflow-y-auto animate-slideIn">
       <div className="sticky top-0 z-10 flex items-center justify-between bg-white/90 dark:bg-gray-dark/90 backdrop-blur px-6 py-4 border-b border-gray-100 dark:border-gray-800">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <HiOutlineLightningBolt size={20} className="text-orange-500" />
+          <HiOutlineLightningBolt size={20} className="text-brand-" />
           Alertes ({alertes.length})
         </h2>
         <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">

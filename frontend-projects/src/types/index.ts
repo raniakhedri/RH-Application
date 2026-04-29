@@ -775,6 +775,7 @@ export interface Reunion {
   heureFin: string | null;
   typeReunion: TypeReunion;
   plateforme: string | null;
+  lienReunion: string | null;
   lieu: string | null;
   statut: StatutReunion;
   initiateurId: number;
@@ -795,6 +796,7 @@ export interface ReunionRequest {
   heureFin?: string;
   typeReunion: TypeReunion;
   plateforme?: string;
+  lienReunion?: string;
   lieu?: string;
   participantId?: number;
   clientParticipantId?: number;

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   HiOutlineBell,
@@ -58,10 +58,10 @@ interface RailItemDef {
   badge?: string;
   matchPrefixes?: string[];
   action?: 'navigate' | 'panel';
-  panelMode?: 'projets' | 'media-plan' | 'projects-analytics';
+  panelMode?: 'projets' | 'calendrier' | 'media-plan' | 'projects-analytics';
 }
 
-const panelGroupsTemplate: Array<{ title: string; items: NavItemDef[]; modes: Array<'projets' | 'media-plan' | 'projects-analytics'> }> = [
+const panelGroupsTemplate: Array<{ title: string; items: NavItemDef[]; modes: Array<'projets' | 'calendrier' | 'media-plan' | 'projects-analytics'> }> = [
   {
     title: 'MENU',
     modes: ['projets'],
@@ -79,6 +79,20 @@ const panelGroupsTemplate: Array<{ title: string; items: NavItemDef[]; modes: Ar
         path: '/mes-taches',
         icon: <HiOutlineClipboardList size={18} />,
         permission: 'VIEW_MES_PROJETS',
+      },
+    ],
+  },
+  {
+    title: 'CALENDRIER',
+    modes: ['calendrier'],
+    items: [
+      {
+        key: 'calendrier-projets',
+        label: 'Calendrier Projets',
+        path: '/admin/calendrier-projets',
+        icon: <HiOutlineCalendar size={18} />,
+        permissions: ['VIEW_CALENDRIER_PROJETS', 'VIEW_DEADLINES', 'VIEW_REUNIONS'],
+        children: [],
       },
     ],
   },
@@ -151,7 +165,8 @@ const railMainItems: RailItemDef[] = [
     path: '/admin/calendrier-projets',
     permissions: ['VIEW_CALENDRIER_PROJETS', 'VIEW_DEADLINES', 'VIEW_REUNIONS'],
     matchPrefixes: ['/admin/calendrier-projets'],
-    action: 'navigate',
+    action: 'panel',
+    panelMode: 'calendrier',
   },
 ];
 
@@ -224,10 +239,12 @@ const Sidebar: React.FC = () => {
   const {
     isExpanded,
     isMobileOpen,
+    isRailVisible,
     openSubmenu,
     setOpenSubmenu,
     toggleSidebar,
     toggleMobileSidebar,
+    toggleRail,
   } = useSidebar();
 
   const userPermissions = useMemo(
@@ -244,7 +261,7 @@ const Sidebar: React.FC = () => {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [activePanelMode, setActivePanelMode] = useState<'projets' | 'media-plan' | 'projects-analytics' | null>(null);
+  const [activePanelMode, setActivePanelMode] = useState<'projets' | 'calendrier' | 'media-plan' | 'projects-analytics' | null>(null);
   const notifMenuRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const rhAppUrl = (import.meta.env.VITE_RH_APP_URL as string | undefined)?.trim();
@@ -407,6 +424,28 @@ const Sidebar: React.FC = () => {
         items: group.items
           .filter((item) => itemHasAccess(item, userPermissions))
           .map((item) => {
+            if (item.key === 'calendrier-projets') {
+              const children: Array<{ label: string; path: string }> = [];
+
+             
+
+              if (userPermissions.includes('VIEW_DEADLINES')) {
+                children.push({ label: 'Deadlines', path: '/admin/calendrier-projets?tab=deadlines' });
+              }
+
+              if (userPermissions.includes('VIEW_REUNIONS')) {
+                children.push({ label: 'R\u00e9unions', path: '/admin/calendrier-projets?tab=reunions' });
+              }
+               if (userPermissions.includes('VIEW_CALENDRIER_PROJETS')) {
+                children.push({ label: 'Tournage', path: '/admin/calendrier-projets?tab=tournage' });
+              }
+
+              return {
+                ...item,
+                children,
+              };
+            }
+
             if (item.key === 'media-plan' && assignedClients.length > 0) {
               return {
                 ...item,
@@ -447,6 +486,7 @@ const Sidebar: React.FC = () => {
     if (activePanelMode === 'media-plan') return 'MediaPlan';
     if (activePanelMode === 'projects-analytics') return 'Projets';
     if (activePanelMode === 'projets') return 'Projets';
+    if (activePanelMode === 'calendrier') return 'Calendrier';
 
     const allRailItems = [...visibleRailMain, ...visibleRailSecondary];
     const activeItem = allRailItems.find((item) => isRailItemActive(item, location.pathname));
@@ -473,6 +513,10 @@ const Sidebar: React.FC = () => {
     if (item.action === 'panel' && item.panelMode) {
       setActivePanelMode(item.panelMode);
       openPanelIfNeeded();
+
+      if (item.panelMode === 'calendrier') {
+        setOpenSubmenu('calendrier-projets');
+      }
 
       if (item.key === 'projets' && isMesProjetsOnly) {
         navigate('/mes-taches');
@@ -615,7 +659,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <>
-      <aside className={`pc-icon-rail-shell ${isMobileOpen ? 'is-mobile-open' : ''}`}>
+      <aside className={`pc-icon-rail-shell ${isMobileOpen ? 'is-mobile-open' : ''} ${!isRailVisible ? 'rail-hidden' : ''}`}>
         <button
           type="button"
           className="pc-logo-btn"
@@ -876,9 +920,9 @@ const Sidebar: React.FC = () => {
         </div>
       </aside>
 
-      {isExpanded && <button type="button" className="pc-panel-overlay" onClick={closeAllPanels} aria-label="Fermer le panel" />}
+      {isExpanded && isRailVisible && <button type="button" className="pc-panel-overlay" onClick={closeAllPanels} aria-label="Fermer le panel" />}
 
-      <section className={`pc-secondary-panel ${isExpanded ? 'open' : ''}`} aria-hidden={!isExpanded}>
+      <section className={`pc-secondary-panel ${isExpanded && isRailVisible ? 'open' : ''}`} aria-hidden={!isExpanded || !isRailVisible}>
         <header className="pc-secondary-header">
           <div>
             <p className="pc-secondary-title">{panelTitle}</p>

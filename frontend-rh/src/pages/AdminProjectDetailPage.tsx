@@ -27,7 +27,7 @@ const statutColors: Record<string, string> = {
   PLANIFIE: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
   EN_COURS: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
   CLOTURE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
-  CLOTURE_INCOMPLET: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400',
+  CLOTURE_INCOMPLET: 'bg-brand- text-brand- dark:bg-brand-/15 dark:text-brand-',
   ANNULE: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
 };
 const tacheStatutColors: Record<string, string> = {
@@ -149,11 +149,11 @@ const AdminProjectDetailPage: React.FC = () => {
 
           {/* CORRECTION 5: Warning banner for incomplete closure */}
           {detail.statut === 'CLOTURE_INCOMPLET' && (
-            <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-500/20 dark:bg-orange-500/5">
-              <p className="text-sm font-semibold text-orange-700 dark:text-orange-400">
+            <div className="rounded-xl border border-brand- bg-brand- px-4 py-3 dark:border-brand-/20 dark:bg-brand-/5">
+              <p className="text-sm font-semibold text-brand- dark:text-brand-">
                 ⚠️ Ce projet a été clôturé avec {detail.tachesEnRetard || '?'} tâche(s) non terminée(s)
               </p>
-              <p className="text-xs text-orange-600/70 dark:text-orange-400/60 mt-0.5">
+              <p className="text-xs text-brand-/70 dark:text-brand-/60 mt-0.5">
                 {detail.progressionPourcentage}% réalisé
               </p>
             </div>
@@ -249,7 +249,7 @@ const TacheRow: React.FC<{ tache: TacheManagerDTO }> = ({ tache }) => {
           {tache.dateEcheance && <span>📅 {tache.dateEcheance}</span>}
           {/* CORRECTION 1: Proper duration display */}
           {isDone && (
-            <span className={dur.valid ? 'text-gray-500' : 'text-orange-500 font-semibold'}>
+            <span className={dur.valid ? 'text-gray-500' : 'text-brand- font-semibold'}>
               ⏱ {dur.text}
             </span>
           )}
@@ -290,7 +290,7 @@ const ManagersTab: React.FC<{
             <button onClick={() => setExpandedManager(expandedManager === idx ? null : idx)}
               className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-sm font-bold text-white shadow">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand- to-amber-500 flex items-center justify-center text-sm font-bold text-white shadow">
                   {mgr.managerNom.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div className="text-left">
@@ -356,7 +356,7 @@ const EmployesTab: React.FC<{ employes: EmployeSectionDTO[] }> = ({ employes }) 
           <div key={emp.employeId} className={`rounded-2xl border overflow-hidden transition-all ${isAnomaly ? 'border-amber-300 dark:border-amber-500/30' : 'border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-dark`}>
             {/* Header */}
             <div className="flex items-center gap-4 px-5 py-4">
-              <div className={`h-11 w-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg ${isAnomaly ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-500/20' : 'bg-gradient-to-br from-brand-400 to-violet-500 shadow-brand-500/20'}`}>
+              <div className={`h-11 w-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg ${isAnomaly ? 'bg-gradient-to-br from-amber-400 to-brand- shadow-amber-500/20' : 'bg-gradient-to-br from-brand-400 to-violet-500 shadow-brand-500/20'}`}>
                 {emp.employeNom.split(' ').map(n => n[0]).join('')}
               </div>
               <div className="flex-1 min-w-0">
@@ -469,7 +469,7 @@ const IndicateursTab: React.FC<{ managers: ProjetDetailAdminDTO['managers'] }> =
                 <td className="px-3 py-2.5 text-xs text-gray-400">{formatDateTime(t.dateDebutExecution)}</td>
                 <td className="px-3 py-2.5 text-xs text-gray-400">{formatDateTime(t.dateFinExecution)}</td>
                 <td className="px-3 py-2.5">
-                  <span className={`text-xs font-medium ${dur.valid ? 'text-gray-600 dark:text-gray-400' : 'text-orange-500 font-semibold'}`}>
+                  <span className={`text-xs font-medium ${dur.valid ? 'text-gray-600 dark:text-gray-400' : 'text-brand- font-semibold'}`}>
                     {dur.text}
                   </span>
                 </td>

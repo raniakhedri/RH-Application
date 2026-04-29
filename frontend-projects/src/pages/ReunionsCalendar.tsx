@@ -29,6 +29,13 @@ function fmtDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function normalizeMeetingUrl(url?: string | null): string | null {
+  const trimmed = (url ?? '').trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 const ReunionsCalendar: React.FC = () => {
   const { user } = useAuth();
   const permissions: string[] = (user as any)?.permissions || [];
@@ -50,7 +57,7 @@ const ReunionsCalendar: React.FC = () => {
   const [createDate, setCreateDate] = useState('');
   const [form, setForm] = useState<Partial<ReunionRequest>>({
     titre: '', heureDebut: '09:00', heureFin: '10:00',
-    typeReunion: TypeReunion.PRESENTIEL, plateforme: '', lieu: '',
+    typeReunion: TypeReunion.PRESENTIEL, plateforme: '', lienReunion: '', lieu: '',
   });
   const [participantType, setParticipantType] = useState<'interne'|'externe'>('interne');
   const [selectedParticipantId, setSelectedParticipantId] = useState<number|''>('');
@@ -104,7 +111,7 @@ const ReunionsCalendar: React.FC = () => {
 
   const handleDayClick = (key: string) => {
     setCreateDate(key);
-    setForm({ titre: '', heureDebut: '09:00', heureFin: '10:00', typeReunion: TypeReunion.PRESENTIEL, plateforme: '', lieu: '' });
+    setForm({ titre: '', heureDebut: '09:00', heureFin: '10:00', typeReunion: TypeReunion.PRESENTIEL, plateforme: '', lienReunion: '', lieu: '' });
     setSelectedParticipantId('');
     setParticipantType('interne');
     setShowCreate(true);
@@ -115,6 +122,7 @@ const ReunionsCalendar: React.FC = () => {
     if (!selectedParticipantId) { showToast('Veuillez sélectionner un participant', 'error'); return; }
 
     try {
+      const lienReunion = (form.lienReunion || '').trim();
       const req: ReunionRequest = {
         titre: form.titre!,
         dateReunion: createDate,
@@ -122,6 +130,7 @@ const ReunionsCalendar: React.FC = () => {
         heureFin: form.heureFin || undefined,
         typeReunion: form.typeReunion!,
         plateforme: form.typeReunion === TypeReunion.EN_LIGNE ? form.plateforme : undefined,
+        lienReunion: form.typeReunion === TypeReunion.EN_LIGNE && lienReunion ? lienReunion : undefined,
         lieu: form.typeReunion === TypeReunion.PRESENTIEL ? form.lieu : undefined,
         ...(participantType === 'interne'
           ? { participantId: selectedParticipantId as number }
@@ -320,17 +329,35 @@ const ReunionsCalendar: React.FC = () => {
                             : r.statut === StatutReunion.REFUSEE
                               ? 'bg-red-100 dark:bg-red-900/40 border-red-200 text-red-700 line-through opacity-60'
                               : 'bg-amber-100 dark:bg-amber-900/40 border-amber-200 text-amber-700';
+                          const joinUrl = r.typeReunion === TypeReunion.EN_LIGNE ? normalizeMeetingUrl(r.lienReunion) : null;
                           return (
-                            <button
-                              key={r.id}
-                              onClick={(e) => { e.stopPropagation(); setDetailReunion(r); }}
-                              className={`w-full text-left rounded px-1 py-0.5 border ${cls} hover:opacity-80 transition`}
-                            >
-                              <p className="text-[9px] font-semibold truncate leading-tight">
-                                {r.typeReunion === TypeReunion.EN_LIGNE ? '📹' : '🏢'} {r.titre}
-                              </p>
-                              <p className="text-[8px] opacity-70">{r.heureDebut}</p>
-                            </button>
+                            <div key={r.id} className="space-y-0.5">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDetailReunion(r);
+                                }}
+                                className={`w-full text-left rounded px-1 py-0.5 border ${cls} hover:opacity-80 transition`}
+                              >
+                                <p className="text-[9px] font-semibold truncate leading-tight">
+                                  {r.typeReunion === TypeReunion.EN_LIGNE ? '📹' : '🏢'} {r.titre}
+                                </p>
+                                <p className="text-[8px] opacity-70">{r.heureDebut}</p>
+                              </button>
+
+                              {joinUrl && (
+                                <a
+                                  href={joinUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="block text-[8px] pl-1 text-blue-600 hover:underline truncate"
+                                  title={r.lienReunion || ''}
+                                >
+                                  Rejoindre
+                                </a>
+                              )}
+                            </div>
                           );
                         })}
                         {dayReunions.length > 2 && (
@@ -407,7 +434,7 @@ const ReunionsCalendar: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">Type de réunion</label>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setForm({...form, typeReunion: TypeReunion.PRESENTIEL})}
+                  onClick={() => setForm({...form, typeReunion: TypeReunion.PRESENTIEL, plateforme: '', lienReunion: ''})}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all
                     ${form.typeReunion === TypeReunion.PRESENTIEL
                       ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20 text-blue-700'
@@ -416,7 +443,7 @@ const ReunionsCalendar: React.FC = () => {
                   <HiOutlineOfficeBuilding size={16} /> Présentiel
                 </button>
                 <button
-                  onClick={() => setForm({...form, typeReunion: TypeReunion.EN_LIGNE})}
+                  onClick={() => setForm({...form, typeReunion: TypeReunion.EN_LIGNE, lieu: ''})}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all
                     ${form.typeReunion === TypeReunion.EN_LIGNE
                       ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20 text-blue-700'
@@ -429,20 +456,32 @@ const ReunionsCalendar: React.FC = () => {
 
             {/* Platform / Location */}
             {form.typeReunion === TypeReunion.EN_LIGNE ? (
-              <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Plateforme</label>
-                <select
-                  value={form.plateforme || ''}
-                  onChange={e => setForm({...form, plateforme: e.target.value})}
-                  className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="">Sélectionner...</option>
-                  <option value="Google Meet">Google Meet</option>
-                  <option value="Microsoft Teams">Microsoft Teams</option>
-                  <option value="Zoom">Zoom</option>
-                  <option value="Autre">Autre</option>
-                </select>
-              </div>
+              <>
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Plateforme</label>
+                  <select
+                    value={form.plateforme || ''}
+                    onChange={e => setForm({...form, plateforme: e.target.value})}
+                    className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="Google Meet">Google Meet</option>
+                    <option value="Microsoft Teams">Microsoft Teams</option>
+                    <option value="Zoom">Zoom</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Lien de réunion</label>
+                  <input
+                    type="url"
+                    value={form.lienReunion || ''}
+                    onChange={e => setForm({...form, lienReunion: e.target.value})}
+                    placeholder="https://meet.google.com/..."
+                    className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+              </>
             ) : (
               <div className="mb-3">
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Lieu</label>
@@ -540,6 +579,20 @@ const ReunionsCalendar: React.FC = () => {
                     : <><HiOutlineOfficeBuilding size={14}/> Présentiel{detailReunion.lieu ? ` — ${detailReunion.lieu}` : ''}</>}
                 </span>
               </div>
+
+              {detailReunion.typeReunion === TypeReunion.EN_LIGNE && !!(detailReunion.lienReunion || '').trim() && (
+                <div className="flex justify-between text-sm gap-3">
+                  <span className="text-gray-400">Lien</span>
+                  <a
+                    href={normalizeMeetingUrl(detailReunion.lienReunion) || undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-blue-600 hover:underline break-all text-right"
+                  >
+                    {detailReunion.lienReunion}
+                  </a>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Initiateur</span>
                 <span className="font-medium text-gray-800 dark:text-gray-100">{detailReunion.initiateurPrenom} {detailReunion.initiateurNom}</span>

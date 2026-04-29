@@ -345,7 +345,7 @@ const DashboardPage: React.FC = () => {
       value: docsExpirant.length,
       icon: <HiOutlineFolder size={16} />,
       path: '/mon-profil',
-      dotClass: 'bg-orange-400 dark:bg-orange-500',
+      dotClass: 'bg-brand- dark:bg-brand-',
     },
   ];
 

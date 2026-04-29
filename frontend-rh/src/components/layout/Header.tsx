@@ -170,7 +170,7 @@ const Header: React.FC = () => {
     if (titre.includes('approuvÃ©e') || titre.includes('acceptÃ©e'))
       return { icon: HiOutlineCheckCircle, bg: 'bg-success-50 dark:bg-success-500/10', color: 'text-success-500' };
     if (titre.includes('expirÃ©') || titre.includes('bientÃ´t'))
-      return { icon: HiOutlineInformationCircle, bg: 'bg-orange-50 dark:bg-orange-500/10', color: 'text-orange-500' };
+      return { icon: HiOutlineInformationCircle, bg: 'bg-brand- dark:bg-brand-/10', color: 'text-brand-' };
     return { icon: HiOutlineInformationCircle, bg: 'bg-gray-50 dark:bg-gray-500/10', color: 'text-gray-500' };
   };
 

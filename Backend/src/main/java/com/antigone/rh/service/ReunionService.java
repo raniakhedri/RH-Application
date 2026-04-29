@@ -38,6 +38,7 @@ public class ReunionService {
                 .heureFin(request.getHeureFin())
                 .typeReunion(request.getTypeReunion())
                 .plateforme(request.getPlateforme())
+            .lienReunion(request.getLienReunion())
                 .lieu(request.getLieu())
                 .statut(StatutReunion.EN_ATTENTE)
                 .initiateur(initiateur)
@@ -129,6 +130,7 @@ public class ReunionService {
                 .heureFin(r.getHeureFin())
                 .typeReunion(r.getTypeReunion())
                 .plateforme(r.getPlateforme())
+            .lienReunion(r.getLienReunion())
                 .lieu(r.getLieu())
                 .statut(r.getStatut())
                 .dateCreation(r.getDateCreation());

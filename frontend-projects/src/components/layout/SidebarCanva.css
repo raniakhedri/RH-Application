@@ -12,7 +12,73 @@
   padding: 14px 8px 14px;
   border-right: 1px solid var(--border);
   background: linear-gradient(180deg, #f7f6ff 0%, #f1eff8 100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.pc-icon-rail-shell.rail-hidden {
+  transform: translateX(-100%);
+  visibility: hidden;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hamburger-toggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 300;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #e5e1ef;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.hamburger-toggle:hover {
+  border-color: #f5a87a;
+  background: #fff8f3;
+  box-shadow: 0 4px 12px rgba(232,106,46,0.15);
+}
+
+.hamburger-toggle span {
+  display: block;
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: #6a6578;
+  transition: all 0.3s ease;
+}
+
+.hamburger-toggle:hover span {
+  background: #e86a2e;
+}
+
+.dark .hamburger-toggle {
+  background: #1d1b28;
+  border-color: #2f2b40;
+}
+
+.dark .hamburger-toggle:hover {
+  border-color: #e86a2e;
+  background: #26223a;
+}
+
+.dark .hamburger-toggle span {
+  background: #b4afc1;
+}
+
+.dark .hamburger-toggle:hover span {
+  background: #f5a87a;
+}
+
 
 .pc-logo-btn {
   width: 44px;
@@ -148,15 +214,17 @@
   border-right: 1px solid #ece8f2;
   box-shadow: 10px 0 28px rgba(27, 20, 48, 0.1);
   transform: translateX(-100%);
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.25s;
   z-index: 190;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  visibility: hidden;
 }
 
 .pc-secondary-panel.open {
   transform: translateX(0);
+  visibility: visible;
 }
 
 .pc-secondary-header {
@@ -486,7 +554,7 @@
   width: min(280px, calc(100vw - var(--sidebar-w) - 28px));
   background: #ffffff;
   border-radius: 16px;
-  box-shadow: 0 4px 32px rgba(0,0,0,0.12), 0 -4px 16px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12), 0 -4px 16px rgba(0, 0, 0, 0.04);
   border: 1px solid #e8e6e0;
   padding: 0;
   z-index: 300;
@@ -617,6 +685,7 @@
     opacity: 0;
     transform: scale(0.92) translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -628,7 +697,7 @@
 .dark .pc-account-popup {
   background: #15141c;
   border-color: #2a2836;
-  box-shadow: 0 -4px 32px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.2);
+  box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .dark .pc-account-popup-header {

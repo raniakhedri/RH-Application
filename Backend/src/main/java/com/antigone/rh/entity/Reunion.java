@@ -40,6 +40,10 @@ public class Reunion {
     /** Plateforme for EN_LIGNE: Google Meet, Teams, Zoom, Autre */
     private String plateforme;
 
+    /** Meeting link for EN_LIGNE (Google Meet/Teams/Zoom/...) */
+    @Column(length = 1024)
+    private String lienReunion;
+
     /** Lieu for PRESENTIEL */
     private String lieu;
 
