@@ -34,6 +34,10 @@ public class Tache {
     @Builder.Default
     private boolean urgente = false;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean archived = false;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 

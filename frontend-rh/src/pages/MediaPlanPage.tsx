@@ -19,6 +19,7 @@ import { mediaPlanService } from '../api/mediaPlanService';
 import { referentielService } from '../api/referentielService';
 import { mediaPlanAssignmentService } from '../api/mediaPlanAssignmentService';
 import { mediaPlanCommentService, MediaPlanCommentDTO } from '../api/mediaPlanCommentService';
+import { reactifService, ReactifInternDTO } from '../api/reactifService';
 import { employeService } from '../api/employeService';
 import { calendrierProjetService } from '../api/calendrierProjetService';
 import {
@@ -394,6 +395,17 @@ const MediaPlanPage: React.FC = () => {
         return () => window.removeEventListener('click', handler);
     }, []);
 
+    // ── Reactif reasons for DESAPPROUVE rows ──
+    const [mpReactifsMap, setMpReactifsMap] = useState<Record<number, ReactifInternDTO[]>>({});
+    const loadMpReactifs = useCallback(async (plans: MediaPlan[]) => {
+        const disapproved = plans.filter(p => p.statut === 'DESAPPROUVE');
+        if (disapproved.length === 0) { setMpReactifsMap({}); return; }
+        const results = await Promise.all(disapproved.map(mp => reactifService.getByMediaPlan(mp.id).catch(() => [])));
+        const map: Record<number, ReactifInternDTO[]> = {};
+        disapproved.forEach((mp, i) => { map[mp.id] = results[i]; });
+        setMpReactifsMap(prev => ({ ...prev, ...map }));
+    }, []);
+
     // Referentiels
     const [formats, setFormats] = useState<Referentiel[]>([]);
     const [types, setTypes] = useState<Referentiel[]>([]);
@@ -544,14 +556,18 @@ const MediaPlanPage: React.FC = () => {
                     }
                 }
                 const mpRes = await mediaPlanService.getByClient(selectedClientId);
-                setMediaPlans(mpRes.data.data || []);
+                const plans = mpRes.data.data || [];
+                setMediaPlans(plans);
+                loadMpReactifs(plans);
             } else {
                 const [mpRes, assignRes] = await Promise.all([
                     mediaPlanService.getByEmploye(user.employeId),
                     mediaPlanAssignmentService.getByEmploye(user.employeId),
                 ]);
-                setMediaPlans(mpRes.data.data || []);
+                const mpPlans = mpRes.data.data || [];
+                setMediaPlans(mpPlans);
                 setAssignments(assignRes.data.data || []);
+                loadMpReactifs(mpPlans);
             }
         } catch (e) {
             console.error('Error loading:', e);
@@ -1121,6 +1137,28 @@ const MediaPlanPage: React.FC = () => {
                     </td>
                 </tr>
 
+                {/* Reactif reason banner for DESAPPROUVE rows */}
+                {mp.statut === 'DESAPPROUVE' && (() => {
+                    const reactifs = mpReactifsMap[mp.id] || [];
+                    const latest = reactifs[0];
+                    if (!latest) return null;
+                    return (
+                        <tr className="bg-red-50/80 dark:bg-red-900/10">
+                            <td colSpan={COLUMNS.length} className="px-3 py-1.5 border-b border-red-100 dark:border-red-900/30 border-l-4 border-l-red-400">
+                                <div className="flex items-start gap-2 text-xs text-red-700 dark:text-red-400">
+                                    <span className="mt-0.5 shrink-0">🗨</span>
+                                    <span>
+                                        <span className="font-semibold">{latest.managerPrenom} {latest.managerNom}</span>
+                                        {' — '}
+                                        <span className="italic">"{latest.contenu}"</span>
+                                        <span className="ml-2 opacity-60">{latest.dateReactif ? new Date(latest.dateReactif).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                    );
+                })()}
+
                 {mp.isShooting && (
                     <tr className="bg-brand-50/20 dark:bg-brand-900/10">
                         <td colSpan={COLUMNS.length} className="px-3 py-3 border-b border-gray-100 dark:border-gray-800">
@@ -1384,7 +1422,7 @@ const MediaPlanPage: React.FC = () => {
                                         <option value="">-</option>
                                         <option value={TypeContenuShooting.PHOTO}>Photo</option>
                                         <option value={TypeContenuShooting.VIDEO}>Vidéo</option>
-                                            <option value={TypeContenuShooting.BOTH}>Vidéo + photos</option>
+                                        <option value={TypeContenuShooting.BOTH}>Vidéo + photos</option>
                                     </select>
                                 </div>
                             </div>

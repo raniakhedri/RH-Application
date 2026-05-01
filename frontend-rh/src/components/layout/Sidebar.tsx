@@ -127,6 +127,7 @@ const panelGroupsTemplate: Array<{ title: string; items: NavItemDef[]; modes: Ar
       { key: 'roles', label: 'Roles', path: '/roles', icon: <HiOutlineShieldCheck size={18} />, permission: 'VIEW_ROLES' },
       { key: 'referentiels', label: 'Referentiels', path: '/referentiels', icon: <HiOutlineCollection size={18} />, permission: 'VIEW_REFERENTIELS' },
       { key: 'calendrier', label: 'Calendrier entreprise', path: '/calendrier', icon: <HiOutlineCalendar size={18} />, permission: 'VIEW_CALENDRIER' },
+
     ],
   },
   {
@@ -178,7 +179,7 @@ const railSecondaryItems: RailItemDef[] = [
     icon: <HiOutlineShieldCheck size={20} />,
     path: '/comptes',
     permissions: ['VIEW_COMPTES', 'VIEW_ROLES', 'VIEW_REFERENTIELS', 'VIEW_CALENDRIER'],
-    matchPrefixes: ['/comptes', '/roles', '/referentiels', '/calendrier'],
+    matchPrefixes: ['/comptes', '/roles', '/referentiels', '/calendrier', '/rectifs'],
     action: 'panel',
     panelMode: 'administration',
   },

@@ -269,6 +269,7 @@ export interface Projet {
   dateFin: string | null;
   /** 'DETERMINE' | 'INDETERMINE' */
   typeProjet?: string;
+  description?: string;
   isMediaPlanProject?: boolean;
   mediaPlanLigneId?: number;
   chefDeProjet?: Employe | null;

@@ -14,5 +14,7 @@ export const tacheService = {
   delete: (id: number) => api.delete<ApiResponse<void>>(`/taches/${id}`),
   relance: (id: number) => api.post<ApiResponse<void>>(`/taches/${id}/relance`),
   updateDeadline: (id: number, dateEcheance: string) => api.patch<ApiResponse<Tache>>(`/taches/${id}/deadline`, { dateEcheance }),
+  getArchivedByProjet: (projetId: number) => api.get<ApiResponse<Tache[]>>(`/taches/projet/${projetId}/archived`),
+  unarchive: (tacheId: number) => api.put<ApiResponse<Tache>>(`/taches/${tacheId}/unarchive`),
 };
 

@@ -57,6 +57,14 @@ public class MediaPlanCommentService {
                 .collect(Collectors.toList());
     }
 
+    public List<MediaPlanCommentDTO> getAll() {
+        return commentRepository.findAll()
+                .stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
     public List<MediaPlanCommentDTO> getByClientIdAndMonthKey(Long clientId, String monthKey) {
         return commentRepository.findByClientIdAndMonthKey(clientId, monthKey).stream()
                 .map(this::toDTO)
