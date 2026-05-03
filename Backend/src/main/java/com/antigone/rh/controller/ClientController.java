@@ -81,6 +81,7 @@ public class ClientController {
             @RequestParam(value = "telephone", required = false) String telephone,
             @RequestParam(value = "adresse", required = false) String adresse,
             @RequestParam(value = "notes", required = false) String notes,
+            @RequestParam(value = "logoFile", required = false) MultipartFile logoFile,
             @RequestParam(value = "contactNom", required = false) String contactNom,
             @RequestParam(value = "contactPoste", required = false) String contactPoste,
             @RequestParam(value = "contactEmail", required = false) String contactEmail,
@@ -90,7 +91,7 @@ public class ClientController {
             @RequestParam(value = "file", required = false) MultipartFile file) {
         try {
             ClientDTO dto = clientService.create(nom, email, telephone, adresse, notes,
-                    contactNom, contactPoste, contactEmail, contactTelephone,
+                    logoFile, contactNom, contactPoste, contactEmail, contactTelephone,
                     createAccount, clientPages, file);
             return ResponseEntity.ok(ApiResponse.ok("Client créé", dto));
         } catch (IOException e) {
@@ -107,6 +108,7 @@ public class ClientController {
             @RequestParam(value = "telephone", required = false) String telephone,
             @RequestParam(value = "adresse", required = false) String adresse,
             @RequestParam(value = "notes", required = false) String notes,
+            @RequestParam(value = "logoFile", required = false) MultipartFile logoFile,
             @RequestParam(value = "contactNom", required = false) String contactNom,
             @RequestParam(value = "contactPoste", required = false) String contactPoste,
             @RequestParam(value = "contactEmail", required = false) String contactEmail,
@@ -116,7 +118,7 @@ public class ClientController {
             @RequestParam(value = "file", required = false) MultipartFile file) {
         try {
             ClientDTO dto = clientService.update(id, nom, email, telephone, adresse, notes,
-                    contactNom, contactPoste, contactEmail, contactTelephone,
+                    logoFile, contactNom, contactPoste, contactEmail, contactTelephone,
                     regeneratePassword, clientPages, file);
             return ResponseEntity.ok(ApiResponse.ok("Client modifié", dto));
         } catch (IOException e) {
@@ -151,6 +153,31 @@ public class ClientController {
                     mediaType = MediaType.IMAGE_PNG;
                 else if (filename.endsWith(".jpg") || filename.endsWith(".jpeg"))
                     mediaType = MediaType.IMAGE_JPEG;
+            }
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/{id}/logo")
+    public ResponseEntity<Resource> downloadLogo(@PathVariable Long id) {
+        try {
+            Resource resource = clientService.loadLogo(id);
+            String filename = resource.getFilename();
+            MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+            if (filename != null) {
+                if (filename.endsWith(".png"))
+                    mediaType = MediaType.IMAGE_PNG;
+                else if (filename.endsWith(".jpg") || filename.endsWith(".jpeg"))
+                    mediaType = MediaType.IMAGE_JPEG;
+                else if (filename.endsWith(".svg"))
+                    mediaType = MediaType.valueOf("image/svg+xml");
+                else if (filename.endsWith(".webp"))
+                    mediaType = MediaType.valueOf("image/webp");
             }
             return ResponseEntity.ok()
                     .contentType(mediaType)

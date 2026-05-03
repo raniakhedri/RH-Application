@@ -15,6 +15,7 @@ public class ClientDTO {
     private String telephone;
     private String adresse;
     private String notes;
+    private String logoUrl;
 
     // Contact principal
     private String contactNom;

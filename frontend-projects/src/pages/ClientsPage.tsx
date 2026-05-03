@@ -71,6 +71,7 @@ const ClientsPage: React.FC = () => {
     const [editing, setEditing] = useState<ClientDTO | null>(null);
     const [form, setForm] = useState<ClientForm>(emptyForm);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeSection, setActiveSection] = useState<'info' | 'contact' | 'account'>('info');
@@ -114,6 +115,7 @@ const ClientsPage: React.FC = () => {
         setEditing(null);
         setForm(emptyForm);
         setSelectedFile(null);
+        setSelectedLogoFile(null);
         setError(null);
         setActiveSection('info');
         setCreateAccount(false);
@@ -136,6 +138,7 @@ const ClientsPage: React.FC = () => {
             clientPages: c.clientPages ? c.clientPages.split(',').map(p => p.trim()).filter(Boolean) : ['MEDIA_PLANS', 'PROJETS', 'FICHIERS'],
         });
         setSelectedFile(null);
+        setSelectedLogoFile(null);
         setError(null);
         setActiveSection('info');
         setCreateAccount(false);
@@ -183,6 +186,7 @@ const ClientsPage: React.FC = () => {
                     clientPages: pages,
                     regeneratePassword,
                     file: selectedFile ?? undefined,
+                    logoFile: selectedLogoFile ?? undefined,
                 });
                 const dto = (res.data as any).data ?? res.data;
                 if (dto?.generatedPassword) {
@@ -196,6 +200,7 @@ const ClientsPage: React.FC = () => {
                     clientPages: pages,
                     createAccount,
                     file: selectedFile ?? undefined,
+                    logoFile: selectedLogoFile ?? undefined,
                 });
                 const dto = (res.data as any).data ?? res.data;
                 if (dto?.generatedPassword) {
@@ -248,7 +253,12 @@ const ClientsPage: React.FC = () => {
 
     /* ── Render ──────────────────────────────────────────────────────────── */
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-10">
+            {/* Background Decor (Glassmorphism blobs) */}
+            <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 dark:bg-brand-500/5 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-violet-500/10 dark:bg-violet-500/5 blur-[100px] rounded-full" />
+            </div>
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
@@ -279,135 +289,87 @@ const ClientsPage: React.FC = () => {
                 />
             </div>
 
-            {/* Table */}
+            {/* Grid */}
             {loading ? (
                 <div className="py-20 text-center text-gray-500">Chargement...</div>
             ) : filtered.length === 0 ? (
                 <div className="py-20 text-center text-gray-400">Aucun client trouvé</div>
             ) : (
-                <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark">
-                    <table className="w-full text-left text-theme-sm">
-                        <thead className="border-b border-gray-100 bg-gray-50/80 dark:border-gray-800 dark:bg-gray-800/40">
-                            <tr>
-                                <th className="px-5 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Client</th>
-                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Contact</th>
-                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Contact principal</th>
-                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Compte</th>
-                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Fichier</th>
-                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300">Créé le</th>
-                                <th className="px-4 py-3.5 font-semibold text-gray-600 dark:text-gray-300 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                            {filtered.map(c => (
-                                <tr key={c.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                    {/* Client */}
-                                    <td className="px-5 py-3.5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 font-bold text-sm">
-                                                {c.nom.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-gray-800 dark:text-white">{c.nom}</p>
-                                                {c.adresse && <p className="text-theme-xs text-gray-400 flex items-center gap-1 mt-0.5"><HiOutlineLocationMarker size={11}/> {c.adresse}</p>}
-                                            </div>
-                                        </div>
-                                    </td>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filtered.map(c => {
+                        // Generate a pseudo-random color based on the client name length to give a unique feel
+                        const colors = ['bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400', 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400', 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400', 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400', 'bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400'];
+                        const colorClass = colors[c.nom.length % colors.length];
+                        const baseApi = window.location.hostname === 'localhost' ? 'http://localhost:8080' : 'https://rh-antigone.onrender.com';
 
-                                    {/* Coordonnées */}
-                                    <td className="px-4 py-3.5">
-                                        <div className="space-y-0.5">
-                                            {c.email && <p className="text-theme-xs text-gray-500 flex items-center gap-1"><HiOutlineMail size={12}/> {c.email}</p>}
-                                            {c.telephone && <p className="text-theme-xs text-gray-500 flex items-center gap-1"><HiOutlinePhone size={12}/> {c.telephone}</p>}
-                                            {!c.email && !c.telephone && <span className="text-theme-xs text-gray-300 italic">—</span>}
-                                        </div>
-                                    </td>
+                        return (
+                        <div key={c.id} className="relative group rounded-3xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.06)] dark:shadow-none hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                            {/* Card Header: Avatar & Nom */}
+                            <div className="flex items-start justify-between mb-4">
+                                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${colorClass} font-bold text-xl shadow-sm`}>
+                                    {c.logoUrl ? (
+                                        <img src={`${baseApi}${c.logoUrl}`} alt="" className="w-full h-full rounded-2xl object-cover" />
+                                    ) : (
+                                        c.nom.charAt(0).toUpperCase()
+                                    )}
+                                </div>
+                                {/* Actions (visible on hover) */}
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <button onClick={() => { setViewing(c); setShowViewModal(true); }} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
+                                        <HiOutlineEye size={18} />
+                                    </button>
+                                    {canEdit && (
+                                        <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">
+                                            <HiOutlinePencil size={18} />
+                                        </button>
+                                    )}
+                                    {canDelete && (
+                                        <button onClick={() => handleDelete(c.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10 transition-colors">
+                                            <HiOutlineTrash size={18} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {/* Card Body: Info */}
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-1 line-clamp-1">{c.nom}</h3>
+                                {c.adresse && <p className="text-xs text-gray-400 flex items-center gap-1 mb-3 truncate"><HiOutlineLocationMarker size={12} className="shrink-0"/> {c.adresse}</p>}
+                                
+                                <div className="space-y-1.5 mb-4">
+                                    {c.email && <p className="text-xs text-gray-500 flex items-center gap-1.5 truncate"><HiOutlineMail size={14} className="text-gray-400 shrink-0"/> {c.email}</p>}
+                                    {c.telephone && <p className="text-xs text-gray-500 flex items-center gap-1.5 truncate"><HiOutlinePhone size={14} className="text-gray-400 shrink-0"/> {c.telephone}</p>}
+                                </div>
 
-                                    {/* Contact principal */}
-                                    <td className="px-4 py-3.5">
-                                        {c.contactNom ? (
-                                            <div>
-                                                <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                                                    <HiOutlineUser size={12}/> {c.contactNom}
-                                                </p>
-                                                {c.contactPoste && <p className="text-theme-xs text-gray-400">{c.contactPoste}</p>}
-                                            </div>
-                                        ) : (
-                                            <span className="text-theme-xs text-gray-300 italic">—</span>
-                                        )}
-                                    </td>
+                                {/* Contact principal */}
+                                {c.contactNom && (
+                                    <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-3 mb-4 border border-black/5 dark:border-white/5">
+                                        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Contact</p>
+                                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate"><HiOutlineUser className="inline mr-1" size={14}/> {c.contactNom}</p>
+                                    </div>
+                                )}
+                            </div>
 
-                                    {/* Compte */}
-                                    <td className="px-4 py-3.5">
-                                        {c.hasAccount ? (
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-theme-xs font-medium text-green-600 dark:bg-green-500/10 dark:text-green-400">
-                                                    <HiOutlineCheck size={11}/> Actif
-                                                </span>
-                                                {c.loginClient && <span className="text-theme-xs text-gray-400 font-mono">{c.loginClient}</span>}
-                                            </div>
-                                        ) : (
-                                            <span className="text-theme-xs text-gray-300 italic">Aucun compte</span>
-                                        )}
-                                    </td>
-
-                                    {/* Fichier */}
-                                    <td className="px-4 py-3.5">
-                                        {c.fileName ? (
-                                            <button
-                                                onClick={() => openFile(c)}
-                                                className="flex items-center gap-1.5 text-brand-600 hover:text-brand-700 dark:text-brand-400 text-theme-xs font-medium hover:underline"
-                                            >
-                                                <HiOutlineDocumentText size={14} />
-                                                <span className="max-w-[100px] truncate">{c.fileName}</span>
-                                                <HiOutlineDownload size={12} />
-                                            </button>
-                                        ) : (
-                                            <span className="text-gray-300 text-theme-xs italic">—</span>
-                                        )}
-                                    </td>
-
-                                    {/* Date */}
-                                    <td className="px-4 py-3.5">
-                                        <span className="text-theme-xs text-gray-500 dark:text-gray-400">
-                                            {c.dateCreation ? new Date(c.dateCreation).toLocaleDateString('fr-FR') : '—'}
-                                        </span>
-                                    </td>
-
-                                    {/* Actions */}
-                                    <td className="px-4 py-3.5 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button
-                                                onClick={() => { setViewing(c); setShowViewModal(true); }}
-                                                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 transition-colors"
-                                                title="Voir les détails"
-                                            >
-                                                <HiOutlineEye size={16} />
-                                            </button>
-                                            {canEdit && (
-                                                <button
-                                                    onClick={() => openEdit(c)}
-                                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-gray-700 transition-colors"
-                                                    title="Modifier"
-                                                >
-                                                    <HiOutlinePencil size={16} />
-                                                </button>
-                                            )}
-                                            {canDelete && (
-                                                <button
-                                                    onClick={() => handleDelete(c.id)}
-                                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-500/10 transition-colors"
-                                                    title="Supprimer"
-                                                >
-                                                    <HiOutlineTrash size={16} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            {/* Card Footer: Status & File */}
+                            <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+                                {c.hasAccount ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-600 dark:bg-green-500/10 dark:text-green-400">
+                                        <HiOutlineCheck size={10}/> Compte Actif
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                                        Sans compte
+                                    </span>
+                                )}
+                                
+                                {c.fileName && (
+                                    <button onClick={() => openFile(c)} className="text-brand-500 hover:text-brand-600 transition-colors" title="Télécharger le fichier">
+                                        <HiOutlineDocumentText size={18} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )})}
                 </div>
             )}
 
@@ -471,6 +433,20 @@ const ClientsPage: React.FC = () => {
                                         className="w-full rounded-lg border border-gray-300 bg-transparent pl-10 pr-4 py-2.5 text-theme-sm text-gray-700 focus:border-brand-300 focus:outline-none focus:ring focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 resize-none"
                                         placeholder="Notes ou remarques..." />
                                 </div>
+                            </div>
+                            <div className="col-span-2">
+                                <label className={labelClass}>Logo du client (PNG, JPEG, SVG)</label>
+                                {editing?.logoUrl && !selectedLogoFile && (
+                                    <p className="mb-2 text-theme-xs text-gray-400">
+                                        <span className="font-medium text-brand-600 dark:text-brand-400">✓ Logo actuel présent</span> (sélectionnez un fichier pour le remplacer)
+                                    </p>
+                                )}
+                                <input
+                                    type="file"
+                                    accept=".png,.jpg,.jpeg,.svg,.webp"
+                                    onChange={e => setSelectedLogoFile(e.target.files?.[0] ?? null)}
+                                    className="w-full rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-theme-sm text-gray-500 cursor-pointer dark:border-gray-600 dark:bg-gray-800 file:mr-3 file:rounded file:border-0 file:bg-brand-500 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white"
+                                />
                             </div>
                             <div className="col-span-2">
                                 <label className={labelClass}>Fichier (PDF, PNG, JPEG)</label>

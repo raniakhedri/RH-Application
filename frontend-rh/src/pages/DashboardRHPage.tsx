@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   HiOutlineUsers,
   HiOutlineDocumentText,
-  HiOutlineBriefcase,
   HiOutlineUserGroup,
   HiOutlineClock,
   HiOutlineTrendingUp,
@@ -17,7 +16,6 @@ import {
   HiOutlineViewBoards,
   HiOutlineKey,
   HiOutlinePaperClip,
-  HiOutlineExclamation,
 } from 'react-icons/hi';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -25,15 +23,13 @@ import {
 } from 'recharts';
 import { employeService } from '../api/employeService';
 import { demandeService } from '../api/demandeService';
-import { projetService } from '../api/projetService';
 import { equipeService } from '../api/equipeService';
 import { compteService } from '../api/compteService';
-import { tacheService } from '../api/tacheService';
 import { agentDashboardService } from '../api/agentDashboardService';
 import { demandePapierService } from '../api/demandePapierService';
 import {
-  EmployeStatsDTO, DemandeResponse, Projet, Equipe, StatutDemande, StatutProjet,
-  CompteDTO, Tache, StatutTache, DashboardEmployeStatus,
+  EmployeStatsDTO, DemandeResponse, Equipe, StatutDemande,
+  CompteDTO, DashboardEmployeStatus,
 } from '../types';
 
 const COLORS = {
@@ -59,33 +55,27 @@ const DashboardRHPage: React.FC = () => {
   const [stats, setStats] = useState<EmployeStatsDTO | null>(null);
   const [demandes, setDemandes] = useState<DemandeResponse[]>([]);
   const [demandesPapier, setDemandesPapier] = useState<DemandeResponse[]>([]);
-  const [projets, setProjets] = useState<Projet[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [comptes, setComptes] = useState<CompteDTO[]>([]);
-  const [taches, setTaches] = useState<Tache[]>([]);
   const [presenceData, setPresenceData] = useState<DashboardEmployeStatus[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [statsRes, demandesRes, demandesPapierRes, projetsRes, equipesRes, comptesRes, tachesRes, presenceRes] = await Promise.all([
+      const [statsRes, demandesRes, demandesPapierRes, equipesRes, comptesRes, presenceRes] = await Promise.all([
         employeService.getStats(),
         demandeService.getAll(),
         demandePapierService.getAll().catch(() => ({ data: { data: [] } })),
-        projetService.getAll(),
         equipeService.getAll(),
         compteService.getAll().catch(() => ({ data: { data: [] } })),
-        tacheService.getAll().catch(() => ({ data: { data: [] } })),
         agentDashboardService.getDashboard().catch(() => ({ data: { data: [] } })),
       ]);
       setStats(statsRes.data.data);
       setDemandes(demandesRes.data.data || []);
       setDemandesPapier(demandesPapierRes.data.data || []);
-      setProjets(projetsRes.data.data || []);
       setEquipes(equipesRes.data.data || []);
       setComptes(comptesRes.data.data || []);
-      setTaches(tachesRes.data.data || []);
       setPresenceData(presenceRes.data.data || []);
     } catch (err) {
       console.error('Erreur chargement dashboard RH:', err);
@@ -107,18 +97,6 @@ const DashboardRHPage: React.FC = () => {
   // -- Demandes papier --
   const papierEnAttente = demandesPapier.filter(d => d.statut === StatutDemande.EN_ATTENTE).length;
   const papierApprouvees = demandesPapier.filter(d => d.statut === StatutDemande.APPROUVEE).length;
-
-  // -- Projets --
-  const projetsEnCours = projets.filter(p => p.statut === StatutProjet.EN_COURS).length;
-  const projetsPlanifies = projets.filter(p => p.statut === StatutProjet.PLANIFIE).length;
-  const projetsClotures = projets.filter(p => p.statut === StatutProjet.CLOTURE).length;
-  const projetsAnnules = projets.filter(p => p.statut === StatutProjet.ANNULE).length;
-
-  // -- Tâches --
-  const tachesTodo = taches.filter(t => t.statut === StatutTache.TODO).length;
-  const tachesInProgress = taches.filter(t => t.statut === StatutTache.IN_PROGRESS).length;
-  const tachesDone = taches.filter(t => t.statut === StatutTache.DONE).length;
-  const tachesEnRetard = taches.filter(t => t.dateEcheance && new Date(t.dateEcheance) < new Date() && t.statut !== StatutTache.DONE).length;
 
   // -- Comptes --
   const comptesActifs = comptes.filter(c => c.enabled).length;
@@ -182,31 +160,11 @@ const DashboardRHPage: React.FC = () => {
       }))
     : [];
 
-  // -- Projets statut --
-  const projetStatutData = [
-    { name: 'En cours', value: projetsEnCours, color: COLORS.green },
-    { name: 'Planifiés', value: projetsPlanifies, color: COLORS.blue },
-    { name: 'Clôturés', value: projetsClotures, color: COLORS.gray },
-    { name: 'Annulés', value: projetsAnnules, color: COLORS.red },
-  ].filter(d => d.value > 0);
-
-  // -- Tâches statut --
-  const tacheStatutData = [
-    { name: 'À faire', value: tachesTodo, color: COLORS.yellow },
-    { name: 'En cours', value: tachesInProgress, color: COLORS.blue },
-    { name: 'Terminées', value: tachesDone, color: COLORS.green },
-  ].filter(d => d.value > 0);
-
   // -- Demandes récentes (5 dernières en attente) --
   const demandesRecentes = [...demandes]
     .filter(d => d.statut === StatutDemande.EN_ATTENTE)
     .sort((a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime())
     .slice(0, 6);
-
-  // -- Projets actifs avec dates --
-  const projetsActifs = projets
-    .filter(p => p.statut === StatutProjet.EN_COURS || p.statut === StatutProjet.PLANIFIE)
-    .slice(0, 5);
 
   // -- Taux de présence --
   const tauxPresence = stats?.totalEmployes && stats.totalEmployes > 0
@@ -230,7 +188,7 @@ const DashboardRHPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Dashboard RH</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Vue globale de toute l'activité de l'application</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Vue globale de toute l'activité RH</p>
         </div>
         <button
           onClick={fetchData}
@@ -243,22 +201,14 @@ const DashboardRHPage: React.FC = () => {
 
       {/* =========== SECTION 1 : KPIs PRINCIPAUX =========== */}
       <SectionTitle title="Vue d'ensemble" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <KPICard
           title="Total Employés"
           value={stats?.totalEmployes ?? 0}
           icon={<HiOutlineUsers size={22} />}
           subtitle={`+${stats?.nouveauxCeMois ?? 0} ce mois`}
           subtitleType="positive"
-          iconBg="bg-brand- text-brand- dark:bg-brand-/20 dark:text-brand-"
-        />
-        <KPICard
-          title="Tâches"
-          value={taches.length}
-          icon={<HiOutlineClipboardList size={22} />}
-          subtitle={`${tachesDone} terminées · ${tachesEnRetard > 0 ? `${tachesEnRetard} en retard` : `${tachesInProgress} en cours`}`}
-          subtitleType={tachesEnRetard > 0 ? 'negative' : 'positive'}
-          iconBg="bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400"
+          iconBg="bg-brand-50 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400"
         />
         <KPICard
           title="Présents aujourd'hui"
@@ -279,13 +229,11 @@ const DashboardRHPage: React.FC = () => {
       </div>
 
       {/* =========== ROW 2 : Mini-cartes détaillées =========== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <MiniCard label="Comptes actifs" value={comptesActifs} icon={<HiOutlineKey size={16} />} color="text-green-600 dark:text-green-400" bg="bg-green-50 dark:bg-green-500/10" />
         <MiniCard label="Comptes inactifs" value={comptesInactifs} icon={<HiOutlineStatusOffline size={16} />} color="text-red-600 dark:text-red-400" bg="bg-red-50 dark:bg-red-500/10" />
-        <MiniCard label="Projets en cours" value={projetsEnCours} icon={<HiOutlineBriefcase size={16} />} color="text-brand-600 dark:text-brand-400" bg="bg-brand-50 dark:bg-brand-500/10" />
         <MiniCard label="Équipes" value={equipes.length} icon={<HiOutlineUserGroup size={16} />} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-50 dark:bg-indigo-500/10" />
-        <MiniCard label="Tâches en retard" value={tachesEnRetard} icon={<HiOutlineExclamation size={16} />} color="text-red-600 dark:text-red-400" bg="bg-red-50 dark:bg-red-500/10" />
-        <MiniCard label="Retards aujourd'hui" value={retardsAujourdhui} icon={<HiOutlineClock size={16} />} color="text-brand- dark:text-brand-" bg="bg-brand- dark:bg-brand-/10" />
+        <MiniCard label="Retards aujourd'hui" value={retardsAujourdhui} icon={<HiOutlineClock size={16} />} color="text-brand-500 dark:text-brand-400" bg="bg-brand-50 dark:bg-brand-500/10" />
       </div>
 
       {/* =========== SECTION 2 : EFFECTIFS & RH =========== */}
@@ -299,7 +247,7 @@ const DashboardRHPage: React.FC = () => {
                 <XAxis type="number" stroke="#9ca3af" fontSize={12} />
                 <YAxis dataKey="name" type="category" stroke="#9ca3af" fontSize={11} width={130} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="value" name="Employés" fill={COLORS.brand} radius={[0, 6, 6, 0]} barSize={22} />
+                <Bar dataKey="value" name="Employés" fill={COLORS.secondary} radius={[0, 6, 6, 0]} barSize={22} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -331,15 +279,15 @@ const DashboardRHPage: React.FC = () => {
               <AreaChart data={embauchesMoisData}>
                 <defs>
                   <linearGradient id="gradientEmbauches" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={COLORS.brand} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={COLORS.brand} stopOpacity={0} />
+                    <stop offset="0%" stopColor={COLORS.secondary} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={COLORS.secondary} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="mois" stroke="#9ca3af" fontSize={11} />
                 <YAxis stroke="#9ca3af" fontSize={12} allowDecimals={false} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Area type="monotone" dataKey="embauches" name="Embauches" stroke={COLORS.brand} strokeWidth={2.5} fill="url(#gradientEmbauches)" />
+                <Area type="monotone" dataKey="embauches" name="Embauches" stroke={COLORS.secondary} strokeWidth={2.5} fill="url(#gradientEmbauches)" />
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -486,118 +434,13 @@ const DashboardRHPage: React.FC = () => {
         </ChartCard>
       )}
 
-      {/* =========== SECTION 4 : PROJETS & TÂCHES =========== */}
-      <SectionTitle title="Projets & Tâches" />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Projets par statut */}
-        <ChartCard title="Projets par statut">
-          <div className="flex items-center justify-center h-[250px]">
-            <div className="flex items-center gap-8">
-              <ResponsiveContainer width={180} height={180}>
-                <PieChart>
-                  <Pie data={projetStatutData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={4}>
-                    {projetStatutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-2.5">
-                {projetStatutData.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{item.name}</span>
-                    <span className="text-sm font-bold text-gray-800 dark:text-white">{item.value}</span>
-                  </div>
-                ))}
-                <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <span className="text-sm font-semibold text-gray-800 dark:text-white">Total: {projets.length}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </ChartCard>
-
-        {/* Tâches par statut */}
-        <ChartCard title="Tâches par statut">
-          <div className="flex items-center justify-center h-[250px]">
-            <div className="flex items-center gap-8">
-              <ResponsiveContainer width={180} height={180}>
-                <PieChart>
-                  <Pie data={tacheStatutData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={4}>
-                    {tacheStatutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-2.5">
-                {tacheStatutData.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{item.name}</span>
-                    <span className="text-sm font-bold text-gray-800 dark:text-white">{item.value}</span>
-                  </div>
-                ))}
-                {tachesEnRetard > 0 && (
-                  <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2">
-                    <HiOutlineExclamation className="text-red-500" size={16} />
-                    <span className="text-xs text-red-600 dark:text-red-400 font-medium">{tachesEnRetard} en retard</span>
-                  </div>
-                )}
-                <div className="pt-1">
-                  <span className="text-sm font-semibold text-gray-800 dark:text-white">Total: {taches.length}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </ChartCard>
-      </div>
-
-      {/* -- Liste projets actifs -- */}
-      {projetsActifs.length > 0 && (
-        <ChartCard title="Projets actifs & planifiés">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
-                  <th className="text-left py-2 font-medium">Projet</th>
-                  <th className="text-left py-2 font-medium">Chef de projet</th>
-                  <th className="text-left py-2 font-medium">Statut</th>
-                  <th className="text-left py-2 font-medium">Début</th>
-                  <th className="text-left py-2 font-medium">Fin</th>
-                  <th className="text-left py-2 font-medium">Équipes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projetsActifs.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="py-2.5 font-medium text-gray-800 dark:text-white">{p.nom}</td>
-                    <td className="py-2.5 text-gray-600 dark:text-gray-300">{p.chefDeProjet ? `${p.chefDeProjet.prenom} ${p.chefDeProjet.nom}` : p.createurNom || '—'}</td>
-                    <td className="py-2.5">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        p.statut === StatutProjet.EN_COURS ? 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400' :
-                        'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'
-                      }`}>
-                        {p.statut === StatutProjet.EN_COURS ? 'En cours' : 'Planifié'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 text-gray-500 dark:text-gray-400">{p.dateDebut}</td>
-                    <td className="py-2.5 text-gray-500 dark:text-gray-400">{p.dateFin}</td>
-                    <td className="py-2.5 text-gray-500 dark:text-gray-400">{p.equipeNoms?.join(', ') || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ChartCard>
-      )}
-
       {/* =========== SECTION 5 : MONITORING & PRÉSENCE =========== */}
       <SectionTitle title="Monitoring & Présence" />
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <MiniCard label="Présents" value={presentsAujourdhui} icon={<HiOutlineStatusOnline size={16} />} color="text-green-600 dark:text-green-400" bg="bg-green-50 dark:bg-green-500/10" />
         <MiniCard label="Agents actifs" value={agentsActifs} icon={<HiOutlineDesktopComputer size={16} />} color="text-blue-600 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-500/10" />
         <MiniCard label="Sur réseau" value={surReseau} icon={<HiOutlineStatusOnline size={16} />} color="text-teal-600 dark:text-teal-400" bg="bg-teal-50 dark:bg-teal-500/10" />
-        <MiniCard label="Retards" value={retardsAujourdhui} icon={<HiOutlineClock size={16} />} color="text-brand- dark:text-brand-" bg="bg-brand- dark:bg-brand-/10" />
+        <MiniCard label="Retards" value={retardsAujourdhui} icon={<HiOutlineClock size={16} />} color="text-brand-500 dark:text-brand-400" bg="bg-brand-50 dark:bg-brand-500/10" />
         <MiniCard label="Temps actif moy." value={`${tempsActifMoyen}m`} icon={<HiOutlineViewBoards size={16} />} color="text-indigo-600 dark:text-indigo-400" bg="bg-indigo-50 dark:bg-indigo-500/10" />
       </div>
 
@@ -662,15 +505,13 @@ const DashboardRHPage: React.FC = () => {
         </ChartCard>
 
         {/* Résumé global */}
-        <ChartCard title="Résumé global de l'application">
+        <ChartCard title="Résumé global de l'application RH">
           <div className="grid grid-cols-2 gap-3 py-2">
             <SummaryRow icon={<HiOutlineUsers size={16} />} label="Employés" value={stats?.totalEmployes ?? 0} />
             <SummaryRow icon={<HiOutlineKey size={16} />} label="Comptes" value={comptes.length} />
             <SummaryRow icon={<HiOutlineDocumentText size={16} />} label="Demandes congés" value={demandes.length} />
             <SummaryRow icon={<HiOutlinePaperClip size={16} />} label="Demandes papier" value={demandesPapier.length} />
-            <SummaryRow icon={<HiOutlineBriefcase size={16} />} label="Projets" value={projets.length} />
             <SummaryRow icon={<HiOutlineUserGroup size={16} />} label="Équipes" value={equipes.length} />
-            <SummaryRow icon={<HiOutlineClipboardList size={16} />} label="Tâches" value={taches.length} />
             <SummaryRow icon={<HiOutlineDesktopComputer size={16} />} label="Agents suivis" value={presenceData.length} />
           </div>
         </ChartCard>
@@ -697,7 +538,7 @@ const KPICard: React.FC<{
   subtitleType: 'positive' | 'negative' | 'neutral';
   iconBg: string;
 }> = ({ title, value, icon, subtitle, subtitleType, iconBg }) => (
-  <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-dark hover:shadow-md transition-shadow">
+  <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-800 hover:shadow-md transition-shadow">
     <div className="flex items-start justify-between">
       <div className="space-y-1">
         <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
@@ -730,7 +571,7 @@ const MiniCard: React.FC<{
 );
 
 const ChartCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-dark">
+  <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-800">
     <h3 className="text-sm font-semibold text-gray-800 dark:text-white mb-4">{title}</h3>
     {children}
   </div>

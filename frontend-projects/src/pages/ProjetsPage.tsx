@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown, HiOutlineArrowLeft, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineCalendar } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown, HiOutlineArrowLeft, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineCalendar, HiOutlineOfficeBuilding, HiOutlineSun } from 'react-icons/hi';
 import { projetService } from '../api/projetService';
 import { employeService } from '../api/employeService';
 import { demandeService } from '../api/demandeService';
 import { clientService } from '../api/clientService';
 import { mediaPlanService } from '../api/mediaPlanService';
 import type { ClientDTO } from '../api/clientService';
+import { API_BASE } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Projet, StatutProjet, Employe, StatutDemande, MediaPlan } from '../types';
 import Badge from '../components/ui/Badge';
@@ -14,6 +15,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useConfirm } from '../hooks/useConfirm';
+import '../pages/ProjetsPage.css';
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success' | 'danger'> = {
   PLANIFIE: 'neutral',
@@ -52,13 +54,21 @@ const ProjetsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [managers, setManagers] = useState<Employe[]>([]);
   const [congeAujourdhuiIds, setCongeAujourdhuiIds] = useState<Set<number>>(new Set());
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
   type ViewState = 'CLIENTS' | 'PROJECTS' | 'PROJECT_DETAILS';
   const [viewState, setViewState] = useState<ViewState>('CLIENTS');
+  const [currentPage, setCurrentPage] = useState(1);
+  const clientsPerPage = 6;
   const [selectedClientKey, setSelectedClientKey] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Projet | null>(null);
   const [mediaPlanDetails, setMediaPlanDetails] = useState<MediaPlan | null>(null);
   const [loadingMediaPlan, setLoadingMediaPlan] = useState(false);
+
+  type ClientsTab = 'TOUS' | 'ACTIFS' | 'NON_ASSIGNE' | 'RECENTS';
+  const [clientsTab, setClientsTab] = useState<ClientsTab>('TOUS');
+  const [clientSearch, setClientSearch] = useState('');
 
   useEffect(() => {
     if (viewState === 'PROJECT_DETAILS' && selectedProject?.isMediaPlanProject && selectedProject?.mediaPlanLigneId) {
@@ -106,6 +116,26 @@ const ProjetsPage: React.FC = () => {
 
   useEffect(() => { loadData(); }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatLastUpdated = (value: Date | null, reference: Date) => {
+    if (!value) return '—';
+    const diffMs = Math.max(0, reference.getTime() - value.getTime());
+    const diffMin = Math.floor(diffMs / 60000);
+
+    if (diffMin < 1) return "A l'instant";
+    if (diffMin < 60) return `il y a ${diffMin} min`;
+
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `il y a ${diffHours} h`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `il y a ${diffDays} j`;
+  };
+
   const loadData = async () => {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -139,6 +169,8 @@ const ProjetsPage: React.FC = () => {
         const clients: ClientDTO[] = Array.isArray(raw) ? raw : (raw?.data ?? []);
         setAllClients(clients);
       }
+
+      setLastUpdatedAt(new Date());
     } catch (err) {
       console.error('Erreur chargement projets:', err);
     } finally {
@@ -348,9 +380,56 @@ const ProjetsPage: React.FC = () => {
 
   const getClientForKey = (key: string) => allClients.find(c => String(c.id) === key) || null;
 
-  /* ─── RENDER ───────────────────────────────────────────────────────────── */
-  if (loading) return <div className="py-20 text-center text-gray-500">Chargement...</div>;
+  const getClientInitials = (name: string) => {
+    const cleaned = name
+      .replace(/\(.*?\)/g, '')
+      .replace(/[\/]/g, ' ')
+      .trim();
+    if (!cleaned) return 'CL';
+    const parts = cleaned.split(/\s+/g).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+    return cleaned.slice(0, 2).toUpperCase();
+  };
 
+  const getClientKey = (clientName: string) => {
+    const n = clientName.trim().toLowerCase();
+    if (n.includes('tecnocasa')) return 'tecnocasa';
+    if (n.includes('gmir')) return 'gmir';
+    if (n.includes('skinlab')) return 'skinlab';
+    if (n.includes('eshuji') || n.includes('client')) return 'eshuji';
+    if (n.includes('shemi')) return 'shemi';
+    if (n.includes('zen')) return 'zen';
+    return 'default';
+  };
+
+  const getClientProgress = (clientKey: string, projects: Projet[]) => {
+    if (!projects.length) return 0;
+
+    const weights: Record<string, number> = {
+      [StatutProjet.CLOTURE]: 1,
+      [StatutProjet.EN_COURS]: 0.5,
+      [StatutProjet.PLANIFIE]: 0.2,
+      [StatutProjet.ANNULE]: 0,
+    };
+    const score = projects.reduce((acc, p) => acc + (weights[p.statut] ?? 0), 0);
+    return Math.max(0, Math.min(100, Math.round((score / projects.length) * 100)));
+  };
+
+  const getClientPreviewMembers = (projects: Projet[]) => {
+    const map = new Map<number, Employe>();
+    projects.forEach(p => {
+      getChefs(p).forEach(c => {
+        if (c?.id != null && !map.has(c.id)) map.set(c.id, c);
+      });
+    });
+    return [...map.values()];
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [clientsTab, clientSearch]);
+
+  /* ─── RENDER ───────────────────────────────────────────────────────────── */
   const sortedEntries = [...groupedByClient.entries()].sort((a, b) => {
     if (a[0] === 'none') return 1;
     if (b[0] === 'none') return -1;
@@ -359,167 +438,325 @@ const ProjetsPage: React.FC = () => {
     return (a[1].client?.nom || '').localeCompare(b[1].client?.nom || '');
   });
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Tous les Projets</h1>
-  
-        </div>
-      </div>
+  const clientEntries = sortedEntries.filter(([key]) => key !== 'none');
 
-      {/* ── CLIENTS VIEW ── */}
+  const filteredClientEntries = clientEntries
+    .filter(([_, { client, projects }]) => {
+      if (clientsTab === 'ACTIFS') return projects.length > 0;
+      if (clientsTab === 'NON_ASSIGNE') return projects.length === 0;
+      if (clientsTab === 'RECENTS') return projects.length > 0;
+      return true;
+    })
+    .filter(([_, { client }]) => {
+      const q = clientSearch.trim().toLowerCase();
+      if (!q) return true;
+      return (client?.nom || '').toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      if (clientsTab !== 'RECENTS') return 0;
+      const lastDate = (projects: Projet[]) => {
+        const dates = projects
+          .map(p => p.dateDebut || p.dateFin)
+          .filter(Boolean)
+          .map(d => String(d).substring(0, 10));
+        const sorted = dates.sort();
+        return sorted.length ? sorted[sorted.length - 1] : '';
+      };
+      return lastDate(b[1].projects).localeCompare(lastDate(a[1].projects));
+    });
+
+  const statsClientsCount = clientEntries.length;
+  const statsProjects = clientEntries.flatMap(([_, { projects }]) => projects);
+  const statsTotalProjects = statsProjects.length;
+  const statsNoProjectsClients = clientEntries.filter(([_, { projects }]) => projects.length === 0).length;
+
+  const monthKey = new Date().toISOString().substring(0, 7);
+  const statsNewThisMonth = statsProjects.filter(p => String(p.dateDebut || '').substring(0, 7) === monthKey).length;
+
+  const statsPending = statsProjects.filter(p => {
+    const hasChefs = (p.chefsDeProjet && p.chefsDeProjet.length > 0) || !!p.chefDeProjet;
+    return !hasChefs;
+  }).length;
+
+  /* ── Pagination Logic (clients dashboard) ── */
+  const totalPages = Math.max(1, Math.ceil(filteredClientEntries.length / clientsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+
+  useEffect(() => {
+    setCurrentPage(prev => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  const paginatedEntries = filteredClientEntries.slice(
+    (safePage - 1) * clientsPerPage,
+    safePage * clientsPerPage
+  );
+
+  if (loading) return (
+    <div className="pp-loading">
+      <div className="pp-spinner" />
+      Chargement des projets...
+    </div>
+  );
+
+  return (
+    <div className="pp-page pp-tousprojets">
+      {/* ── CLIENTS DASHBOARD (Tous les Projets) ── */}
       {viewState === 'CLIENTS' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedEntries.map(([key, { client, projects }]) => (
-            <div
-              key={key}
-              onClick={() => { setSelectedClientKey(key); setViewState('PROJECTS'); }}
-              className="group cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 hover:border-brand-300 hover:shadow-md transition-all dark:border-gray-700 dark:bg-gray-dark dark:hover:border-brand-500/50"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
-                    <HiOutlineBriefcase size={20} />
+        <>
+          <div className="pp-topbar">
+            <div>
+              <h1 className="pp-title">
+                Tous les <span className="pp-accent">Projets</span>
+              </h1>
+              
+            </div>
+
+            <div className="pp-topbar-actions">
+              <input
+                className="pp-search"
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                placeholder="Rechercher..."
+                aria-label="Rechercher un client"
+              />
+            
+            </div>
+          </div>
+
+          <div className="pp-stats">
+            <div className="pp-stat-card">
+              <div className="pp-stat-label">TOTAL PROJETS</div>
+              <div className="pp-stat-value">{statsTotalProjects}</div>
+              <div className="pp-stat-sub text-green-600">+{statsNewThisMonth} ce mois</div>
+            </div>
+            <div className="pp-stat-card">
+              <div className="pp-stat-label">CLIENTS ACTIFS</div>
+              <div className="pp-stat-value">{statsClientsCount}</div>
+              <div className="pp-stat-sub text-blue-600">{statsNoProjectsClients} sans assigné</div>
+            </div>
+            <div className="pp-stat-card">
+              <div className="pp-stat-label">EN ATTENTE</div>
+              <div className="pp-stat-value">{statsPending}</div>
+              <div className="pp-stat-sub text-amber-700">À assigner</div>
+            </div>
+          </div>
+
+          <div className="pp-tabs" role="tablist" aria-label="Filtres">
+            <button type="button" className={`pp-tab ${clientsTab === 'TOUS' ? 'active' : ''}`} onClick={() => setClientsTab('TOUS')}>Tous</button>
+            <button type="button" className={`pp-tab ${clientsTab === 'ACTIFS' ? 'active' : ''}`} onClick={() => setClientsTab('ACTIFS')}>Actifs</button>
+            <button type="button" className={`pp-tab ${clientsTab === 'NON_ASSIGNE' ? 'active' : ''}`} onClick={() => setClientsTab('NON_ASSIGNE')}>Non assignés</button>
+            <button type="button" className={`pp-tab ${clientsTab === 'RECENTS' ? 'active' : ''}`} onClick={() => setClientsTab('RECENTS')}>Récents</button>
+          </div>
+
+          <div className="pp-clients-grid">
+            {paginatedEntries.map(([key, { client, projects }]) => {
+              const name = client?.nom || 'Client';
+              const clientKey = getClientKey(name);
+              const progress = getClientProgress(clientKey, projects);
+              const previewMembers = getClientPreviewMembers(projects);
+              const hasLogo = Boolean(client?.logoUrl);
+
+              const mark = (() => {
+                if (clientKey === 'tecnocasa') return { text: getClientInitials(name), cls: 'pp-mark-tecnocasa' };
+                if (clientKey === 'skinlab') return { text: getClientInitials(name), cls: 'pp-mark-skinlab' };
+                if (clientKey === 'zen') return { text: getClientInitials(name), cls: 'pp-mark-zen' };
+                if (clientKey === 'gmir') return { text: getClientInitials(name), cls: 'pp-mark-gmir' };
+                if (clientKey === 'eshuji') return { text: getClientInitials(name), cls: 'pp-mark-eshuji' };
+                if (clientKey === 'shemi') return { text: getClientInitials(name), cls: 'pp-mark-shemi' };
+                return { text: getClientInitials(name), cls: 'pp-mark-default' };
+              })();
+
+            
+
+              return (
+                <div
+                  key={key}
+                  className="pp-client-card pp-dashboard-card"
+                  onClick={() => { setSelectedClientKey(key); setViewState('PROJECTS'); }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedClientKey(key);
+                      setViewState('PROJECTS');
+                    }
+                  }}
+                >
+                  <div className="pp-dashboard-card-head">
+                    <div className={`pp-client-mark ${mark.cls} ${hasLogo ? 'pp-client-mark--logo' : ''}`}>
+                      {hasLogo ? (
+                        <img src={`${API_BASE}${client!.logoUrl}`} alt={name} />
+                      ) : (
+                        mark.text
+                      )}
+                    </div>
+                    <div className="pp-client-head-text">
+                      <div className="pp-client-name">{name}</div>
+                    </div>
+                    
                   </div>
-                  <div>
-                    <h3 className="text-theme-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
-                      {client ? client.nom : 'Sans Client'}
-                    </h3>
-                    <p className="text-theme-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
-                      {client?.description || 'Projets internes / Non assignés'}
-                    </p>
+
+                  <div className="pp-progress">
+                    <div className="pp-progress-bar" aria-label={`Progression ${progress}%`}>
+                      <div className="pp-progress-bar-fill" style={{ width: `${progress}%` }} />
+                    </div>
+                    {projects.length === 0 ? (
+                      <>
+                        <div className="pp-progress-note">Pas encore démarré</div>
+                        <div className="pp-progress-pct">0%</div>
+                      </>
+                    ) : (
+                      <div className="pp-progress-pct">{progress}%</div>
+                    )}
+                  </div>
+
+                  <div className="pp-dashboard-card-foot">
+                    <span className="pp-pill">{projects.length} projet{projects.length !== 1 ? 's' : ''}</span>
+                    <div className="pp-foot-right">
+                      {projects.length === 0 ? (
+                        <button
+                          type="button"
+                          className="pp-assign-link"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openCreateModal(key);
+                          }}
+                        >
+                          + Assigner
+                        </button>
+                      ) : (
+                        <>
+                          <div className="pp-avatars" aria-label="Membres">
+                            {previewMembers.slice(0, 3).map(m => (
+                              <div key={m.id} className="pp-avatar" title={`${m.prenom} ${m.nom}`}>
+                                {m.imageUrl
+                                  ? <img src={m.imageUrl} alt={m.nom} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  : <>{(m.prenom?.[0] || '')}{(m.nom?.[0] || '')}</>}
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            className="pp-view-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedClientKey(key);
+                              setViewState('PROJECTS');
+                            }}
+                          >
+                            Voir →
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 dark:border-gray-700/50">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
-                  {projects.length} projet{projects.length !== 1 ? 's' : ''}
-                </span>
-                <span className="text-theme-xs font-medium text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity dark:text-brand-400">
-                  Voir les projets →
-                </span>
-              </div>
+              );
+            })}
+          </div>
+
+          <div className="pp-pagination" aria-label="Pagination">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={safePage === 1}
+              className="pp-page-btn"
+            >
+              Précédent
+            </button>
+            <div className="pp-page-numbers">
+              {Array.from({ length: totalPages }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentPage(index + 1)}
+                  className={`pp-page-number ${safePage === index + 1 ? 'active' : ''}`}
+                >
+                  {index + 1}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={safePage === totalPages}
+              className="pp-page-btn"
+            >
+              Suivant
+            </button>
+          </div>
+        </>
       )}
 
       {/* ── PROJECTS VIEW ── */}
       {viewState === 'PROJECTS' && (
-        <div className="space-y-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="pp-projects-view">
+          <div className="pp-projects-header">
             <div>
-              <button
-                onClick={() => setViewState('CLIENTS')}
-                className="mb-4 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-brand-500 transition-colors hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300"
-              >
-                <HiOutlineArrowLeft size={14} />
-                Retour aux clients
+              <button className="pp-back" onClick={() => setViewState('CLIENTS')}>
+                <HiOutlineArrowLeft size={14} /> Retour aux clients
               </button>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h2 className="pp-section-title">
                 {getClientForKey(selectedClientKey || 'none')?.nom || 'Sans Client'}
               </h2>
-              <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">
-                {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).length} projets actifs pour ce client.
+              <p className="pp-section-meta">
+                {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).length} projets pour ce client
               </p>
             </div>
-
             {canManageAllProjets && (
-              <button
-                onClick={() => openCreateModal(selectedClientKey || 'none')}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-              >
+              <button className="pp-btn-new" onClick={() => openCreateModal(selectedClientKey || 'none')}>
                 <HiOutlinePlus size={16} /> Nouveau Projet
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).map(p => {
+          <div className="pp-projects-grid">
+            {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).map((p, i) => {
               const chefs = getChefs(p);
-
-              let statusBadgeClass = 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
-              if (p.statut === 'EN_COURS') statusBadgeClass = 'bg-brand-50 text-brand-600 border-brand-200 dark:bg-brand-900/20 dark:text-brand-400 dark:border-brand-800';
-              else if (p.statut === 'CLOTURE') statusBadgeClass = 'bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800';
-              else if (p.statut === 'ANNULE') statusBadgeClass = 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
-
+              const statusKey = p.statut.toLowerCase().replace('_', '-');
               return (
                 <div
                   key={p.id}
                   onClick={() => { setSelectedProject(p); setViewState('PROJECT_DETAILS'); }}
-                  className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[20px] border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:shadow-xl dark:shadow-black/20 dark:hover:border-[#3a3e4d]"
+                  className={`pp-project-card status-${statusKey}`}
+                  style={{ animationDelay: `${i * 0.05}s` }}
                 >
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <h3 className="line-clamp-2 flex-1 text-base font-semibold leading-snug text-gray-900 dark:text-gray-100">
-                      {p.nom}
-                    </h3>
-                    <span className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusBadgeClass}`}>
-                      {p.statut.replace('_', ' ')}
-                    </span>
+                  <div className="pp-project-card-head">
+                    <h3 className="pp-project-name">{p.nom}</h3>
+                    <span className={`pp-status-badge ${statusKey}`}>{p.statut.replace('_', ' ')}</span>
                   </div>
-
-                  <div className="mb-6 flex items-center gap-2 text-[12px] font-medium text-gray-500 dark:text-gray-400">
-                    <HiOutlineCalendar size={15} className="text-gray-400 dark:text-gray-500" />
+                  <div className="pp-project-date">
+                    <HiOutlineCalendar size={13} />
                     <span>{formatDate(p.dateDebut)} — {p.dateFin ? formatDate(p.dateFin) : 'Indéterminé'}</span>
                   </div>
-
-                  <div className="flex-1">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                      Managers
-                    </p>
+                  <div style={{ flex: 1 }}>
+                    <p className="pp-managers-label">Managers</p>
                     {chefs.length === 0 ? (
-                      <span className="text-[12px] font-medium text-gray-400 dark:text-gray-600">-</span>
+                      <span className="pp-avatar-none">Non assigné</span>
                     ) : (
-                      <div className="flex -space-x-2">
-                        {chefs.slice(0, 3).map((c, i) => (
-                          <div key={c.id} className="relative h-7 w-7 overflow-hidden rounded-full ring-2 ring-white dark:ring-[#1a1c22]">
-                            {congeAujourdhuiIds.has(c.id) && (
-                              <div className="absolute right-0 top-0 h-2 w-2 rounded-full border border-[#1a1c22] bg-orange-500 z-10" title="En congé"></div>
-                            )}
-                            {c.imageUrl ? (
-                              <img src={c.imageUrl} alt={c.nom} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-gray-200 dark:bg-gray-700 text-[9px] font-bold text-gray-700 dark:text-gray-300">
-                                {c.prenom?.[0]}{c.nom?.[0]}
-                              </div>
-                            )}
+                      <div className="pp-avatars">
+                        {chefs.slice(0, 3).map(c => (
+                          <div key={c.id} className="pp-avatar" title={`${c.prenom} ${c.nom}`}>
+                            {congeAujourdhuiIds.has(c.id) && <div className="pp-on-leave-dot" title="En congé" />}
+                            {c.imageUrl
+                              ? <img src={c.imageUrl} alt={c.nom} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <>{c.prenom?.[0]}{c.nom?.[0]}</>}
                           </div>
                         ))}
-                        {chefs.length > 3 && (
-                          <div className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 ring-2 ring-white dark:bg-gray-700 dark:text-gray-300 dark:ring-[#1a1c22] text-[10px] font-bold">
-                            +{chefs.length - 3}
-                          </div>
-                        )}
+                        {chefs.length > 3 && <div className="pp-avatar pp-avatar-overflow">+{chefs.length - 3}</div>}
                       </div>
                     )}
                   </div>
-
-                  <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4 dark:border-white/5">
-                    <span className="text-[11px] font-medium text-gray-500 dark:text-gray-500">
-                      {(p.membres || []).length} membres actifs
-                    </span>
-                    <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-hover:text-brand-500 dark:text-gray-500">
-                      Détails <span className="text-lg leading-none translate-y-[-1px]">→</span>
-                    </span>
+                  <div className="pp-project-footer">
+                    <span className="pp-members-count">{(p.membres || []).length} membres</span>
+                    <span className="pp-details-cta">Détails →</span>
                   </div>
                 </div>
               );
             })}
-
-            {/* Nouveau Projet Card */}
             {canManageAllProjets && (
-              <div
-                onClick={() => openCreateModal(selectedClientKey || 'none')}
-                className="group flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border-2 border-dashed border-gray-200 bg-transparent transition-all hover:border-gray-300 hover:bg-gray-50 dark:border-[#272a35] dark:hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors group-hover:bg-gray-200 group-hover:text-gray-600 dark:bg-gray-100 dark:bg-gray-800 dark:text-gray-500 dark:group-hover:bg-gray-200 dark:bg-gray-700 dark:group-hover:text-gray-300">
-                  <HiOutlinePlus size={20} />
-                </div>
-                <div className="text-center">
-                  <p className="text-[14px] font-bold text-gray-900 dark:text-gray-200">Nouveau Projet</p>
-                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-500">Lancer une nouvelle initiative pour ce client</p>
-                </div>
+              <div onClick={() => openCreateModal(selectedClientKey || 'none')} className="pp-new-project-card">
+                <div className="pp-new-icon"><HiOutlinePlus size={20} /></div>
+                <p className="pp-new-label">Nouveau Projet</p>
+                <p className="pp-new-hint">Lancer une nouvelle initiative</p>
               </div>
             )}
           </div>
@@ -531,90 +768,63 @@ const ProjetsPage: React.FC = () => {
         <div className="space-y-6 lg:space-y-8">
           {/* Top Header Back Button */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setViewState('PROJECTS')}
-              className="flex items-center gap-2 text-[14px] font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-            >
-              <HiOutlineArrowLeft size={18} />
-              Détails du Projet
+            <button className="pp-back" onClick={() => setViewState('PROJECTS')}>
+              <HiOutlineArrowLeft size={16} /> Détails du Projet
             </button>
           </div>
 
           <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
             {/* Info Block (Left) */}
-            <div className="max-w-2xl">
-              <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="max-w-2xl pp-detail-header">
+              <h1 className="pp-detail-title">
+                {selectedProject.isMediaPlanProject && <span style={{ marginRight: '8px' }}>👉</span>}
                 {selectedProject.nom}
               </h1>
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-gray-600 dark:bg-[#252834] dark:text-[#a0a8c2]">
+              <div className="pp-detail-meta">
+                <span className={`pp-status-badge ${selectedProject.statut.toLowerCase().replace('_', '-')}`}>
                   {selectedProject.statut.replace('_', ' ')}
                 </span>
                 {selectedProject.typeProjet === 'INDETERMINE' && (
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-gray-600 dark:bg-[#252834] dark:text-[#a0a8c2]">
+                  <span className="pp-status-badge planifie">
                     Projet Indéterminé
                   </span>
                 )}
-              </div>
-              <div className="flex items-center gap-2 text-[13px] font-medium text-gray-500 dark:text-gray-400">
-                <HiOutlineCalendar size={16} />
-                <span>{formatDate(selectedProject.dateDebut)} au {selectedProject.dateFin ? formatDate(selectedProject.dateFin) : 'Non défini'}</span>
+                <div className="pp-detail-date-chip">
+                  <HiOutlineCalendar size={14} />
+                  <span>{formatDate(selectedProject.dateDebut)} au {selectedProject.dateFin ? formatDate(selectedProject.dateFin) : 'Non défini'}</span>
+                </div>
               </div>
             </div>
 
             {/* Actions Block (Right) */}
-            <div className="flex shrink-0 flex-wrap gap-3">
+            <div className="pp-actions-bar">
               {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'PLANIFIE' && (
-                <button
-                  onClick={() => {
-                    handleChangeStatut(selectedProject.id, StatutProjet.EN_COURS);
-                    setSelectedProject({ ...selectedProject, statut: StatutProjet.EN_COURS });
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
+                <button className="pp-btn-action" onClick={() => { handleChangeStatut(selectedProject.id, StatutProjet.EN_COURS); setSelectedProject({ ...selectedProject, statut: StatutProjet.EN_COURS }); }}>
                   Démarrer
                 </button>
               )}
               {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'EN_COURS' && (
-                <button
-                  onClick={() => {
-                    handleChangeStatut(selectedProject.id, StatutProjet.CLOTURE);
-                    setSelectedProject({ ...selectedProject, statut: StatutProjet.CLOTURE });
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
+                <button className="pp-btn-action" onClick={() => { handleChangeStatut(selectedProject.id, StatutProjet.CLOTURE); setSelectedProject({ ...selectedProject, statut: StatutProjet.CLOTURE }); }}>
                   Clôturer
                 </button>
               )}
               {(canManageAllProjets || canViewProjetsCreateTaches) && (
-                <button
-                  onClick={() => navigate(`/projets/${selectedProject.id}/taches`)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
+                <button className="pp-btn-action" onClick={() => navigate(`/projets/${selectedProject.id}/taches`)}>
                   <HiOutlineClipboardList size={16} /> Tâches
                 </button>
               )}
               {(canManageAllProjets || canViewProjetsCreateTaches) && ((selectedProject.chefsDeProjet && selectedProject.chefsDeProjet.some(c => c.id === user?.employeId)) || selectedProject.chefDeProjet?.id === user?.employeId) && (
-                <button
-                  onClick={() => handleAffectMembers(selectedProject)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
+                <button className="pp-btn-action" onClick={() => handleAffectMembers(selectedProject)}>
                   <HiOutlineUserGroup size={16} /> Affecter
                 </button>
               )}
               {canManageAllProjets && (
-                <button
-                  onClick={() => handleEdit(selectedProject)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
+                <button className="pp-btn-action" onClick={() => handleEdit(selectedProject)}>
                   <HiOutlinePencil size={16} /> Modifier
                 </button>
               )}
               {canManageAllProjets && (
-                <button
-                  onClick={() => handleDelete(selectedProject.id)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none dark:border-red-900/50 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-gray-700"
-                >
+                <button className="pp-btn-action pp-btn-danger" onClick={() => handleDelete(selectedProject.id)}>
                   <HiOutlineTrash size={16} /> Supprimer
                 </button>
               )}
@@ -623,35 +833,33 @@ const ProjetsPage: React.FC = () => {
 
           {/* Media Plan Details Panel */}
           {selectedProject.isMediaPlanProject && mediaPlanDetails && (
-            <div className="mb-6 rounded-[20px] border border-brand-200 bg-brand-50 p-6 dark:border-brand-200 dark:bg-brand-900/5 dark:border-brand-900/20">
-              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400">
+            <div className="pp-mediaplan">
+              <h4 className="pp-mediaplan-title">
                 <HiOutlineDocumentText size={16} /> Détails Media Plan
               </h4>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Format</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.format}</span></div>
-                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Type</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.type || '-'}</span></div>
-                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Publication</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.datePublication ? formatDate(mediaPlanDetails.datePublication) : '-'}</span></div>
-                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Lien Drive</span>
-                  {mediaPlanDetails.lienDrive ? <a href={mediaPlanDetails.lienDrive} target="_blank" rel="noreferrer" className="text-sm font-medium text-brand-600 underline hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-500">Ouvrir Drive</a> : <span className="text-sm text-gray-500">-</span>}</div>
+              <div className="pp-mediaplan-grid">
+                <div className="pp-mediaplan-field"><label>Format</label><span>{mediaPlanDetails.format}</span></div>
+                <div className="pp-mediaplan-field"><label>Type</label><span>{mediaPlanDetails.type || '-'}</span></div>
+                <div className="pp-mediaplan-field"><label>Publication</label><span>{mediaPlanDetails.datePublication ? formatDate(mediaPlanDetails.datePublication) : '-'}</span></div>
+                <div className="pp-mediaplan-field"><label>Lien Drive</label>
+                  {mediaPlanDetails.lienDrive ? <a href={mediaPlanDetails.lienDrive} target="_blank" rel="noreferrer">Ouvrir Drive</a> : <span>-</span>}
+                </div>
               </div>
-              <div className="mt-4 border-t border-brand-200/50 pt-4 dark:border-[#2d251d]">
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(232, 106, 46, 0.2)' }}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <span className="block text-[10px] font-bold uppercase text-gray-500">Texte sur Visuel</span>
-                    <p className="mt-1 text-[13px] text-gray-700 dark:text-gray-300">{mediaPlanDetails.texteSurVisuel || '-'}</p>
+                  <div className="pp-mediaplan-field">
+                    <label>Texte sur Visuel</label>
+                    <span style={{ fontWeight: 'normal' }}>{mediaPlanDetails.texteSurVisuel || '-'}</span>
                   </div>
-                  <div>
-                    <span className="block text-[10px] font-bold uppercase text-gray-500">Inspiration / Autres</span>
-                    <div className="mt-1 flex flex-wrap gap-2 text-[13px] text-gray-700 dark:text-gray-300">
+                  <div className="pp-mediaplan-field">
+                    <label>Inspiration / Autres</label>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontWeight: 'normal' }}>
                       {mediaPlanDetails.inspiration ? (
                         mediaPlanDetails.inspiration.startsWith('http') || mediaPlanDetails.inspiration.startsWith('www') ?
-                          <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline dark:text-brand-400">Inspiration (Lien)</a>
+                          <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer">Inspiration (Lien)</a>
                           : <span>{mediaPlanDetails.inspiration}</span>
                       ) : '-'}
-                      {mediaPlanDetails.autresElements && <span className="ml-2 border-l border-gray-300 pl-2 dark:border-gray-700">{mediaPlanDetails.autresElements}</span>}
+                      {mediaPlanDetails.autresElements && <span style={{ borderLeft: '1px solid #ffc299', paddingLeft: 8 }}>{mediaPlanDetails.autresElements}</span>}
                     </div>
                   </div>
                 </div>
@@ -659,69 +867,55 @@ const ProjetsPage: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="pp-panels-grid">
             {/* Managers Panel */}
-            <div>
-              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-gray-800 dark:text-gray-100">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"><HiOutlineUserGroup size={16} /></span>
+            <div className="pp-panel">
+              <h4 className="pp-panel-title">
+                <div className="pp-panel-title-icon"><HiOutlineUserGroup size={14} /></div>
                 Department Managers
               </h4>
-              <div className="rounded-[20px] border border-gray-100 bg-gray-50/50 p-6 dark:border-[#1e212b] dark:bg-[#14161d] min-h-[160px]">
-                <div className="flex flex-col gap-3">
-                  {getChefs(selectedProject).length === 0 ? (
-                    <p className="py-4 text-center text-[13px] font-medium italic text-gray-400 dark:text-gray-500">Aucun manager assigné</p>
-                  ) : (
-                    getChefs(selectedProject).map(m => (
-                      <div key={m.id} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#262a36] dark:bg-[#1a1c23]">
-                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-[14px] font-bold text-brand-600 dark:bg-brand-500 dark:text-white">
-                          {congeAujourdhuiIds.has(m.id) && (
-                            <div className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-white bg-error-500 dark:border-[#1a1c23] z-10" title="En congé"></div>
-                          )}
-                          {m.imageUrl ? (
-                            <img src={m.imageUrl} alt={m.nom} className="h-full w-full object-cover" />
-                          ) : (
-                            <span>{m.prenom?.[0]}{m.nom?.[0]}</span>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{m.prenom} {m.nom}</p>
-                          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">Manager</p>
-                        </div>
+              <div className="pp-panel-list">
+                {getChefs(selectedProject).length === 0 ? (
+                  <p className="pp-empty-panel">Aucun manager assigné</p>
+                ) : (
+                  getChefs(selectedProject).map(m => (
+                    <div key={m.id} className="pp-member-row">
+                      <div className="pp-member-avatar">
+                        {congeAujourdhuiIds.has(m.id) && <div className="pp-on-leave-dot" title="En congé" />}
+                        {m.imageUrl ? <img src={m.imageUrl} alt={m.nom} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{m.prenom?.[0]}{m.nom?.[0]}</span>}
                       </div>
-                    ))
-                  )}
-                </div>
+                      <div>
+                        <p className="pp-member-name">{m.prenom} {m.nom}</p>
+                        <p className="pp-member-role">Manager</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
             {/* Members Panel */}
-            <div>
-              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-gray-800 dark:text-gray-100">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"><HiOutlineUserGroup size={12} /></span>
+            <div className="pp-panel">
+              <h4 className="pp-panel-title">
+                <div className="pp-panel-title-icon" style={{ background: '#f2f4f7', color: '#667085' }}><HiOutlineUserGroup size={14} /></div>
                 Membres du projet
               </h4>
-              <div className="rounded-[20px] border border-gray-100 bg-gray-50/50 p-6 dark:border-[#1e212b] dark:bg-[#14161d] min-h-[160px]">
-                <div className="flex flex-col gap-3">
-                  {!(selectedProject.membres ?? []).length ? (
-                    <p className="flex h-[80px] items-center justify-center text-[13px] font-medium italic text-gray-400 dark:text-gray-500">Aucun membre assigné</p>
-                  ) : (
-                    (selectedProject.membres ?? []).map(m => (
-                      <div key={m.id} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#262a36] dark:bg-[#1a1c23]">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-[14px] font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                          {m.imageUrl ? (
-                            <img src={m.imageUrl} alt={m.nom} className="h-full w-full object-cover" />
-                          ) : (
-                            <span>{m.prenom?.[0]}{m.nom?.[0]}</span>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{m.prenom} {m.nom}</p>
-                          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{m.departement || 'Membre'}</p>
-                        </div>
+              <div className="pp-panel-list">
+                {!(selectedProject.membres ?? []).length ? (
+                  <p className="pp-empty-panel">Aucun membre assigné</p>
+                ) : (
+                  (selectedProject.membres ?? []).map(m => (
+                    <div key={m.id} className="pp-member-row">
+                      <div className="pp-member-avatar member">
+                        {m.imageUrl ? <img src={m.imageUrl} alt={m.nom} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{m.prenom?.[0]}{m.nom?.[0]}</span>}
                       </div>
-                    ))
-                  )}
-                </div>
+                      <div>
+                        <p className="pp-member-name">{m.prenom} {m.nom}</p>
+                        <p className="pp-member-role">{m.departement || 'Membre'}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -744,8 +938,9 @@ const ProjetsPage: React.FC = () => {
                 </div>
 
                 {/* Client (read-only) */}
-                <div className="h-10 flex items-center rounded-lg border border-gray-200 bg-gray-100 px-3 text-theme-sm text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                  🤝 {clientObj ? clientObj.nom : 'Aucun client'}
+                <div className="h-10 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 text-theme-sm text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  <HiOutlineBriefcase className="pp-anim-float text-brand-500" size={16} />
+                  <span>{clientObj ? clientObj.nom : 'Aucun client'}</span>
                 </div>
 
                 {/* Nom */}
@@ -768,7 +963,7 @@ const ProjetsPage: React.FC = () => {
                           <input type="checkbox" checked={sel} onChange={() => toggleRowChef(idx, m.id)} className="h-3.5 w-3.5 rounded text-warning-500" />
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warning-100 text-[9px] font-bold text-warning-700">{m.prenom?.[0]}{m.nom?.[0]}</span>
                           <span className="text-theme-xs font-medium text-gray-700 dark:text-gray-300 truncate">{m.prenom} {m.nom}</span>
-                          {congeAujourdhuiIds.has(m.id) && <span className="text-[10px]">🏖️</span>}
+                          {congeAujourdhuiIds.has(m.id) && <span className="text-[10px] text-warning-500 pp-anim-pulse"><HiOutlineSun size={14} /></span>}
                         </label>
                       );
                     })}
@@ -917,7 +1112,7 @@ const ProjetsPage: React.FC = () => {
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-theme-xs font-bold text-brand-600">{sub.prenom?.[0]}{sub.nom?.[0]}</div>
                     <div className="min-w-0 flex-1">
                       <p className="text-theme-sm font-semibold text-gray-800 dark:text-white truncate">{sub.prenom} {sub.nom}</p>
-                      {sub.departement && <p className="text-theme-xs text-gray-400">🏢 {sub.departement}</p>}
+                      {sub.departement && <p className="text-theme-xs text-gray-400 flex items-center gap-1"><HiOutlineOfficeBuilding className="pp-anim-float" size={12} /> {sub.departement}</p>}
                     </div>
                   </label>
                 );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown, HiOutlineArrowLeft, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineCalendar } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown, HiOutlineArrowLeft, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineCalendar, HiOutlineOfficeBuilding, HiOutlineSun } from 'react-icons/hi';
 import { projetService } from '../api/projetService';
 import { employeService } from '../api/employeService';
 import { demandeService } from '../api/demandeService';
@@ -744,8 +744,9 @@ const ProjetsPage: React.FC = () => {
                 </div>
 
                 {/* Client (read-only) */}
-                <div className="h-10 flex items-center rounded-lg border border-gray-200 bg-gray-100 px-3 text-theme-sm text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                  🤝 {clientObj ? clientObj.nom : 'Aucun client'}
+                <div className="h-10 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 text-theme-sm text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  <HiOutlineBriefcase className="pp-anim-float text-brand-500" size={16} />
+                  <span>{clientObj ? clientObj.nom : 'Aucun client'}</span>
                 </div>
 
                 {/* Nom */}
@@ -768,7 +769,7 @@ const ProjetsPage: React.FC = () => {
                           <input type="checkbox" checked={sel} onChange={() => toggleRowChef(idx, m.id)} className="h-3.5 w-3.5 rounded text-warning-500" />
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warning-100 text-[9px] font-bold text-warning-700">{m.prenom?.[0]}{m.nom?.[0]}</span>
                           <span className="text-theme-xs font-medium text-gray-700 dark:text-gray-300 truncate">{m.prenom} {m.nom}</span>
-                          {congeAujourdhuiIds.has(m.id) && <span className="text-[10px]">🏖️</span>}
+                          {congeAujourdhuiIds.has(m.id) && <span className="text-[10px] text-warning-500 pp-anim-pulse"><HiOutlineSun size={14} /></span>}
                         </label>
                       );
                     })}
@@ -917,7 +918,7 @@ const ProjetsPage: React.FC = () => {
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-theme-xs font-bold text-brand-600">{sub.prenom?.[0]}{sub.nom?.[0]}</div>
                     <div className="min-w-0 flex-1">
                       <p className="text-theme-sm font-semibold text-gray-800 dark:text-white truncate">{sub.prenom} {sub.nom}</p>
-                      {sub.departement && <p className="text-theme-xs text-gray-400">🏢 {sub.departement}</p>}
+                      {sub.departement && <p className="text-theme-xs text-gray-400 flex items-center gap-1"><HiOutlineOfficeBuilding className="pp-anim-float" size={12} /> {sub.departement}</p>}
                     </div>
                   </label>
                 );

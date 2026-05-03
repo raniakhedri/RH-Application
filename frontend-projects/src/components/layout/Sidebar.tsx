@@ -29,7 +29,7 @@ import {
 } from 'react-icons/hi';
 import { useSidebar } from '../../hooks/useSidebar';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../hooks/useTheme';
+import { useTheme, AppFont } from '../../hooks/useTheme';
 import { API_BASE } from '../../api/axios';
 import { projetService } from '../../api/projetService';
 import { mediaPlanAssignmentService } from '../../api/mediaPlanAssignmentService';
@@ -235,7 +235,7 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { theme, toggleTheme, setTheme } = useTheme();
+  const { theme, toggleTheme, setTheme, font, setFont } = useTheme();
   const {
     isExpanded,
     isMobileOpen,
@@ -901,6 +901,23 @@ const Sidebar: React.FC = () => {
                   <HiOutlineMoon size={18} />
                   <span>Sombre</span>
                 </button>
+              </div>
+
+              <div className="pc-account-popup-divider" />
+
+              <div className="pc-account-popup-section-label">Police d'écriture</div>
+              <div className="pc-account-popup-theme-options" style={{ flexWrap: 'wrap', gap: '8px', padding: '8px 12px' }}>
+                {(['Inter', 'Roboto', 'Outfit', 'Poppins', 'Plus Jakarta Sans'] as AppFont[]).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFont(f)}
+                    className={`pc-account-popup-theme-btn ${font === f ? 'active' : ''}`}
+                    title={f}
+                    style={{ fontFamily: f, fontSize: '11px', padding: '4px 8px', height: 'auto', minHeight: 'unset' }}
+                  >
+                    {f.split(' ')[0]}
+                  </button>
+                ))}
               </div>
 
               <div className="pc-account-popup-divider" />

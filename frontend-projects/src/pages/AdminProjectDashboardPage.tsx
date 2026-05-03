@@ -132,15 +132,23 @@ const AdminProjectDashboardPage: React.FC = () => {
   const warnings = dashboard.alertes.filter(a => a.niveau === 'WARNING').length;
 
   return (
-    <div className="space-y-8 max-w-[1400px] mx-auto">
+    <div className="space-y-8 max-w-[1400px] mx-auto pb-10">
+      {/* Background Decor (Glassmorphism blobs) */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 dark:bg-brand-500/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500/10 dark:bg-blue-500/5 blur-[100px] rounded-full" />
+      </div>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 mb-2">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-            Suivi des Projets
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 text-xs font-bold uppercase tracking-widest mb-3 border border-brand-100 dark:border-brand-500/20">
+            <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
+            Vue consolidée par client
+          </div>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
+            Suivi des <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-orange-400">Projets</span>
           </h1>
-          <p className="text-sm text-gray-400 mt-1">Vue consolidée par client</p>
         </div>
         {dashboard.alertes.length > 0 && (
           <button
@@ -195,13 +203,13 @@ const AdminProjectDashboardPage: React.FC = () => {
 
       {/* ── Search ─────────────────────────────────────────────────────── */}
       <div className="relative max-w-md">
-        <HiOutlineSearch size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+        <HiOutlineSearch size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Rechercher un client ou projet…"
-          className="h-11 w-full rounded-2xl border border-gray-200 bg-white/80 backdrop-blur pl-11 pr-4 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-dark/80 dark:text-gray-300 transition-all"
+          className="h-14 w-full rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 pl-14 pr-5 text-sm font-medium text-gray-800 dark:text-gray-200 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/20 backdrop-blur-md transition-all shadow-[0_8px_32px_-12px_rgba(0,0,0,0.05)] dark:shadow-none"
         />
       </div>
 
@@ -243,18 +251,23 @@ const KpiCard: React.FC<{
   label: string; value: string | number; icon: string; sub?: string;
   gradient: string; border: string; progress?: number;
 }> = ({ label, value, icon, sub, gradient, border, progress }) => (
-  <div className={`relative overflow-hidden rounded-2xl border ${border} bg-gradient-to-br ${gradient} p-5`}>
-    <div className="flex items-center justify-between mb-3">
-      <span className="text-2xl">{icon}</span>
-      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</span>
-    </div>
-    <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{value}</p>
-    {progress !== undefined && (
-      <div className="mt-3 h-1.5 w-full rounded-full bg-white/50 dark:bg-gray-800/50 overflow-hidden">
-        <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-brand-500 transition-all duration-1000" style={{ width: `${Math.min(progress, 100)}%` }} />
+  <div className={`relative overflow-hidden rounded-[2rem] border ${border} bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.06)] dark:shadow-none hover:-translate-y-1 hover:shadow-lg transition-all duration-300`}>
+    <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full bg-gradient-to-br ${gradient} blur-2xl opacity-60 dark:opacity-40`} />
+    <div className="flex items-center justify-between mb-4 relative z-10">
+      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} shadow-sm text-2xl`}>
+        {icon}
       </div>
-    )}
-    {sub && <p className="text-[11px] text-gray-400 mt-2">{sub}</p>}
+      <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</span>
+    </div>
+    <div className="relative z-10">
+      <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{value}</p>
+      {progress !== undefined && (
+        <div className="mt-4 h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+          <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-orange-500 transition-all duration-1000" style={{ width: `${Math.min(progress, 100)}%` }} />
+        </div>
+      )}
+      {sub && <p className="text-xs font-medium text-gray-400 mt-2">{sub}</p>}
+    </div>
   </div>
 );
 
@@ -276,10 +289,10 @@ const ClientCard: React.FC<{
     : 'from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-500';
 
   return (
-    <div className={`rounded-2xl border transition-all duration-300 ${isExpanded
-      ? 'md:col-span-2 xl:col-span-3 border-brand-300 dark:border-brand-500/30 shadow-xl shadow-brand-500/5'
-      : 'border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-lg hover:shadow-gray-500/5'
-    } bg-white dark:bg-gray-dark overflow-hidden`}>
+    <div className={`rounded-[2rem] border transition-all duration-300 ${isExpanded
+      ? 'md:col-span-2 xl:col-span-3 border-brand-300 dark:border-brand-500/30 shadow-xl shadow-brand-500/5 bg-white/90 dark:bg-gray-900/90'
+      : 'border-gray-200 dark:border-gray-700/60 bg-white/60 dark:bg-gray-900/60 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-lg hover:shadow-gray-500/5'
+    } backdrop-blur-xl overflow-hidden`}>
 
       {/* Header — always visible */}
       <button onClick={onToggle} className="w-full text-left p-5 flex items-center gap-4 group">

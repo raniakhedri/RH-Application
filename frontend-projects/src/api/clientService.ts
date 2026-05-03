@@ -7,6 +7,7 @@ export interface ClientDTO {
     telephone?: string;
     adresse?: string;
     notes?: string;
+    logoUrl?: string;
     // Contact principal
     contactNom?: string;
     contactPoste?: string;
@@ -56,6 +57,7 @@ const createClient = (data: {
     telephone?: string;
     adresse?: string;
     notes?: string;
+    logoFile?: File;
     contactNom?: string;
     contactPoste?: string;
     contactEmail?: string;
@@ -70,6 +72,7 @@ const createClient = (data: {
     if (data.telephone) form.append('telephone', data.telephone);
     if (data.adresse) form.append('adresse', data.adresse);
     if (data.notes) form.append('notes', data.notes);
+    if (data.logoFile) form.append('logoFile', data.logoFile);
     if (data.contactNom) form.append('contactNom', data.contactNom);
     if (data.contactPoste) form.append('contactPoste', data.contactPoste);
     if (data.contactEmail) form.append('contactEmail', data.contactEmail);
@@ -88,6 +91,7 @@ const updateClient = (id: number, data: {
     telephone?: string;
     adresse?: string;
     notes?: string;
+    logoFile?: File;
     contactNom?: string;
     contactPoste?: string;
     contactEmail?: string;
@@ -102,6 +106,7 @@ const updateClient = (id: number, data: {
     form.append('telephone', data.telephone ?? '');
     form.append('adresse', data.adresse ?? '');
     form.append('notes', data.notes ?? '');
+    if (data.logoFile) form.append('logoFile', data.logoFile);
     form.append('contactNom', data.contactNom ?? '');
     form.append('contactPoste', data.contactPoste ?? '');
     form.append('contactEmail', data.contactEmail ?? '');
