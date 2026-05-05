@@ -21,6 +21,11 @@ public class MediaPlanCommentController {
         return ResponseEntity.ok(commentService.create(req));
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<List<MediaPlanCommentDTO>> getAll() {
+        return ResponseEntity.ok(commentService.getAll());
+    }
+
     @GetMapping("/by-mediaplan/{mediaPlanId}")
     public ResponseEntity<List<MediaPlanCommentDTO>> getByMediaPlan(@PathVariable Long mediaPlanId) {
         return ResponseEntity.ok(commentService.getByMediaPlanId(mediaPlanId));

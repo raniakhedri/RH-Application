@@ -30,6 +30,7 @@ interface ProjectFormRow {
   dateDebut: string;
   dateFin: string;
   chefIds: number[];
+  description: string;
 }
 
 const emptyRow = (today: string): ProjectFormRow => ({
@@ -38,6 +39,7 @@ const emptyRow = (today: string): ProjectFormRow => ({
   dateDebut: today,
   dateFin: '',
   chefIds: [],
+  description: '',
 });
 
 /* ─── Page ──────────────────────────────────────────────────────────────── */
@@ -98,7 +100,7 @@ const ProjetsPage: React.FC = () => {
   // Edit modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingProjet, setEditingProjet] = useState<Projet | null>(null);
-  const [editForm, setEditForm] = useState({ nom: '', typeProjet: 'DETERMINE' as 'DETERMINE' | 'INDETERMINE', dateDebut: '', dateFin: '', statut: StatutProjet.PLANIFIE, clientId: null as number | null });
+  const [editForm, setEditForm] = useState({ nom: '', description: '', typeProjet: 'DETERMINE' as 'DETERMINE' | 'INDETERMINE', dateDebut: '', dateFin: '', statut: StatutProjet.PLANIFIE, clientId: null as number | null });
   const [editChefIds, setEditChefIds] = useState<number[]>([]);
   const [editDateError, setEditDateError] = useState<string | null>(null);
 
@@ -251,6 +253,7 @@ const ProjetsPage: React.FC = () => {
           dateFin: r.typeProjet === 'DETERMINE' ? r.dateFin : null,
           statut: StatutProjet.PLANIFIE,
           typeProjet: r.typeProjet,
+          description: r.description,
           clientId: createClientKey === 'none' ? null : Number(createClientKey),
           chefDeProjetIds: r.chefIds,
           createurId: user?.employeId,
@@ -270,6 +273,7 @@ const ProjetsPage: React.FC = () => {
     setEditingProjet(projet);
     setEditForm({
       nom: projet.nom,
+      description: projet.description ?? '',
       dateDebut: projet.dateDebut,
       dateFin: projet.dateFin ?? '',
       statut: projet.statut,
@@ -294,6 +298,7 @@ const ProjetsPage: React.FC = () => {
     try {
       await projetService.update(editingProjet!.id, {
         nom: editForm.nom,
+        description: editForm.description,
         dateDebut: editForm.dateDebut,
         dateFin: editForm.typeProjet === 'DETERMINE' ? editForm.dateFin : null,
         statut: editForm.statut,
@@ -823,6 +828,11 @@ const ProjetsPage: React.FC = () => {
                   <span>{formatDate(selectedProject.dateDebut)} au {selectedProject.dateFin ? formatDate(selectedProject.dateFin) : 'Non défini'}</span>
                 </div>
               </div>
+              {selectedProject.description && (
+                <div className="mt-4 text-[13px] whitespace-pre-wrap text-gray-600 dark:text-gray-300">
+                  {selectedProject.description}
+                </div>
+              )}
             </div>
 
             {/* Actions Block (Right) */}
@@ -991,6 +1001,14 @@ const ProjetsPage: React.FC = () => {
                   placeholder="Titre du projet *"
                 />
 
+                {/* Description */}
+                <textarea
+                  value={row.description}
+                  onChange={e => updateRow(idx, { description: e.target.value })}
+                  className={`${inputClass} h-20 py-2 resize-none`}
+                  placeholder="Description du projet (optionnel)"
+                />
+
                 {/* Chefs de projet */}
                 <div>
                   <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Department Manager</label>
@@ -1069,6 +1087,11 @@ const ProjetsPage: React.FC = () => {
           <div>
             <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Nom</label>
             <input type="text" value={editForm.nom} onChange={e => setEditForm(f => ({ ...f, nom: e.target.value }))} className={inputClass} />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+            <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} className={`${inputClass} h-20 py-2 resize-none`} />
           </div>
 
           <div>

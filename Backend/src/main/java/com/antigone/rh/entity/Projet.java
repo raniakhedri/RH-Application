@@ -39,6 +39,9 @@ public class Projet {
     @Column(name = "type_projet", columnDefinition = "VARCHAR(50) DEFAULT 'DETERMINE'")
     private String typeProjet = "DETERMINE";
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     @Column(name = "is_media_plan_project")
     private Boolean isMediaPlanProject;
 

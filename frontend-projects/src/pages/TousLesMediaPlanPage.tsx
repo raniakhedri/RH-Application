@@ -12,9 +12,10 @@ import {
 } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
 import { mediaPlanService } from '../api/mediaPlanService';
-import { mediaPlanAssignmentService } from '../api/mediaPlanAssignmentService';
 import { referentielService } from '../api/referentielService';
 import { clientService, ClientDTO } from '../api/clientService';
+import { mediaPlanAssignmentService } from '../api/mediaPlanAssignmentService';
+import { reactifService } from '../api/reactifService';
 import {
     MediaPlan,
     MediaPlanAssignment,
@@ -307,18 +308,37 @@ const TousLesMediaPlanPage: React.FC = () => {
     };
 
     const handleDisapproveBatch = async (batch: PlanBatch) => {
-        confirm(`Désapprouver les ${batch.plans.length} ligne(s) de ce plan ?`, async () => {
-            try {
-                for (const mp of batch.plans) {
-                    if (mp.statut !== 'DESAPPROUVE') {
-                        await mediaPlanService.disapprove(mp.id);
-                    }
+        setReactifContenu('');
+        setReactifError(null);
+        setDisapproveBatchData(batch);
+    };
+
+    const [disapproveBatchData, setDisapproveBatchData] = useState<PlanBatch | null>(null);
+    const [reactifContenu, setReactifContenu] = useState('');
+    const [reactifLoading, setReactifLoading] = useState(false);
+    const [reactifError, setReactifError] = useState<string | null>(null);
+
+    const handleConfirmDisapprove = async () => {
+        if (!disapproveBatchData || !user?.employeId) return;
+        if (!reactifContenu.trim()) { setReactifError('Les rectifs sont obligatoires'); return; }
+
+        setReactifLoading(true);
+        try {
+            for (const mp of disapproveBatchData.plans) {
+                if (mp.statut !== 'DESAPPROUVE') {
+                    await mediaPlanService.disapprove(mp.id);
+                    await reactifService.createForMediaPlanIntern(mp.id, user.employeId, reactifContenu.trim());
                 }
-                if (selectedClientId) loadMediaPlans(selectedClientId);
-            } catch (e: any) {
-                alert(e.response?.data?.message || 'Erreur');
             }
-        });
+            if (selectedClientId) loadMediaPlans(selectedClientId);
+            setDisapproveBatchData(null);
+            setReactifContenu('');
+            setReactifError(null);
+        } catch (e: any) {
+            setReactifError(e.response?.data?.message || 'Erreur');
+        } finally {
+            setReactifLoading(false);
+        }
     };
 
     const handleRequestClientValidationBatch = async (batch: PlanBatch) => {
@@ -769,6 +789,29 @@ const TousLesMediaPlanPage: React.FC = () => {
             </Modal >
 
             <ConfirmDialog {...confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
+
+            {/* Reactif/Motif de Refus Modal */}
+            <Modal isOpen={!!disapproveBatchData} onClose={() => setDisapproveBatchData(null)} title="Motif de refus" size="md">
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Veuillez indiquer les raisons du refus pour le groupe <strong>{disapproveBatchData && getBatchLabel(disapproveBatchData)}</strong>.
+                        Ces rectifs seront visibles par l'employé pour correction.
+                    </p>
+                    {reactifError && <div className="text-red-500 text-sm font-medium">{reactifError}</div>}
+                    <textarea
+                        value={reactifContenu}
+                        onChange={e => setReactifContenu(e.target.value)}
+                        placeholder="Ex: Le visuel ne correspond pas à la charte graphique..."
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 min-h-[120px] resize-y"
+                    />
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <button onClick={() => setDisapproveBatchData(null)} disabled={reactifLoading} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors">Annuler</button>
+                        <button onClick={handleConfirmDisapprove} disabled={reactifLoading || !reactifContenu.trim()} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2 transition-colors">
+                            {reactifLoading ? <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : 'Confirmer le refus'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div >
     );
 };

@@ -35,6 +35,11 @@ public class TacheController {
         return ResponseEntity.ok(ApiResponse.ok(tacheService.findByProjet(projetId)));
     }
 
+    @GetMapping("/projet/{projetId}/archived")
+    public ResponseEntity<ApiResponse<List<Tache>>> getArchivedByProjet(@PathVariable Long projetId) {
+        return ResponseEntity.ok(ApiResponse.ok(tacheService.findArchiveByProjet(projetId)));
+    }
+
     @GetMapping("/assignee/{employeId}")
     public ResponseEntity<ApiResponse<List<TacheDetailDTO>>> getByAssignee(@PathVariable Long employeId) {
         return ResponseEntity.ok(ApiResponse.ok(tacheService.findDetailByAssignee(employeId)));
@@ -48,6 +53,11 @@ public class TacheController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Tache>> update(@PathVariable Long id, @RequestBody Tache tache) {
         return ResponseEntity.ok(ApiResponse.ok("Tâche mise à jour", tacheService.update(id, tache)));
+    }
+
+    @PutMapping("/{id}/unarchive")
+    public ResponseEntity<ApiResponse<Tache>> unarchive(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Tâche désarchivée", tacheService.unarchive(id)));
     }
 
     @PatchMapping("/{id}/assign/{employeId}")

@@ -141,11 +141,13 @@ public class DemandeService {
         referentielRepository.findByLibelleAndTypeReferentiel(typeConge.name(), TypeReferentiel.TYPE_CONGE)
                 .ifPresent(ref -> {
                     if (!ref.getActif()) {
-                        throw new RuntimeException("Le type de congé « " + finalTypeConge.getLabel() + " » est actuellement désactivé");
+                        throw new RuntimeException(
+                                "Le type de congé « " + finalTypeConge.getLabel() + " » est actuellement désactivé");
                     }
                 });
 
-        // ── Validation du genre pour congé maternité et congé règles (réservés aux femmes) ──
+        // ── Validation du genre pour congé maternité et congé règles (réservés aux
+        // femmes) ──
         if ((typeConge == TypeConge.CONGE_MATERNITE || typeConge == TypeConge.CONGE_REGLES)
                 && employe.getGenre() != null && !"FEMME".equalsIgnoreCase(employe.getGenre())) {
             String label = typeConge == TypeConge.CONGE_MATERNITE ? "maternité" : "règles";
@@ -185,7 +187,8 @@ public class DemandeService {
             throw new RuntimeException("Le congé règles est limité à 1 jour ouvrable uniquement.");
         }
 
-        // Congé maternité: max 2 mois (60 jours calendaires), prolongation max 1 mois (90 jours total)
+        // Congé maternité: max 2 mois (60 jours calendaires), prolongation max 1 mois
+        // (90 jours total)
         if (typeConge == TypeConge.CONGE_MATERNITE) {
             long joursCal = ChronoUnit.DAYS.between(request.getDateDebut(), request.getDateFin()) + 1;
             if (joursCal > 90) {
@@ -206,10 +209,10 @@ public class DemandeService {
             throw new RuntimeException("La période sélectionnée ne contient aucun jour ouvrable");
         }
 
-        // Règle des 4× : la demande doit être faite 4 × nombre_de_jours à l'avance
+        // Règle des 3× : la demande doit être faite 3 × nombre_de_jours à l'avance
         // S'applique uniquement au congé payé
         if (typeConge == TypeConge.CONGE_PAYE) {
-            int delaiMinJours = nombreJours * 4;
+            int delaiMinJours = nombreJours * 3;
             LocalDate dateLimite = LocalDate.now().plusDays(delaiMinJours);
             if (request.getDateDebut().isBefore(dateLimite)) {
                 throw new RuntimeException("Selon le règlement, la demande de " + nombreJours
@@ -389,12 +392,15 @@ public class DemandeService {
             throw new RuntimeException("Un justificatif est obligatoire pour ce type de congé");
         }
 
-        Map<String, Object> calcResult = computeEffectiveDays(request.getDateDebut(), request.getDateFin(), typeConge.name());
+        Map<String, Object> calcResult = computeEffectiveDays(request.getDateDebut(), request.getDateFin(),
+                typeConge.name());
         int nombreJours = (int) calcResult.get("nombreJours");
         int joursOuvrables = (int) calcResult.get("joursOuvrables");
 
-        if (typeConge == TypeConge.CONGE_DECES_PROCHE) nombreJours = 5;
-        else if (typeConge == TypeConge.CONGE_DECES_FAMILLE) nombreJours = 1;
+        if (typeConge == TypeConge.CONGE_DECES_PROCHE)
+            nombreJours = 5;
+        else if (typeConge == TypeConge.CONGE_DECES_FAMILLE)
+            nombreJours = 1;
 
         if (nombreJours == 0) {
             throw new RuntimeException("La période sélectionnée ne contient aucun jour ouvrable");
@@ -598,10 +604,12 @@ public class DemandeService {
     // =========================================
 
     /**
-     * Check if a date is a non-working day based on HoraireTravail working days and holidays.
+     * Check if a date is a non-working day based on HoraireTravail working days and
+     * holidays.
      */
     private boolean isNonWorkingDay(LocalDate date, Set<LocalDate> holidays) {
-        if (holidays.contains(date)) return true;
+        if (holidays.contains(date))
+            return true;
         HoraireTravail horaire = getDefaultHoraire();
         String jourFr = DOW_TO_FRENCH.get(date.getDayOfWeek());
         List<String> joursTravail = Arrays.stream(horaire.getJoursTravail().split(","))
@@ -673,17 +681,18 @@ public class DemandeService {
 
         // ── Règlement 7.2.1 : jours fériés "sandwichés" ──
         // "Si le salarié demande des jours de congé avant et après une fête
-        //  nationale ou religieuse, ces derniers lui seront comptabilisés
-        //  dans leur quota de congés."
+        // nationale ou religieuse, ces derniers lui seront comptabilisés
+        // dans leur quota de congés."
         // → weekday holidays between the first and last working day of the
-        //   leave period count as working days for deduction.
+        // leave period count as working days for deduction.
         int joursFeriesSandwiches = 0;
         LocalDate firstWorkDay = null;
         LocalDate lastWorkDay = null;
         cur = dateDebut;
         while (!cur.isAfter(dateFin)) {
             if (!isNonWorkingDay(cur, holidays)) {
-                if (firstWorkDay == null) firstWorkDay = cur;
+                if (firstWorkDay == null)
+                    firstWorkDay = cur;
                 lastWorkDay = cur;
             }
             cur = cur.plusDays(1);
@@ -700,21 +709,10 @@ public class DemandeService {
         }
         joursOuvrables += joursFeriesSandwiches;
 
-        // Backward extension: include consecutive HOLIDAYS immediately before dateDebut (pont rule)
+        // Forward and backward extensions are strictly removed to only count what is
+        // mathematically between dateDebut and dateFin.
         LocalDate extendedStart = dateDebut;
-        LocalDate prev = extendedStart.minusDays(1);
-        while (holidays.contains(prev)) {
-            extendedStart = prev;
-            prev = extendedStart.minusDays(1);
-        }
-
-        // Forward extension: include consecutive non-working days after dateFin
         LocalDate extendedEnd = dateFin;
-        LocalDate next = extendedEnd.plusDays(1);
-        while (isNonWorkingDay(next, holidays)) {
-            extendedEnd = next;
-            next = extendedEnd.plusDays(1);
-        }
 
         int nombreJours = (int) ChronoUnit.DAYS.between(extendedStart, extendedEnd) + 1;
 
@@ -724,14 +722,12 @@ public class DemandeService {
         if (joursFeriesSandwiches > 0) {
             detailParts.add("+" + joursFeriesSandwiches + "j férié(s) comptabilisé(s) (règlement 7.2.1)");
         }
-        if (extendedStart.isBefore(dateDebut)) {
-            long pontDays = ChronoUnit.DAYS.between(extendedStart, dateDebut);
-            detailParts.add("+" + pontDays + "j pont (jours fériés avant)");
+
+        int includedNonWorking = nombreJours - joursOuvrables;
+        if (includedNonWorking > 0) {
+            detailParts.add("+" + includedNonWorking + "j (weekends/fériés inclus)");
         }
-        if (extendedEnd.isAfter(dateFin)) {
-            long trailingDays = ChronoUnit.DAYS.between(dateFin, extendedEnd);
-            detailParts.add("+" + trailingDays + "j (weekends/fériés après)");
-        }
+
         String details = String.join(" ", detailParts) + " = " + nombreJours + " jour(s) effectif(s)";
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -744,7 +740,8 @@ public class DemandeService {
     }
 
     /**
-     * Calculate working days between two dates, using HoraireTravail working days and holidays.
+     * Calculate working days between two dates, using HoraireTravail working days
+     * and holidays.
      */
     private int calculateWorkingDays(LocalDate start, LocalDate end) {
         Set<LocalDate> holidays = calendrierRepository

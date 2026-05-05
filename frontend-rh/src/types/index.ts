@@ -263,6 +263,7 @@ export interface Projet {
   dateFin: string | null;
   /** 'DETERMINE' | 'INDETERMINE' */
   typeProjet?: string;
+  description?: string;
   isMediaPlanProject?: boolean;
   mediaPlanLigneId?: number;
   chefDeProjet?: Employe | null;
@@ -299,6 +300,8 @@ export interface Tache {
   projetId: number;
   assigneeId: number | null;
   urgente?: boolean;
+  archived?: boolean;
+  description?: string;
 }
 
 export interface TacheMembreInfo {

@@ -114,6 +114,17 @@ const panelGroupsTemplate: Array<{ title: string; items: NavItemDef[]; modes: Ar
         icon: <HiOutlineDocumentReport size={18} />,
         permission: 'VIEW_PROJETS',
       },
+      {
+        key: 'reactifs',
+        label: 'Rectifs',
+        path: '/reactifs/intern',
+        icon: <HiOutlinePencilAlt size={18} />,
+        permission: 'VIEW_PROJETS',
+        children: [
+          { label: 'Rectifs Internes', path: '/reactifs/intern' },
+          { label: 'Rectifs Externes', path: '/reactifs/extern' },
+        ],
+      },
     ],
   },
   {
@@ -187,7 +198,7 @@ const railSecondaryItems: RailItemDef[] = [
     icon: <HiOutlineDocumentReport size={20} />,
     path: '/rapport-projet',
     permission: 'VIEW_PROJETS',
-    matchPrefixes: ['/rapport-projet', '/admin/dashboard-projets'],
+    matchPrefixes: ['/rapport-projet', '/admin/dashboard-projets', '/reactifs'],
     action: 'panel',
     panelMode: 'projects-analytics',
   },
@@ -427,7 +438,7 @@ const Sidebar: React.FC = () => {
             if (item.key === 'calendrier-projets') {
               const children: Array<{ label: string; path: string }> = [];
 
-             
+
 
               if (userPermissions.includes('VIEW_DEADLINES')) {
                 children.push({ label: 'Deadlines', path: '/admin/calendrier-projets?tab=deadlines' });
@@ -436,7 +447,7 @@ const Sidebar: React.FC = () => {
               if (userPermissions.includes('VIEW_REUNIONS')) {
                 children.push({ label: 'R\u00e9unions', path: '/admin/calendrier-projets?tab=reunions' });
               }
-               if (userPermissions.includes('VIEW_CALENDRIER_PROJETS')) {
+              if (userPermissions.includes('VIEW_CALENDRIER_PROJETS')) {
                 children.push({ label: 'Tournage', path: '/admin/calendrier-projets?tab=tournage' });
               }
 

@@ -9,6 +9,9 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useConfirm } from '../hooks/useConfirm';
+import { HiOutlineArchive, HiOutlineChatAlt2 } from 'react-icons/hi';
+import { reactifService } from '../api/reactifService';
+import { useAuth } from '../context/AuthContext';
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success'> = {
     TODO: 'neutral',
@@ -75,6 +78,63 @@ const AdminProjetTachesPage: React.FC = () => {
 
     // View modal
     const [viewingTache, setViewingTache] = useState<Tache | null>(null);
+
+    // Archived Tasks
+    const [showArchived, setShowArchived] = useState(false);
+    const [archivedTaches, setArchivedTaches] = useState<Tache[]>([]);
+    const [loadingArchived, setLoadingArchived] = useState(false);
+
+    // Reactif modal
+    const { user } = useAuth();
+    const [reactifTache, setReactifTache] = useState<Tache | null>(null);
+    const [reactifContenu, setReactifContenu] = useState('');
+    const [reactifLoading, setReactifLoading] = useState(false);
+    const [reactifError, setReactifError] = useState<string | null>(null);
+
+    const handleReactif = async () => {
+        if (!reactifTache || !reactifContenu.trim()) {
+            setReactifError('Les rectifs sont obligatoires');
+            return;
+        }
+        if (!user?.employeId) {
+            setReactifError('Utilisateur non identifié');
+            return;
+        }
+        setReactifLoading(true);
+        try {
+            await reactifService.createForTache(reactifTache.id, user.employeId, reactifContenu.trim());
+            setReactifTache(null);
+            setReactifContenu('');
+            setReactifError(null);
+            loadData(); // refresh board — task goes back to TODO
+        } catch (err) {
+            setReactifError('Erreur lors de l\'enregistrement des rectifs');
+        } finally {
+            setReactifLoading(false);
+        }
+    };
+
+    const loadArchived = async () => {
+        setLoadingArchived(true);
+        try {
+            const res = await tacheService.getArchivedByProjet(pid);
+            setArchivedTaches(res.data.data || []);
+        } catch (err) {
+            console.error('Erreur chargement archives:', err);
+        } finally {
+            setLoadingArchived(false);
+        }
+    };
+
+    const handleUnarchive = async (tacheId: number) => {
+        try {
+            await tacheService.unarchive(tacheId);
+            setArchivedTaches(prev => prev.filter(t => t.id !== tacheId));
+            loadData(); // refresh main board
+        } catch (err) {
+            console.error('Erreur désarchivage:', err);
+        }
+    };
 
     const pid = Number(projetId);
 
@@ -336,9 +396,14 @@ const AdminProjetTachesPage: React.FC = () => {
                         </p>
                     </div>
                 </div>
-                <Button onClick={() => { setShowCreate(true); setTaskForms([emptyForm()]); setCreateError(null); }}>
-                    <HiOutlinePlus size={18} /> Nouvelles tâches
-                </Button>
+                <div className="flex items-center gap-3">
+                    <Button variant="outline" onClick={() => { setShowArchived(true); loadArchived(); }}>
+                        <HiOutlineArchive size={18} /> Archivées
+                    </Button>
+                    <Button onClick={() => { setShowCreate(true); setTaskForms([emptyForm()]); setCreateError(null); }}>
+                        <HiOutlinePlus size={18} /> Nouvelles tâches
+                    </Button>
+                </div>
             </div>
 
             {/* Hint */}
@@ -426,6 +491,16 @@ const AdminProjetTachesPage: React.FC = () => {
                                                     >
                                                         <HiOutlineTrash size={13} />
                                                     </button>
+                                                    {tache.statut === 'DONE' && (
+                                                        <button
+                                                            onClick={() => { setReactifTache(tache); setReactifContenu(''); setReactifError(null); }}
+                                                            className="rounded p-1 text-gray-400 hover:text-amber-500 hover:bg-amber-50"
+                                                            title="Rectifs"
+                                                            onMouseDown={e => e.stopPropagation()}
+                                                        >
+                                                            <HiOutlineChatAlt2 size={13} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="flex justify-center opacity-20">
@@ -442,6 +517,37 @@ const AdminProjetTachesPage: React.FC = () => {
                     ))}
                 </div>
             )}
+
+            {/* ── Reactif Modal ─────────────────────────────────────── */}
+            <Modal
+                isOpen={!!reactifTache}
+                onClose={() => { setReactifTache(null); setReactifContenu(''); setReactifError(null); }}
+                title="Ajouter des rectifs"
+                size="md"
+            >
+                <div className="space-y-4">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-theme-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+                        ⚠️ Cette tâche sera remise <strong>À faire</strong> et l'assigné recevra vos rectifs.
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Rectifs (raison / correction demandée)</label>
+                        <textarea
+                            value={reactifContenu}
+                            onChange={e => setReactifContenu(e.target.value)}
+                            rows={4}
+                            placeholder="Décrivez ce qui doit être corrigé ou amélioré..."
+                            className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-theme-sm text-gray-700 focus:border-amber-300 focus:outline-none focus:ring focus:ring-amber-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
+                        />
+                    </div>
+                    {reactifError && <p className="text-theme-xs text-error-500">{reactifError}</p>}
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setReactifTache(null)}>Annuler</Button>
+                        <Button onClick={handleReactif} disabled={reactifLoading}>
+                            {reactifLoading ? 'Envoi...' : '💬 Envoyer les rectifs'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* ── Create Modal ─────────────────────────────────────── */}
             <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Créer des tâches" size="lg">
@@ -490,11 +596,10 @@ const AdminProjetTachesPage: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => updateTaskForm(idx, 'urgente', !form.urgente)}
-                                    className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${
-                                        form.urgente
-                                            ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
-                                            : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
-                                    }`}
+                                    className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${form.urgente
+                                        ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
+                                        : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
+                                        }`}
                                 >
                                     🚨 {form.urgente ? 'Tâche urgente (actif)' : 'Marquer comme urgente'}
                                 </button>
@@ -554,11 +659,10 @@ const AdminProjetTachesPage: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setEditForm(f => ({ ...f, urgente: !f.urgente }))}
-                            className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${
-                                editForm.urgente
-                                    ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
-                                    : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
-                            }`}
+                            className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 py-2 text-theme-sm font-medium transition-colors ${editForm.urgente
+                                ? 'border-error-500 bg-error-50 text-error-600 dark:bg-error-500/10 dark:text-error-400'
+                                : 'border-gray-300 text-gray-400 hover:border-error-300 hover:text-error-500 dark:border-gray-600'
+                                }`}
                         >
                             🚨 {editForm.urgente ? 'Tâche urgente (actif)' : 'Marquer comme urgente'}
                         </button>
@@ -609,6 +713,33 @@ const AdminProjetTachesPage: React.FC = () => {
                 onConfirm={handleConfirm}
                 onCancel={handleCancel}
             />
+
+            {/* ── Archived Modal ────────────────────────────────────────── */}
+            <Modal isOpen={showArchived} onClose={() => setShowArchived(false)} title="Tâches Archivées" size="lg">
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                    {loadingArchived ? (
+                        <p className="text-center text-gray-500 py-4">Chargement des archives...</p>
+                    ) : archivedTaches.length === 0 ? (
+                        <p className="text-center text-gray-400 py-8 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl">
+                            Aucune tâche archivée pour ce projet.
+                        </p>
+                    ) : (
+                        archivedTaches.map(tache => (
+                            <div key={tache.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                                <div>
+                                    <p className="text-theme-sm font-semibold text-gray-800 dark:text-gray-200">{tache.titre}</p>
+                                    <p className="text-theme-xs text-gray-500 mt-1">
+                                        Terminée • 👤 {getMemberNom(tache.assigneeId)}
+                                    </p>
+                                </div>
+                                <Button variant="outline" onClick={() => handleUnarchive(tache.id!)}>
+                                    Désarchiver
+                                </Button>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </Modal>
         </div>
     );
 };
