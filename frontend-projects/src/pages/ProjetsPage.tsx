@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown, HiOutlineArrowLeft, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineCalendar } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineDownload, HiOutlineChevronDown, HiOutlineArrowLeft, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineCalendar, HiOutlineOfficeBuilding, HiOutlineSun } from 'react-icons/hi';
 import { projetService } from '../api/projetService';
 import { employeService } from '../api/employeService';
 import { demandeService } from '../api/demandeService';
 import { clientService } from '../api/clientService';
 import { mediaPlanService } from '../api/mediaPlanService';
 import type { ClientDTO } from '../api/clientService';
+import { API_BASE } from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Projet, StatutProjet, Employe, StatutDemande, MediaPlan } from '../types';
 import Badge from '../components/ui/Badge';
@@ -54,13 +55,21 @@ const ProjetsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [managers, setManagers] = useState<Employe[]>([]);
   const [congeAujourdhuiIds, setCongeAujourdhuiIds] = useState<Set<number>>(new Set());
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
   type ViewState = 'CLIENTS' | 'PROJECTS' | 'PROJECT_DETAILS';
   const [viewState, setViewState] = useState<ViewState>('CLIENTS');
+  const [currentPage, setCurrentPage] = useState(1);
+  const clientsPerPage = 6;
   const [selectedClientKey, setSelectedClientKey] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Projet | null>(null);
   const [mediaPlanDetails, setMediaPlanDetails] = useState<MediaPlan | null>(null);
   const [loadingMediaPlan, setLoadingMediaPlan] = useState(false);
+
+  type ClientsTab = 'TOUS' | 'ACTIFS' | 'NON_ASSIGNE' | 'RECENTS';
+  const [clientsTab, setClientsTab] = useState<ClientsTab>('TOUS');
+  const [clientSearch, setClientSearch] = useState('');
 
   useEffect(() => {
     if (viewState === 'PROJECT_DETAILS' && selectedProject?.isMediaPlanProject && selectedProject?.mediaPlanLigneId) {
@@ -108,6 +117,26 @@ const ProjetsPage: React.FC = () => {
 
   useEffect(() => { loadData(); }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatLastUpdated = (value: Date | null, reference: Date) => {
+    if (!value) return '—';
+    const diffMs = Math.max(0, reference.getTime() - value.getTime());
+    const diffMin = Math.floor(diffMs / 60000);
+
+    if (diffMin < 1) return "A l'instant";
+    if (diffMin < 60) return `il y a ${diffMin} min`;
+
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `il y a ${diffHours} h`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `il y a ${diffDays} j`;
+  };
+
   const loadData = async () => {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -141,6 +170,8 @@ const ProjetsPage: React.FC = () => {
         const clients: ClientDTO[] = Array.isArray(raw) ? raw : (raw?.data ?? []);
         setAllClients(clients);
       }
+
+      setLastUpdatedAt(new Date());
     } catch (err) {
       console.error('Erreur chargement projets:', err);
     } finally {
@@ -353,9 +384,56 @@ const ProjetsPage: React.FC = () => {
 
   const getClientForKey = (key: string) => allClients.find(c => String(c.id) === key) || null;
 
-  /* ─── RENDER ───────────────────────────────────────────────────────────── */
-  if (loading) return <div className="py-20 text-center text-gray-500">Chargement...</div>;
+  const getClientInitials = (name: string) => {
+    const cleaned = name
+      .replace(/\(.*?\)/g, '')
+      .replace(/[\/]/g, ' ')
+      .trim();
+    if (!cleaned) return 'CL';
+    const parts = cleaned.split(/\s+/g).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+    return cleaned.slice(0, 2).toUpperCase();
+  };
 
+  const getClientKey = (clientName: string) => {
+    const n = clientName.trim().toLowerCase();
+    if (n.includes('tecnocasa')) return 'tecnocasa';
+    if (n.includes('gmir')) return 'gmir';
+    if (n.includes('skinlab')) return 'skinlab';
+    if (n.includes('eshuji') || n.includes('client')) return 'eshuji';
+    if (n.includes('shemi')) return 'shemi';
+    if (n.includes('zen')) return 'zen';
+    return 'default';
+  };
+
+  const getClientProgress = (clientKey: string, projects: Projet[]) => {
+    if (!projects.length) return 0;
+
+    const weights: Record<string, number> = {
+      [StatutProjet.CLOTURE]: 1,
+      [StatutProjet.EN_COURS]: 0.5,
+      [StatutProjet.PLANIFIE]: 0.2,
+      [StatutProjet.ANNULE]: 0,
+    };
+    const score = projects.reduce((acc, p) => acc + (weights[p.statut] ?? 0), 0);
+    return Math.max(0, Math.min(100, Math.round((score / projects.length) * 100)));
+  };
+
+  const getClientPreviewMembers = (projects: Projet[]) => {
+    const map = new Map<number, Employe>();
+    projects.forEach(p => {
+      getChefs(p).forEach(c => {
+        if (c?.id != null && !map.has(c.id)) map.set(c.id, c);
+      });
+    });
+    return [...map.values()];
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [clientsTab, clientSearch]);
+
+  /* ─── RENDER ───────────────────────────────────────────────────────────── */
   const sortedEntries = [...groupedByClient.entries()].sort((a, b) => {
     if (a[0] === 'none') return 1;
     if (b[0] === 'none') return -1;
@@ -364,167 +442,350 @@ const ProjetsPage: React.FC = () => {
     return (a[1].client?.nom || '').localeCompare(b[1].client?.nom || '');
   });
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Tous les Projets</h1>
-  
-        </div>
-      </div>
+  const clientEntries = sortedEntries.filter(([key]) => key !== 'none');
 
-      {/* ── CLIENTS VIEW ── */}
+  const filteredClientEntries = clientEntries
+    .filter(([_, { client, projects }]) => {
+      if (clientsTab === 'ACTIFS') return projects.length > 0;
+      if (clientsTab === 'NON_ASSIGNE') return projects.length === 0;
+      if (clientsTab === 'RECENTS') return projects.length > 0;
+      return true;
+    })
+    .filter(([_, { client }]) => {
+      const q = clientSearch.trim().toLowerCase();
+      if (!q) return true;
+      return (client?.nom || '').toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      if (clientsTab !== 'RECENTS') return 0;
+      const lastDate = (projects: Projet[]) => {
+        const dates = projects
+          .map(p => p.dateDebut || p.dateFin)
+          .filter(Boolean)
+          .map(d => String(d).substring(0, 10));
+        const sorted = dates.sort();
+        return sorted.length ? sorted[sorted.length - 1] : '';
+      };
+      return lastDate(b[1].projects).localeCompare(lastDate(a[1].projects));
+    });
+
+  const statsClientsCount = clientEntries.length;
+  const statsProjects = clientEntries.flatMap(([_, { projects }]) => projects);
+  const statsTotalProjects = statsProjects.length;
+  const statsNoProjectsClients = clientEntries.filter(([_, { projects }]) => projects.length === 0).length;
+
+  const monthKey = new Date().toISOString().substring(0, 7);
+  const statsNewThisMonth = statsProjects.filter(p => String(p.dateDebut || '').substring(0, 7) === monthKey).length;
+
+  const statsPending = statsProjects.filter(p => {
+    const hasChefs = (p.chefsDeProjet && p.chefsDeProjet.length > 0) || !!p.chefDeProjet;
+    return !hasChefs;
+  }).length;
+
+  /* ── Pagination Logic (clients dashboard) ── */
+  const totalPages = Math.max(1, Math.ceil(filteredClientEntries.length / clientsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+
+  useEffect(() => {
+    setCurrentPage(prev => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  const paginatedEntries = filteredClientEntries.slice(
+    (safePage - 1) * clientsPerPage,
+    safePage * clientsPerPage
+  );
+
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-brand-500 dark:border-gray-700" />
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Chargement des projets...</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#fcfcfc] dark:bg-gray-900 p-4 lg:p-6 pb-20">
+      <div className="max-w-6xl mx-auto space-y-5">
+      {/* ── CLIENTS DASHBOARD (Tous les Projets) ── */}
       {viewState === 'CLIENTS' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedEntries.map(([key, { client, projects }]) => (
-            <div
-              key={key}
-              onClick={() => { setSelectedClientKey(key); setViewState('PROJECTS'); }}
-              className="group cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 hover:border-brand-300 hover:shadow-md transition-all dark:border-gray-700 dark:bg-gray-dark dark:hover:border-brand-500/50"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
-                    <HiOutlineBriefcase size={20} />
+        <div className="space-y-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Tous les <span className="text-brand-600 dark:text-brand-400">Projets</span>
+              </h1>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Supervision des clients et de leurs projets</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                className="px-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm w-full sm:w-64"
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                placeholder="Rechercher un client..."
+                aria-label="Rechercher un client"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 flex flex-col gap-1 text-center sm:text-left">
+              <div className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">TOTAL PROJETS</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{statsTotalProjects}</div>
+              <div className="text-xs font-medium text-emerald-600">+{statsNewThisMonth} ce mois</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 flex flex-col gap-1 text-center sm:text-left">
+              <div className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">CLIENTS ACTIFS</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{statsClientsCount}</div>
+              <div className="text-xs font-medium text-brand-600">{statsNoProjectsClients} sans assigné</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 flex flex-col gap-1 text-center sm:text-left">
+              <div className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">EN ATTENTE</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{statsPending}</div>
+              <div className="text-xs font-medium text-amber-600">À assigner</div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-gray-100 dark:border-gray-800 pb-2" role="tablist" aria-label="Filtres">
+            <button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${clientsTab === 'TOUS' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`} onClick={() => setClientsTab('TOUS')}>Tous</button>
+            <button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${clientsTab === 'ACTIFS' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`} onClick={() => setClientsTab('ACTIFS')}>Actifs</button>
+            <button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${clientsTab === 'NON_ASSIGNE' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`} onClick={() => setClientsTab('NON_ASSIGNE')}>Non assignés</button>
+            <button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${clientsTab === 'RECENTS' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`} onClick={() => setClientsTab('RECENTS')}>Récents</button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {paginatedEntries.map(([key, { client, projects }]) => {
+              const name = client?.nom || 'Client';
+              const clientKey = getClientKey(name);
+              const progress = getClientProgress(clientKey, projects);
+              const previewMembers = getClientPreviewMembers(projects);
+              const hasLogo = Boolean(client?.logoUrl);
+
+              const mark = (() => {
+                if (clientKey === 'tecnocasa') return { text: getClientInitials(name), cls: 'bg-green-500' };
+                if (clientKey === 'skinlab') return { text: getClientInitials(name), cls: 'bg-pink-500' };
+                if (clientKey === 'zen') return { text: getClientInitials(name), cls: 'bg-amber-500' };
+                if (clientKey === 'gmir') return { text: getClientInitials(name), cls: 'bg-brand-500' };
+                if (clientKey === 'eshuji') return { text: getClientInitials(name), cls: 'bg-purple-500' };
+                if (clientKey === 'shemi') return { text: getClientInitials(name), cls: 'bg-rose-500' };
+                return { text: getClientInitials(name), cls: 'bg-gray-500' };
+              })();
+
+            
+
+              return (
+                <div
+                  key={key}
+                  className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 hover:shadow-[0_8px_30px_rgba(255,107,0,0.12)] hover:border-brand-200 dark:hover:border-brand-800 transition-all duration-300 hover:-translate-y-1 cursor-pointer group flex flex-col block-animate"
+                  onClick={() => { setSelectedClientKey(key); setViewState('PROJECTS'); }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedClientKey(key);
+                      setViewState('PROJECTS');
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg text-white truncate shrink-0 transition-transform duration-300 group-hover:scale-105 ${mark.cls} ${hasLogo ? 'overflow-hidden bg-transparent' : 'bg-brand-500'}`}>
+                      {hasLogo ? (
+                        <img src={`${API_BASE}${client!.logoUrl}`} alt={name} className="w-full h-full object-cover" />
+                      ) : (
+                        mark.text
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white truncate transition-colors group-hover:text-brand-600">{name}</div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-theme-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
-                      {client ? client.nom : 'Sans Client'}
-                    </h3>
-                    <p className="text-theme-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
-                      {client?.description || 'Projets internes / Non assignés'}
-                    </p>
+
+                  <div className="mb-4">
+                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-1.5" aria-label={`Progression ${progress}%`}>
+                      <div className="h-full bg-brand-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                      {projects.length === 0 ? (
+                        <>
+                          <span>Pas encore démarré</span>
+                          <span>0%</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Progression</span>
+                          <span>{progress}%</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-50 dark:border-gray-700 mt-auto">
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">{projects.length} projet{projects.length !== 1 ? 's' : ''}</span>
+                    <div className="flex items-center gap-3">
+                      {projects.length === 0 ? (
+                        <button
+                          type="button"
+                          className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 transition"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openCreateModal(key);
+                          }}
+                        >
+                          + Assigner
+                        </button>
+                      ) : (
+                        <>
+                          <div className="flex -space-x-2" aria-label="Membres">
+                            {previewMembers.slice(0, 3).map(m => (
+                              <div key={m.id} className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 shadow-sm bg-brand-200 text-white flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden" title={`${m.prenom} ${m.nom}`}>
+                                {m.imageUrl
+                                  ? <img src={m.imageUrl} alt={m.nom} className="w-full h-full object-cover" />
+                                  : <>{(m.prenom?.[0] || '')}{(m.nom?.[0] || '')}</>}
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 flex items-center gap-1 transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedClientKey(key);
+                              setViewState('PROJECTS');
+                            }}
+                          >
+                            Voir <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 dark:border-gray-700/50">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
-                  {projects.length} projet{projects.length !== 1 ? 's' : ''}
-                </span>
-                <span className="text-theme-xs font-medium text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity dark:text-brand-400">
-                  Voir les projets →
-                </span>
-              </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-center gap-2 mt-8" aria-label="Pagination">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={safePage === 1}
+              className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Précédent
+            </button>
+            <div className="flex items-center gap-1 hidden sm:flex">
+              {Array.from({ length: totalPages }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentPage(index + 1)}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-medium transition-colors ${safePage === index + 1 ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                >
+                  {index + 1}
+                </button>
+              ))}
             </div>
-          ))}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={safePage === totalPages}
+              className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Suivant
+            </button>
+          </div>
         </div>
       )}
 
       {/* ── PROJECTS VIEW ── */}
       {viewState === 'PROJECTS' && (
         <div className="space-y-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <button
-                onClick={() => setViewState('CLIENTS')}
-                className="mb-4 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-brand-500 transition-colors hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300"
-              >
-                <HiOutlineArrowLeft size={14} />
-                Retour aux clients
+              <button className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-500 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 mb-3 transition-all duration-300 hover:-translate-x-1" onClick={() => setViewState('CLIENTS')}>
+                <HiOutlineArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" /> Retour aux clients
               </button>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
                 {getClientForKey(selectedClientKey || 'none')?.nom || 'Sans Client'}
               </h2>
-              <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">
-                {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).length} projets actifs pour ce client.
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).length} projets pour ce client
               </p>
             </div>
-
             {canManageAllProjets && (
-              <button
-                onClick={() => openCreateModal(selectedClientKey || 'none')}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-              >
+              <button className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-medium transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5" onClick={() => openCreateModal(selectedClientKey || 'none')}>
                 <HiOutlinePlus size={16} /> Nouveau Projet
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).map(p => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).map((p, i) => {
               const chefs = getChefs(p);
-
-              let statusBadgeClass = 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
-              if (p.statut === 'EN_COURS') statusBadgeClass = 'bg-brand-50 text-brand-600 border-brand-200 dark:bg-brand-900/20 dark:text-brand-400 dark:border-brand-800';
-              else if (p.statut === 'CLOTURE') statusBadgeClass = 'bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800';
-              else if (p.statut === 'ANNULE') statusBadgeClass = 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
+              const statusKey = p.statut.toLowerCase().replace('_', '-');
+              
+              let statusBadgeClass = 'bg-gray-100 text-gray-700';
+              if (p.statut === 'PLANIFIE') statusBadgeClass = 'bg-purple-100 text-purple-700 font-semibold';
+              if (p.statut === 'EN_COURS') statusBadgeClass = 'bg-brand-100 text-brand-700 font-semibold';
+              if (p.statut === 'CLOTURE') statusBadgeClass = 'bg-emerald-100 text-emerald-700 font-semibold';
+              if (p.statut === 'ANNULE') statusBadgeClass = 'bg-red-100 text-red-700 font-semibold';
 
               return (
                 <div
                   key={p.id}
                   onClick={() => { setSelectedProject(p); setViewState('PROJECT_DETAILS'); }}
-                  className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[20px] border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:shadow-xl dark:shadow-black/20 dark:hover:border-[#3a3e4d]"
+                  className="bg-white dark:bg-gray-800 rounded-[20px] p-6 border border-gray-200 dark:border-gray-700 shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(255,107,0,0.12)] hover:border-brand-200 dark:hover:border-brand-800 transition-all duration-300 cursor-pointer flex flex-col min-h-[160px] group hover:-translate-y-1 block-animate"
+                  style={{ animationDelay: `${i * 0.05}s` }}
                 >
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <h3 className="line-clamp-2 flex-1 text-base font-semibold leading-snug text-gray-900 dark:text-gray-100">
-                      {p.nom}
-                    </h3>
-                    <span className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusBadgeClass}`}>
-                      {p.statut.replace('_', ' ')}
-                    </span>
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-[1.15rem] font-extrabold text-gray-900 dark:text-white group-hover:text-brand-600 transition-colors pr-2 leading-tight">{p.nom}</h3>
+                    <span className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 ${statusBadgeClass}`}>{p.statut.replace('_', ' ')}</span>
                   </div>
-
-                  <div className="mb-6 flex items-center gap-2 text-[12px] font-medium text-gray-500 dark:text-gray-400">
-                    <HiOutlineCalendar size={15} className="text-gray-400 dark:text-gray-500" />
+                  
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-6 font-medium">
+                    <HiOutlineCalendar size={14} className="text-gray-400" />
                     <span>{formatDate(p.dateDebut)} — {p.dateFin ? formatDate(p.dateFin) : 'Indéterminé'}</span>
                   </div>
 
-                  <div className="flex-1">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                      Managers
-                    </p>
-                    {chefs.length === 0 ? (
-                      <span className="text-[12px] font-medium text-gray-400 dark:text-gray-600">-</span>
-                    ) : (
-                      <div className="flex -space-x-2">
-                        {chefs.slice(0, 3).map((c, i) => (
-                          <div key={c.id} className="relative h-7 w-7 overflow-hidden rounded-full ring-2 ring-white dark:ring-[#1a1c22]">
-                            {congeAujourdhuiIds.has(c.id) && (
-                              <div className="absolute right-0 top-0 h-2 w-2 rounded-full border border-[#1a1c22] bg-orange-500 z-10" title="En congé"></div>
-                            )}
-                            {c.imageUrl ? (
-                              <img src={c.imageUrl} alt={c.nom} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-gray-200 dark:bg-gray-700 text-[9px] font-bold text-gray-700 dark:text-gray-300">
-                                {c.prenom?.[0]}{c.nom?.[0]}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {chefs.length > 3 && (
-                          <div className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 ring-2 ring-white dark:bg-gray-700 dark:text-gray-300 dark:ring-[#1a1c22] text-[10px] font-bold">
-                            +{chefs.length - 3}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4 dark:border-white/5">
-                    <span className="text-[11px] font-medium text-gray-500 dark:text-gray-500">
-                      {(p.membres || []).length} membres actifs
+                  <div className="flex items-center justify-between mt-auto pt-2">
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                      {(p.membres || []).length} membre{((p.membres || []).length !== 1) ? 's' : ''}
                     </span>
-                    <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-hover:text-brand-500 dark:text-gray-500">
-                      Détails <span className="text-lg leading-none translate-y-[-1px]">→</span>
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {chefs.length > 0 && (
+                        <div className="flex -space-x-2" aria-label="Membres">
+                          {chefs.slice(0, 3).map(c => (
+                            <div key={c.id} className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 shadow-sm bg-brand-200 text-white flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden" title={`${c.prenom} ${c.nom}`}>
+                              {congeAujourdhuiIds.has(c.id) && <div className="absolute top-0 right-0 w-2 h-2 bg-amber-400 border border-white rounded-full" title="En congé" />}
+                              {c.imageUrl
+                                ? <img src={c.imageUrl} alt={c.nom} className="w-full h-full object-cover" />
+                                : <>{c.prenom?.[0]}{c.nom?.[0]}</>}
+                            </div>
+                          ))}
+                          {chefs.length > 3 && <div className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 shadow-sm bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-600 z-10 shrink-0">+{chefs.length - 3}</div>}
+                        </div>
+                      )}
+                      
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 flex items-center gap-1 group-hover:underline transition-all"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedProject(p);
+                          setViewState('PROJECT_DETAILS');
+                        }}
+                      >
+                        Détails <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
-
-            {/* Nouveau Projet Card */}
             {canManageAllProjets && (
-              <div
-                onClick={() => openCreateModal(selectedClientKey || 'none')}
-                className="group flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border-2 border-dashed border-gray-200 bg-transparent transition-all hover:border-gray-300 hover:bg-gray-50 dark:border-[#272a35] dark:hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors group-hover:bg-gray-200 group-hover:text-gray-600 dark:bg-gray-100 dark:bg-gray-800 dark:text-gray-500 dark:group-hover:bg-gray-200 dark:bg-gray-700 dark:group-hover:text-gray-300">
-                  <HiOutlinePlus size={20} />
-                </div>
-                <div className="text-center">
-                  <p className="text-[14px] font-bold text-gray-900 dark:text-gray-200">Nouveau Projet</p>
-                  <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-500">Lancer une nouvelle initiative pour ce client</p>
-                </div>
+              <div onClick={() => openCreateModal(selectedClientKey || 'none')} className="bg-gray-50/50 dark:bg-gray-800/50 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-brand-400 dark:hover:border-brand-500 transition-all min-h-[220px]">
+                <div className="w-12 h-12 rounded-full bg-brand-100/50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 flex items-center justify-center mb-3"><HiOutlinePlus size={24} /></div>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">Nouveau Projet</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Lancer une nouvelle initiative</p>
               </div>
             )}
           </div>
@@ -533,37 +794,39 @@ const ProjetsPage: React.FC = () => {
 
       {/* ── PROJECT DETAILS VIEW ── */}
       {viewState === 'PROJECT_DETAILS' && selectedProject && (
-        <div className="space-y-6 lg:space-y-8">
+        <div className="space-y-6">
           {/* Top Header Back Button */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setViewState('PROJECTS')}
-              className="flex items-center gap-2 text-[14px] font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-            >
-              <HiOutlineArrowLeft size={18} />
-              Détails du Projet
+            <button className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-500 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 transition-all duration-300 hover:-translate-x-1 group" onClick={() => setViewState('PROJECTS')}>
+              <HiOutlineArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" /> Retour
             </button>
           </div>
 
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6 lg:p-8">
             {/* Info Block (Left) */}
             <div className="max-w-2xl">
-              <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-4">
+                {selectedProject.isMediaPlanProject && <span className="mr-2">👉</span>}
                 {selectedProject.nom}
               </h1>
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-gray-600 dark:bg-[#252834] dark:text-[#a0a8c2]">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={`text-[11px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-full ${
+                  selectedProject.statut === 'PLANIFIE' ? 'bg-purple-100 text-purple-700' :
+                  selectedProject.statut === 'EN_COURS' ? 'bg-brand-100 text-brand-700' :
+                  selectedProject.statut === 'CLOTURE' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
                   {selectedProject.statut.replace('_', ' ')}
                 </span>
                 {selectedProject.typeProjet === 'INDETERMINE' && (
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-gray-600 dark:bg-[#252834] dark:text-[#a0a8c2]">
+                  <span className="text-[11px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-full bg-gray-100 text-gray-700">
                     Projet Indéterminé
                   </span>
                 )}
-              </div>
-              <div className="flex items-center gap-2 text-[13px] font-medium text-gray-500 dark:text-gray-400">
-                <HiOutlineCalendar size={16} />
-                <span>{formatDate(selectedProject.dateDebut)} au {selectedProject.dateFin ? formatDate(selectedProject.dateFin) : 'Non défini'}</span>
+                <div className="flex items-center gap-2 text-sm text-gray-500 font-medium px-3 py-1.5 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <HiOutlineCalendar size={16} className="text-gray-400" />
+                  <span>{formatDate(selectedProject.dateDebut)} au {selectedProject.dateFin ? formatDate(selectedProject.dateFin) : 'Non défini'}</span>
+                </div>
               </div>
               {selectedProject.description && (
                 <div className="mt-4 text-[13px] whitespace-pre-wrap text-gray-600 dark:text-gray-300">
@@ -573,95 +836,71 @@ const ProjetsPage: React.FC = () => {
             </div>
 
             {/* Actions Block (Right) */}
-            <div className="flex shrink-0 flex-wrap gap-3">
-              {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'PLANIFIE' && (
-                <button
-                  onClick={() => {
-                    handleChangeStatut(selectedProject.id, StatutProjet.EN_COURS);
-                    setSelectedProject({ ...selectedProject, statut: StatutProjet.EN_COURS });
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
-                  Démarrer
-                </button>
-              )}
-              {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'EN_COURS' && (
-                <button
-                  onClick={() => {
-                    handleChangeStatut(selectedProject.id, StatutProjet.CLOTURE);
-                    setSelectedProject({ ...selectedProject, statut: StatutProjet.CLOTURE });
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
-                  Clôturer
-                </button>
-              )}
-              {(canManageAllProjets || canViewProjetsCreateTaches) && (
-                <button
-                  onClick={() => navigate(`/projets/${selectedProject.id}/taches`)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
-                  <HiOutlineClipboardList size={16} /> Tâches
-                </button>
-              )}
-              {(canManageAllProjets || canViewProjetsCreateTaches) && ((selectedProject.chefsDeProjet && selectedProject.chefsDeProjet.some(c => c.id === user?.employeId)) || selectedProject.chefDeProjet?.id === user?.employeId) && (
-                <button
-                  onClick={() => handleAffectMembers(selectedProject)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
-                  <HiOutlineUserGroup size={16} /> Affecter
-                </button>
-              )}
-              {canManageAllProjets && (
-                <button
-                  onClick={() => handleEdit(selectedProject)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                >
-                  <HiOutlinePencil size={16} /> Modifier
-                </button>
-              )}
-              {canManageAllProjets && (
-                <button
-                  onClick={() => handleDelete(selectedProject.id)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 focus:outline-none dark:border-red-900/50 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-gray-700"
-                >
-                  <HiOutlineTrash size={16} /> Supprimer
-                </button>
-              )}
+            <div className="flex flex-wrap gap-2 lg:flex-col lg:items-end">
+              <div className="flex flex-wrap items-center gap-2">
+                {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'PLANIFIE' && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-brand-300 hover:text-brand-600" onClick={() => { handleChangeStatut(selectedProject.id, StatutProjet.EN_COURS); setSelectedProject({ ...selectedProject, statut: StatutProjet.EN_COURS }); }}>
+                    <HiOutlineSun className="text-brand-500" size={16} /> Démarrer
+                  </button>
+                )}
+                {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'EN_COURS' && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm" onClick={() => { handleChangeStatut(selectedProject.id, StatutProjet.CLOTURE); setSelectedProject({ ...selectedProject, statut: StatutProjet.CLOTURE }); }}>
+                    <HiOutlineClipboardList className="text-emerald-500" size={16} /> Clôturer
+                  </button>
+                )}
+                {(canManageAllProjets || canViewProjetsCreateTaches) && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800 rounded-xl text-sm font-medium text-brand-700 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition shadow-sm hover:-translate-y-0.5" onClick={() => navigate(`/projets/${selectedProject.id}/taches`)}>
+                    <HiOutlineClipboardList size={16} /> Tâches
+                  </button>
+                )}
+                {(canManageAllProjets || canViewProjetsCreateTaches) && ((selectedProject.chefsDeProjet && selectedProject.chefsDeProjet.some(c => c.id === user?.employeId)) || selectedProject.chefDeProjet?.id === user?.employeId) && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:-translate-y-0.5" onClick={() => handleAffectMembers(selectedProject)}>
+                    <HiOutlineUserGroup size={16} /> Affecter
+                  </button>
+                )}
+                {canManageAllProjets && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:-translate-y-0.5" onClick={() => handleEdit(selectedProject)}>
+                    <HiOutlinePencil size={16} /> Modifier
+                  </button>
+                )}
+                {canManageAllProjets && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition shadow-sm hover:-translate-y-0.5" onClick={() => handleDelete(selectedProject.id)}>
+                    <HiOutlineTrash size={16} /> Supprimer
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Media Plan Details Panel */}
           {selectedProject.isMediaPlanProject && mediaPlanDetails && (
-            <div className="mb-6 rounded-[20px] border border-brand-200 bg-brand-50 p-6 dark:border-brand-200 dark:bg-brand-900/5 dark:border-brand-900/20">
-              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400">
-                <HiOutlineDocumentText size={16} /> Détails Media Plan
+            <div className="bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800 rounded-2xl p-6">
+              <h4 className="flex items-center gap-2 text-lg font-bold text-brand-800 dark:text-brand-300 mb-5">
+                <HiOutlineDocumentText size={20} /> Détails Media Plan
               </h4>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Format</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.format}</span></div>
-                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Type</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.type || '-'}</span></div>
-                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Publication</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{mediaPlanDetails.datePublication ? formatDate(mediaPlanDetails.datePublication) : '-'}</span></div>
-                <div><span className="block text-[10px] font-bold uppercase text-gray-500">Lien Drive</span>
-                  {mediaPlanDetails.lienDrive ? <a href={mediaPlanDetails.lienDrive} target="_blank" rel="noreferrer" className="text-sm font-medium text-brand-600 underline hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-500">Ouvrir Drive</a> : <span className="text-sm text-gray-500">-</span>}</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+                <div className="flex flex-col"><label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Format</label><span className="text-sm font-medium text-brand-900 dark:text-brand-100">{mediaPlanDetails.format}</span></div>
+                <div className="flex flex-col"><label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Type</label><span className="text-sm font-medium text-brand-900 dark:text-brand-100">{mediaPlanDetails.type || '-'}</span></div>
+                <div className="flex flex-col"><label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Publication</label><span className="text-sm font-medium text-brand-900 dark:text-brand-100">{mediaPlanDetails.datePublication ? formatDate(mediaPlanDetails.datePublication) : '-'}</span></div>
+                <div className="flex flex-col"><label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Lien Drive</label>
+                  {mediaPlanDetails.lienDrive ? <a href={mediaPlanDetails.lienDrive} target="_blank" rel="noreferrer" className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 underline transition-colors">Ouvrir Drive</a> : <span className="text-sm font-medium text-brand-900 dark:text-brand-100">-</span>}
+                </div>
               </div>
-              <div className="mt-4 border-t border-brand-200/50 pt-4 dark:border-[#2d251d]">
+              <div className="pt-5 border-t border-brand-200 dark:border-brand-800">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <span className="block text-[10px] font-bold uppercase text-gray-500">Texte sur Visuel</span>
-                    <p className="mt-1 text-[13px] text-gray-700 dark:text-gray-300">{mediaPlanDetails.texteSurVisuel || '-'}</p>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Texte sur Visuel</label>
+                    <span className="text-sm text-brand-900 dark:text-brand-100 leading-relaxed bg-white/50 dark:bg-gray-800/50 p-3 rounded-xl">{mediaPlanDetails.texteSurVisuel || '-'}</span>
                   </div>
-                  <div>
-                    <span className="block text-[10px] font-bold uppercase text-gray-500">Inspiration / Autres</span>
-                    <div className="mt-1 flex flex-wrap gap-2 text-[13px] text-gray-700 dark:text-gray-300">
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Inspiration / Autres</label>
+                    <div className="flex flex-wrap gap-2 text-sm text-brand-900 dark:text-brand-100 items-start bg-white/50 dark:bg-gray-800/50 p-3 rounded-xl h-full">
                       {mediaPlanDetails.inspiration ? (
                         mediaPlanDetails.inspiration.startsWith('http') || mediaPlanDetails.inspiration.startsWith('www') ?
-                          <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline dark:text-brand-400">Inspiration (Lien)</a>
+                          <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer">Inspiration (Lien)</a>
                           : <span>{mediaPlanDetails.inspiration}</span>
                       ) : '-'}
-                      {mediaPlanDetails.autresElements && <span className="ml-2 border-l border-gray-300 pl-2 dark:border-gray-700">{mediaPlanDetails.autresElements}</span>}
+                      {mediaPlanDetails.autresElements && <span style={{ borderLeft: '1px solid #ffc299', paddingLeft: 8 }}>{mediaPlanDetails.autresElements}</span>}
                     </div>
                   </div>
                 </div>
@@ -669,69 +908,63 @@ const ProjetsPage: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
             {/* Managers Panel */}
-            <div>
-              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-gray-800 dark:text-gray-100">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"><HiOutlineUserGroup size={16} /></span>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col h-full">
+              <h4 className="flex items-center gap-2 px-5 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700 text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest shrink-0">
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"><HiOutlineUserGroup size={16} /></div>
                 Department Managers
               </h4>
-              <div className="rounded-[20px] border border-gray-100 bg-gray-50/50 p-6 dark:border-[#1e212b] dark:bg-[#14161d] min-h-[160px]">
-                <div className="flex flex-col gap-3">
-                  {getChefs(selectedProject).length === 0 ? (
-                    <p className="py-4 text-center text-[13px] font-medium italic text-gray-400 dark:text-gray-500">Aucun manager assigné</p>
-                  ) : (
-                    getChefs(selectedProject).map(m => (
-                      <div key={m.id} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#262a36] dark:bg-[#1a1c23]">
-                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-[14px] font-bold text-brand-600 dark:bg-brand-500 dark:text-white">
-                          {congeAujourdhuiIds.has(m.id) && (
-                            <div className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-white bg-error-500 dark:border-[#1a1c23] z-10" title="En congé"></div>
-                          )}
-                          {m.imageUrl ? (
-                            <img src={m.imageUrl} alt={m.nom} className="h-full w-full object-cover" />
-                          ) : (
-                            <span>{m.prenom?.[0]}{m.nom?.[0]}</span>
-                          )}
+              <div className="flex-1 overflow-y-auto p-2">
+                {getChefs(selectedProject).length === 0 ? (
+                  <div className="h-full flex items-center justify-center p-6">
+                    <p className="text-sm font-medium text-gray-400 text-center italic px-4 py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 w-full">Aucun manager assigné</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {getChefs(selectedProject).map(m => (
+                      <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                        <div className="relative w-10 h-10 rounded-full border border-gray-200 dark:border-gray-600 shrink-0">
+                          {congeAujourdhuiIds.has(m.id) && <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 border-2 border-white dark:border-gray-800 rounded-full" title="En congé" />}
+                          {m.imageUrl ? <img src={m.imageUrl} alt={m.nom} className="w-full h-full object-cover rounded-full" /> : <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300 rounded-full">{m.prenom?.[0]}{m.nom?.[0]}</div>}
                         </div>
-                        <div>
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{m.prenom} {m.nom}</p>
-                          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">Manager</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{m.prenom} {m.nom}</p>
+                          <p className="text-[11px] font-medium text-gray-500 uppercase tracking-widest mt-0.5">Manager</p>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Members Panel */}
-            <div>
-              <h4 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-gray-800 dark:text-gray-100">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"><HiOutlineUserGroup size={12} /></span>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col h-full">
+              <h4 className="flex items-center gap-2 px-5 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700 text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest shrink-0">
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"><HiOutlineUserGroup size={16} /></div>
                 Membres du projet
               </h4>
-              <div className="rounded-[20px] border border-gray-100 bg-gray-50/50 p-6 dark:border-[#1e212b] dark:bg-[#14161d] min-h-[160px]">
-                <div className="flex flex-col gap-3">
-                  {!(selectedProject.membres ?? []).length ? (
-                    <p className="flex h-[80px] items-center justify-center text-[13px] font-medium italic text-gray-400 dark:text-gray-500">Aucun membre assigné</p>
-                  ) : (
-                    (selectedProject.membres ?? []).map(m => (
-                      <div key={m.id} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#262a36] dark:bg-[#1a1c23]">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-[14px] font-bold text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                          {m.imageUrl ? (
-                            <img src={m.imageUrl} alt={m.nom} className="h-full w-full object-cover" />
-                          ) : (
-                            <span>{m.prenom?.[0]}{m.nom?.[0]}</span>
-                          )}
+              <div className="flex-1 overflow-y-auto p-2">
+                {!(selectedProject.membres ?? []).length ? (
+                  <div className="h-full flex items-center justify-center p-6">
+                    <p className="text-sm font-medium text-gray-400 text-center italic px-4 py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 w-full">Aucun membre assigné</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {(selectedProject.membres ?? []).map(m => (
+                      <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                        <div className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-600 shrink-0">
+                          {m.imageUrl ? <img src={m.imageUrl} alt={m.nom} className="w-full h-full object-cover rounded-full" /> : <div className="w-full h-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-sm font-bold text-brand-600 dark:text-brand-400 rounded-full">{m.prenom?.[0]}{m.nom?.[0]}</div>}
                         </div>
-                        <div>
-                          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{m.prenom} {m.nom}</p>
-                          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{m.departement || 'Membre'}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{m.prenom} {m.nom}</p>
+                          <p className="text-[11px] font-medium text-gray-500 uppercase tracking-widest mt-0.5">{m.departement || 'Membre'}</p>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -754,8 +987,9 @@ const ProjetsPage: React.FC = () => {
                 </div>
 
                 {/* Client (read-only) */}
-                <div className="h-10 flex items-center rounded-lg border border-gray-200 bg-gray-100 px-3 text-theme-sm text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                  🤝 {clientObj ? clientObj.nom : 'Aucun client'}
+                <div className="h-10 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 text-theme-sm text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  <HiOutlineBriefcase className="text-brand-500" size={16} />
+                  <span>{clientObj ? clientObj.nom : 'Aucun client'}</span>
                 </div>
 
                 {/* Nom */}
@@ -786,7 +1020,7 @@ const ProjetsPage: React.FC = () => {
                           <input type="checkbox" checked={sel} onChange={() => toggleRowChef(idx, m.id)} className="h-3.5 w-3.5 rounded text-warning-500" />
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warning-100 text-[9px] font-bold text-warning-700">{m.prenom?.[0]}{m.nom?.[0]}</span>
                           <span className="text-theme-xs font-medium text-gray-700 dark:text-gray-300 truncate">{m.prenom} {m.nom}</span>
-                          {congeAujourdhuiIds.has(m.id) && <span className="text-[10px]">🏖️</span>}
+                          {congeAujourdhuiIds.has(m.id) && <span className="text-[10px] text-warning-500 animate-pulse"><HiOutlineSun size={14} /></span>}
                         </label>
                       );
                     })}
@@ -940,7 +1174,7 @@ const ProjetsPage: React.FC = () => {
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-theme-xs font-bold text-brand-600">{sub.prenom?.[0]}{sub.nom?.[0]}</div>
                     <div className="min-w-0 flex-1">
                       <p className="text-theme-sm font-semibold text-gray-800 dark:text-white truncate">{sub.prenom} {sub.nom}</p>
-                      {sub.departement && <p className="text-theme-xs text-gray-400">🏢 {sub.departement}</p>}
+                      {sub.departement && <p className="text-theme-xs text-gray-400 flex items-center gap-1"><HiOutlineOfficeBuilding size={12} /> {sub.departement}</p>}
                     </div>
                   </label>
                 );
@@ -955,6 +1189,7 @@ const ProjetsPage: React.FC = () => {
       </Modal>
 
       <ConfirmDialog isOpen={confirmState.isOpen} message={confirmState.message} title={confirmState.title} onConfirm={handleConfirm} onCancel={handleCancel} />
+      </div>
     </div>
   );
 };

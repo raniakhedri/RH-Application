@@ -432,42 +432,7 @@ const CalendrierCore: React.FC<CoreProps> = ({
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900 p-4 lg:p-6">
       <div className="max-w-6xl mx-auto space-y-5">
 
-        {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Calendrier Projets</h1>
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${roleBadge.cls}`}>
-                {roleBadge.label}
-              </span>
-            </div>
-            <p className="text-sm text-gray-400 dark:text-gray-500 dark:text-gray-400">Planification &amp; disponibilités managers</p>
-          </div>
-
-          {canSwitch ? (
-            <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 shadow-sm">
-              <button
-                onClick={()=>setRole('manager')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
-                  ${role==='manager' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 dark:text-gray-100'}`}
-              >
-                <HiOutlineUser size={15}/> Head Prod
-              </button>
-              <button
-                onClick={()=>setRole('social')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
-                  ${role==='social' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 dark:text-gray-100'}`}
-              >
-                <HiOutlineUserGroup size={15}/> Social Media Manager
-              </button>
-            </div>
-          ) : (
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium ${roleBadge.cls}`}>
-              {canManagerMode ? <HiOutlineUser size={15}/> : <HiOutlineUserGroup size={15}/>}
-              {canManagerMode ? 'Mode Head Prod' : 'Mode Social Media'}
-            </div>
-          )}
-        </div>
+        {/* Legacy Header Removed */}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
 

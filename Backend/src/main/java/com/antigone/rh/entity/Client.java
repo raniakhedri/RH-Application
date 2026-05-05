@@ -58,6 +58,8 @@ public class Client {
     /** Relative path to the stored file (pdf/png/jpeg) */
     private String filePath;
 
+    private String logoPath;
+
     /** Original filename as uploaded by the user */
     private String fileName;
 

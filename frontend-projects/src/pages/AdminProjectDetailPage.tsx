@@ -120,13 +120,21 @@ const AdminProjectDetailPage: React.FC = () => {
   const invalidTasks = allTasks.filter(t => t.statut === 'DONE' && !t.employeNom);
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto">
+    <div className="space-y-6 max-w-[1400px] mx-auto pb-10">
+      {/* Background Decor (Glassmorphism blobs) */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 dark:bg-brand-500/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-orange-500/10 dark:bg-orange-500/5 blur-[100px] rounded-full" />
+      </div>
+
       {/* Header */}
       <div>
         <button onClick={() => navigate('/admin/dashboard-projets')}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-brand-500 mb-4 transition-colors">
+          className="inline-flex items-center gap-2 rounded-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-md px-4 py-2 text-sm font-bold text-gray-500 hover:text-brand-500 hover:shadow-sm mb-6 transition-all border border-black/5 dark:border-white/10">
           <HiOutlineArrowLeft size={16} /> Retour
         </button>
+
+        <div className="rounded-[2rem] border border-black/5 dark:border-white/10 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-[0_8px_30px_-10px_rgba(0,0,0,0.05)] dark:shadow-none p-6 md:p-8">
 
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div>
@@ -179,6 +187,7 @@ const AdminProjectDetailPage: React.FC = () => {
           <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${doneW}%` }} />
           <div className="h-full bg-brand-400 transition-all duration-700" style={{ width: `${ipW}%` }} />
         </div>
+        </div>
       </div>
 
       {/* CORRECTION 2: Invalid data banner */}
@@ -196,12 +205,12 @@ const AdminProjectDetailPage: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+      <div className="flex flex-wrap gap-2 rounded-[2rem] bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-black/5 dark:border-white/10 p-1.5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.05)] dark:shadow-none w-fit">
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${activeTab === tab.id
-              ? 'border-brand-500 text-brand-600 dark:text-brand-400'
-              : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+            className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id
+              ? 'bg-white text-brand-500 shadow-md dark:bg-gray-800 dark:text-brand-400'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-800/50'
             }`}>
             {tab.icon} {tab.label}
             {tab.count !== undefined && tab.count > 0 && (
@@ -442,7 +451,7 @@ const IndicateursTab: React.FC<{ managers: ProjetDetailAdminDTO['managers'] }> =
   if (allTaches.length === 0) return <div className="py-12 text-center text-gray-400">Aucune tâche</div>;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-dark overflow-x-auto">
+    <div className="rounded-[2rem] border border-black/5 dark:border-white/10 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-[0_8px_30px_-10px_rgba(0,0,0,0.05)] dark:shadow-none overflow-x-auto p-1">
       <table className="w-full text-left">
         <thead>
           <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/30">
@@ -525,7 +534,7 @@ const TimelineTab: React.FC<{
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-dark overflow-hidden px-5 py-4">
+    <div className="rounded-[2rem] border border-black/5 dark:border-white/10 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-[0_8px_30px_-10px_rgba(0,0,0,0.05)] dark:shadow-none overflow-hidden px-5 py-4">
       <div className="overflow-x-auto" style={{ minWidth: '600px' }}>
         {/* Week labels */}
         <div className="relative h-6 mb-1">

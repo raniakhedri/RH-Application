@@ -363,34 +363,34 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen space-y-10 bg-gray-50/30 px-4 py-8 font-sans dark:bg-gray-900/20 lg:px-8 lg:py-10">
       <section
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 via-gray-800 to-black px-8 py-12 shadow-2xl dark:from-gray-950 dark:via-gray-900 dark:to-black lg:px-12 lg:py-16"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-brand-50/30 to-brand-100/50 px-8 py-12 shadow-xl dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-black dark:shadow-2xl lg:px-12 lg:py-16"
         aria-label="Banniere d'accueil RH"
       >
-        <div className="pointer-events-none absolute right-0 top-0 -mr-20 -mt-20 h-[400px] w-[400px] rounded-full bg-brand-500/20 blur-[100px]" />
-        <div className="pointer-events-none absolute bottom-0 left-0 -mb-20 -ml-20 h-[300px] w-[300px] rounded-full bg-indigo-500/20 blur-[80px]" />
-        <div className="pointer-events-none absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay" />
+        <div className="pointer-events-none absolute right-0 top-0 -mr-20 -mt-20 h-[400px] w-[400px] rounded-full bg-brand-500/10 blur-[100px] dark:bg-brand-500/20" />
+        <div className="pointer-events-none absolute bottom-0 left-0 -mb-20 -ml-20 h-[300px] w-[300px] rounded-full bg-indigo-500/10 blur-[80px] dark:bg-indigo-500/20" />
+        <div className="pointer-events-none absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay dark:opacity-[0.03]" />
 
         <div className="relative z-10 flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
-            <p className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-brand-400">
+            <p className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
               <HiOutlineLightningBolt size={18} />
               {heroDateText}
             </p>
-            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white lg:text-5xl">
-              Bonjour, <span className="bg-gradient-to-r from-brand-400 to-brand-200 bg-clip-text text-transparent">{displayName}</span>
+            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-gray-900 dark:text-white lg:text-5xl">
+              Bonjour, <span className="bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent dark:from-brand-400 dark:to-brand-200">{displayName}</span>
             </h1>
-            <p className="mt-4 text-lg leading-relaxed text-gray-400">
+            <p className="mt-4 text-lg leading-relaxed text-gray-600 dark:text-gray-400">
               Bienvenue sur votre espace RH. Suivez vos demandes, documents et actions prioritaires d'un seul coup d'oeil.
             </p>
 
             <div className="group relative mt-8 max-w-md">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                <HiOutlineSearch className="text-gray-400 transition-colors group-focus-within:text-brand-400" size={20} />
+                <HiOutlineSearch className="text-gray-400 transition-colors group-focus-within:text-brand-500 dark:group-focus-within:text-brand-400" size={20} />
               </div>
               <input
                 type="text"
                 placeholder="Rechercher une demande, un document..."
-                className="w-full rounded-full border border-white/10 bg-white/5 py-3.5 pl-12 pr-6 text-white placeholder-gray-500 backdrop-blur-md transition-all focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                className="w-full rounded-full border border-gray-200 bg-white/70 py-3.5 pl-12 pr-6 text-gray-900 placeholder-gray-400 backdrop-blur-md transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder-gray-500 dark:focus:bg-white/10"
                 aria-label="Recherche principale RH"
               />
             </div>
@@ -400,11 +400,11 @@ const DashboardPage: React.FC = () => {
             {heroStats.map((stat, index) => (
               <div
                 key={stat.label}
-                className="flex min-w-[140px] flex-col justify-center rounded-2xl border border-white/10 bg-white/5 px-6 py-5 backdrop-blur-md transition-colors hover:bg-white/10"
+                className="flex min-w-[140px] flex-col justify-center rounded-2xl border border-gray-200 bg-white/70 px-6 py-5 backdrop-blur-md transition-colors hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                 style={{ animation: `fadeUp 0.5s ease-out ${index * 0.1}s forwards` }}
               >
-                <strong className="mb-1 text-3xl font-bold text-white">{stat.value}</strong>
-                <span className="text-xs font-medium uppercase tracking-widest text-gray-400">{stat.label}</span>
+                <strong className="mb-1 text-3xl font-bold text-gray-900 dark:text-white">{stat.value}</strong>
+                <span className="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400">{stat.label}</span>
               </div>
             ))}
           </div>

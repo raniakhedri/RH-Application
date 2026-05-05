@@ -13,9 +13,14 @@ import {
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineX,
+  HiOutlineOfficeBuilding,
+  HiOutlineFolder,
+  HiOutlineChartBar
 } from 'react-icons/hi';
 import { adminDashboardProjectService, AdminDashboardDTO, ProjetSummaryDTO, AlerteDTO } from '../api/adminDashboardProjectService';
 import { tacheService } from '../api/tacheService';
+import { clientService, ClientDTO } from '../api/clientService';
+import { API_BASE } from '../api/axios';
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -34,6 +39,7 @@ const tacheStatutLabels: Record<string, string> = { TODO: 'À faire', IN_PROGRES
 
 interface ClientGroup {
   clientNom: string;
+  clientObj: ClientDTO | null;
   projets: ProjetSummaryDTO[];
   totalTaches: number;
   tachesDone: number;
@@ -53,6 +59,7 @@ const AdminProjectDashboardPage: React.FC = () => {
   const [projetTaches, setProjetTaches] = useState<Record<number, any[]>>({});
   const [loadingTaches, setLoadingTaches] = useState<number | null>(null);
   const [showAlertes, setShowAlertes] = useState(false);
+  const [allClients, setAllClients] = useState<ClientDTO[]>([]);
 
   useEffect(() => {
     loadDashboard();
@@ -62,8 +69,12 @@ const AdminProjectDashboardPage: React.FC = () => {
 
   const loadDashboard = async () => {
     try {
-      const res = await adminDashboardProjectService.getDashboard();
+      const [res, clientsRes] = await Promise.all([
+        adminDashboardProjectService.getDashboard(),
+        clientService.getAllClients()
+      ]);
       setDashboard(res.data.data);
+      setAllClients(Array.isArray(clientsRes.data) ? clientsRes.data : (clientsRes.data?.data || []));
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -78,13 +89,14 @@ const AdminProjectDashboardPage: React.FC = () => {
       map.get(key)!.push(p);
     }
     return Array.from(map.entries()).map(([clientNom, projets]) => {
+      const clientObj = allClients.find(c => c.nom === clientNom) || null;
       const totalTaches = projets.reduce((s, p) => s + p.totalTaches, 0);
       const tachesDone = projets.reduce((s, p) => s + p.tachesDone, 0);
       const tachesEnRetard = projets.reduce((s, p) => s + p.tachesEnRetard, 0);
       const progression = totalTaches > 0 ? Math.round((tachesDone / totalTaches) * 100) : 0;
-      return { clientNom, projets, totalTaches, tachesDone, tachesEnRetard, progression };
+      return { clientNom, clientObj, projets, totalTaches, tachesDone, tachesEnRetard, progression };
     }).sort((a, b) => b.tachesEnRetard - a.tachesEnRetard || b.projets.length - a.projets.length);
-  }, [dashboard]);
+  }, [dashboard, allClients]);
 
   const filtered = useMemo(() => {
     if (!search) return clientGroups;
@@ -132,15 +144,20 @@ const AdminProjectDashboardPage: React.FC = () => {
   const warnings = dashboard.alertes.filter(a => a.niveau === 'WARNING').length;
 
   return (
-    <div className="space-y-8 max-w-[1400px] mx-auto">
+    <div className="space-y-8 max-w-[1400px] mx-auto pb-10">
+      {/* Background Decor (Glassmorphism blobs) */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 dark:bg-brand-500/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500/10 dark:bg-blue-500/5 blur-[100px] rounded-full" />
+      </div>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 mb-2">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-            Suivi des Projets
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">Vue consolidée par client</p>
+          
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Suivi des <span className="text-brand-600 dark:text-brand-400">Projets</span>
+              </h1>
         </div>
         {dashboard.alertes.length > 0 && (
           <button
@@ -163,14 +180,14 @@ const AdminProjectDashboardPage: React.FC = () => {
         <KpiCard
           label="Clients"
           value={clientGroups.length}
-          icon="🏢"
+          icon={<HiOutlineOfficeBuilding size={24} />}
           gradient="from-brand-500/10 to-violet-500/10 dark:from-brand-500/5 dark:to-violet-500/5"
           border="border-brand-200/50 dark:border-brand-500/20"
         />
         <KpiCard
           label="Projets actifs"
           value={dashboard.projetsActifs}
-          icon="📁"
+          icon={<HiOutlineFolder size={24} />}
           sub={`${dashboard.totalProjets} total`}
           gradient="from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/5 dark:to-teal-500/5"
           border="border-emerald-200/50 dark:border-emerald-500/20"
@@ -178,7 +195,7 @@ const AdminProjectDashboardPage: React.FC = () => {
         <KpiCard
           label="Progression"
           value={`${dashboard.progressionMoyenne}%`}
-          icon="📊"
+          icon={<HiOutlineChartBar size={24} />}
           progress={dashboard.progressionMoyenne}
           gradient="from-violet-500/10 to-purple-500/10 dark:from-violet-500/5 dark:to-purple-500/5"
           border="border-violet-200/50 dark:border-violet-500/20"
@@ -186,7 +203,7 @@ const AdminProjectDashboardPage: React.FC = () => {
         <KpiCard
           label="En retard"
           value={dashboard.tachesEnRetard}
-          icon={dashboard.tachesEnRetard > 0 ? '⚠️' : '✅'}
+          icon={dashboard.tachesEnRetard > 0 ? <HiOutlineExclamation size={24} className="text-red-500" /> : <HiOutlineCheckCircle size={24} className="text-green-500" />}
           sub={dashboard.tachesEnRetard > 0 ? 'Action requise' : 'Tout va bien'}
           gradient={dashboard.tachesEnRetard > 0 ? 'from-red-500/10 to-orange-500/10 dark:from-red-500/5 dark:to-orange-500/5' : 'from-green-500/10 to-emerald-500/10 dark:from-green-500/5 dark:to-emerald-500/5'}
           border={dashboard.tachesEnRetard > 0 ? 'border-red-200/50 dark:border-red-500/20' : 'border-green-200/50 dark:border-green-500/20'}
@@ -195,13 +212,13 @@ const AdminProjectDashboardPage: React.FC = () => {
 
       {/* ── Search ─────────────────────────────────────────────────────── */}
       <div className="relative max-w-md">
-        <HiOutlineSearch size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+        <HiOutlineSearch size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Rechercher un client ou projet…"
-          className="h-11 w-full rounded-2xl border border-gray-200 bg-white/80 backdrop-blur pl-11 pr-4 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-dark/80 dark:text-gray-300 transition-all"
+          className="h-14 w-full rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 pl-14 pr-5 text-sm font-medium text-gray-800 dark:text-gray-200 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-4 focus:ring-brand-500/20 backdrop-blur-md transition-all shadow-[0_8px_32px_-12px_rgba(0,0,0,0.05)] dark:shadow-none"
         />
       </div>
 
@@ -240,21 +257,26 @@ const AdminProjectDashboardPage: React.FC = () => {
 /* ── KPI Card ─────────────────────────────────────────────────────────── */
 
 const KpiCard: React.FC<{
-  label: string; value: string | number; icon: string; sub?: string;
+  label: string; value: string | number; icon: React.ReactNode; sub?: string;
   gradient: string; border: string; progress?: number;
 }> = ({ label, value, icon, sub, gradient, border, progress }) => (
-  <div className={`relative overflow-hidden rounded-2xl border ${border} bg-gradient-to-br ${gradient} p-5`}>
-    <div className="flex items-center justify-between mb-3">
-      <span className="text-2xl">{icon}</span>
-      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</span>
-    </div>
-    <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{value}</p>
-    {progress !== undefined && (
-      <div className="mt-3 h-1.5 w-full rounded-full bg-white/50 dark:bg-gray-800/50 overflow-hidden">
-        <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-brand-500 transition-all duration-1000" style={{ width: `${Math.min(progress, 100)}%` }} />
+  <div className={`relative overflow-hidden rounded-[2rem] border ${border} bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.06)] dark:shadow-none hover:-translate-y-1 hover:shadow-lg transition-all duration-300`}>
+    <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full bg-gradient-to-br ${gradient} blur-2xl opacity-60 dark:opacity-40`} />
+    <div className="flex items-center justify-between mb-4 relative z-10">
+      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} shadow-sm text-gray-700 dark:text-gray-100`}>
+        {icon}
       </div>
-    )}
-    {sub && <p className="text-[11px] text-gray-400 mt-2">{sub}</p>}
+      <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</span>
+    </div>
+    <div className="relative z-10">
+      <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{value}</p>
+      {progress !== undefined && (
+        <div className="mt-4 h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+          <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-orange-500 transition-all duration-1000" style={{ width: `${Math.min(progress, 100)}%` }} />
+        </div>
+      )}
+      {sub && <p className="text-xs font-medium text-gray-400 mt-2">{sub}</p>}
+    </div>
   </div>
 );
 
@@ -275,17 +297,23 @@ const ClientCard: React.FC<{
     : group.progression >= 20 ? 'from-amber-400 to-orange-500'
     : 'from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-500';
 
+  const hasLogo = Boolean(group.clientObj?.logoUrl);
+
   return (
-    <div className={`rounded-2xl border transition-all duration-300 ${isExpanded
-      ? 'md:col-span-2 xl:col-span-3 border-brand-300 dark:border-brand-500/30 shadow-xl shadow-brand-500/5'
-      : 'border-gray-200 dark:border-gray-700/60 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-lg hover:shadow-gray-500/5'
-    } bg-white dark:bg-gray-dark overflow-hidden`}>
+    <div className={`rounded-[2rem] border transition-all duration-300 ${isExpanded
+      ? 'md:col-span-2 xl:col-span-3 border-brand-300 dark:border-brand-500/30 shadow-xl shadow-brand-500/5 bg-white/90 dark:bg-gray-900/90'
+      : 'border-gray-200 dark:border-gray-700/60 bg-white/60 dark:bg-gray-900/60 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-lg hover:shadow-gray-500/5'
+    } backdrop-blur-xl overflow-hidden`}>
 
       {/* Header — always visible */}
       <button onClick={onToggle} className="w-full text-left p-5 flex items-center gap-4 group">
         {/* Client avatar */}
-        <div className={`shrink-0 h-12 w-12 rounded-2xl bg-gradient-to-br ${group.tachesEnRetard > 0 ? 'from-red-400 to-orange-500' : 'from-brand-400 to-violet-500'} flex items-center justify-center text-white font-black text-lg shadow-lg ${group.tachesEnRetard > 0 ? 'shadow-red-500/20' : 'shadow-brand-500/20'}`}>
-          {group.clientNom.charAt(0).toUpperCase()}
+        <div className={`shrink-0 h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg text-white shadow-lg ${hasLogo ? 'overflow-hidden bg-transparent shadow-none border border-black/5 dark:border-white/10' : group.tachesEnRetard > 0 ? 'bg-gradient-to-br from-red-400 to-orange-500 shadow-red-500/20' : 'bg-brand-500 shadow-brand-500/20'}`}>
+          {hasLogo ? (
+            <img src={`${API_BASE}${group.clientObj!.logoUrl}`} alt={group.clientNom} className="w-full h-full object-cover" />
+          ) : (
+            group.clientNom.charAt(0).toUpperCase()
+          )}
         </div>
 
         <div className="flex-1 min-w-0">

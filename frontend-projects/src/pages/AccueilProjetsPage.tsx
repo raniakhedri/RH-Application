@@ -190,8 +190,31 @@ const AccueilProjetsPage: React.FC = () => {
           notificationService.getByEmploye(employeId).catch(() => ({ data: { data: [] } })),
         ]);
 
-        setProjets(projetsRes.data.data || []);
-        setTaches(tachesRes.data.data || []);
+        const allProjets: Projet[] = projetsRes.data.data || [];
+        const now = new Date();
+        const todayAtMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+        const activeProjets = allProjets.filter(p => {
+          if (!p.dateFin) return true;
+          const df = new Date(p.dateFin).getTime();
+          if (Number.isNaN(df)) return true;
+          
+          const diffDays = (todayAtMidnight - df) / (1000 * 3600 * 24);
+          return diffDays <= 2; // Keep projects that are not older than 2 days
+        });
+
+        const allTaches: TacheDetail[] = tachesRes.data.data || [];
+        const activeTaches = allTaches.filter(t => {
+          if (!t.dateEcheance) return true;
+          const df = new Date(t.dateEcheance).getTime();
+          if (Number.isNaN(df)) return true;
+          
+          const diffDays = (todayAtMidnight - df) / (1000 * 3600 * 24);
+          return diffDays <= 2; // Keep tasks that are not older than 2 days
+        });
+
+        setProjets(activeProjets);
+        setTaches(activeTaches);
         setNotifications(notificationsRes.data.data || []);
       } catch (error) {
         console.error('Erreur chargement accueil projets:', error);
@@ -224,9 +247,9 @@ const AccueilProjetsPage: React.FC = () => {
         const status = statusLabel[project.statut] || project.statut;
         const statusEmoji =
           project.statut === StatutProjet.EN_COURS ? '🚀' :
-          project.statut === StatutProjet.PLANIFIE ? '📅' :
-          project.statut === StatutProjet.CLOTURE ? '✅' :
-          project.statut === StatutProjet.ANNULE ? '⛔' : '📁';
+            project.statut === StatutProjet.PLANIFIE ? '📅' :
+              project.statut === StatutProjet.CLOTURE ? '✅' :
+                project.statut === StatutProjet.ANNULE ? '⛔' : '📁';
 
         return {
           id: project.id,
@@ -306,7 +329,7 @@ const AccueilProjetsPage: React.FC = () => {
     const aFaire = taches.filter(t => t.statut === StatutTache.TODO || !t.statut).length;
     const enCours = taches.filter(t => t.statut === StatutTache.IN_PROGRESS).length;
     const termine = taches.filter(t => t.statut === StatutTache.DONE).length;
-    
+
     // Any other status falls back to "enRevision" or we just calculate it directly
     const enRevision = total - (aFaire + enCours + termine);
 
@@ -316,36 +339,36 @@ const AccueilProjetsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50/30 dark:bg-gray-900/20 px-4 py-8 lg:px-8 lg:py-10 space-y-10 font-sans">
       {/* 🚀 HERO SECTION */}
-      <section 
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 via-gray-800 to-black dark:from-gray-950 dark:via-gray-900 dark:to-black px-8 py-12 lg:px-12 lg:py-16 shadow-2xl"
+      <section
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-brand-50/30 to-brand-100/50 dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-black px-8 py-12 lg:px-12 lg:py-16 shadow-xl dark:shadow-2xl"
         aria-label="Banniere d'accueil"
       >
         {/* Glow Effects */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-[400px] w-[400px] rounded-full bg-brand-500/20 blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-[300px] w-[300px] rounded-full bg-indigo-500/20 blur-[80px] pointer-events-none" />
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-[400px] w-[400px] rounded-full bg-brand-500/10 blur-[100px] pointer-events-none dark:bg-brand-500/20" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-[300px] w-[300px] rounded-full bg-indigo-500/10 blur-[80px] pointer-events-none dark:bg-indigo-500/20" />
+        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none dark:opacity-[0.03]" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
           <div className="max-w-2xl">
-            <p className="text-brand-400 font-medium tracking-wide text-sm mb-3 uppercase flex items-center gap-2">
+            <p className="text-brand-600 dark:text-brand-400 font-medium tracking-wide text-sm mb-3 uppercase flex items-center gap-2">
               <HiOutlineLightningBolt size={18} />
               {heroDateText}
             </p>
-            <h1 className="text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
-              Bonjour, <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-200">{displayName}</span>
+            <h1 className="text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
+              Bonjour, <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-400 dark:from-brand-400 dark:to-brand-200">{displayName}</span>
             </h1>
-            <p className="mt-4 text-gray-400 text-lg leading-relaxed">
+            <p className="mt-4 text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
               Prêt(e) à accomplir de grandes choses aujourd'hui ? Voici un aperçu de vos projets et tâches en cours.
             </p>
 
             <div className="mt-8 relative max-w-md group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <HiOutlineSearch className="text-gray-400 group-focus-within:text-brand-400 transition-colors" size={20} />
+                <HiOutlineSearch className="text-gray-400 group-focus-within:text-brand-500 dark:group-focus-within:text-brand-400 transition-colors" size={20} />
               </div>
               <input
                 type="text"
                 placeholder="Rechercher un projet, une tâche..."
-                className="w-full bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-full py-3.5 pl-12 pr-6 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white/10 transition-all backdrop-blur-md"
+                className="w-full bg-white/70 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-full py-3.5 pl-12 pr-6 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-white/10 transition-all backdrop-blur-md"
                 aria-label="Recherche principale"
               />
             </div>
@@ -353,13 +376,13 @@ const AccueilProjetsPage: React.FC = () => {
 
           <div className="flex flex-wrap gap-4 lg:gap-6">
             {heroStats.map((stat, i) => (
-              <div 
-                key={stat.label} 
-                className="flex flex-col justify-center bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl px-6 py-5 min-w-[140px] hover:bg-white/10 transition-colors"
+              <div
+                key={stat.label}
+                className="flex flex-col justify-center bg-white/70 dark:bg-white/5 border border-gray-200 dark:border-white/10 backdrop-blur-md rounded-2xl px-6 py-5 min-w-[140px] hover:bg-white dark:hover:bg-white/10 transition-colors"
                 style={{ animation: `fadeUp 0.5s ease-out ${i * 0.1}s forwards` }}
               >
-                <strong className="text-3xl font-bold text-white mb-1">{stat.value}</strong>
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">{stat.label}</span>
+                <strong className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stat.value}</strong>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-widest">{stat.label}</span>
               </div>
             ))}
           </div>
@@ -373,7 +396,7 @@ const AccueilProjetsPage: React.FC = () => {
         </div>
 
         {priorityTask ? (
-          <div 
+          <div
             onClick={() => navigate('/mes-taches')}
             className="group relative overflow-hidden bg-white dark:bg-gray-800 border-2 border-brand-500/20 dark:border-brand-400/20 rounded-3xl p-6 lg:p-8 cursor-pointer transition-all duration-300 hover:border-brand-500/50 hover:shadow-2xl hover:shadow-brand-500/10"
           >
@@ -411,28 +434,28 @@ const AccueilProjetsPage: React.FC = () => {
             </div>
           </div>
         ) : (
-           <div className="flex items-center gap-5 p-6 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/10 dark:to-teal-900/10 border border-emerald-100 dark:border-emerald-500/20 rounded-3xl">
-             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-2xl">
-               🎉
-             </div>
-             <div>
-               <h3 className="text-lg font-bold text-emerald-800 dark:text-emerald-300">Vous êtes à jour !</h3>
-               <p className="text-sm text-emerald-600 dark:text-emerald-400/80">Aucune tâche ouverte, profitez de cette tranquillité pour avancer sur de nouvelles idées.</p>
-             </div>
-           </div>
+          <div className="flex items-center gap-5 p-6 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/10 dark:to-teal-900/10 border border-emerald-100 dark:border-emerald-500/20 rounded-3xl">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-2xl">
+              🎉
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-emerald-800 dark:text-emerald-300">Vous êtes à jour !</h3>
+              <p className="text-sm text-emerald-600 dark:text-emerald-400/80">Aucune tâche ouverte, profitez de cette tranquillité pour avancer sur de nouvelles idées.</p>
+            </div>
+          </div>
         )}
       </section>
 
       {/* ✨ PROJECTS & ACTIVITY GRID */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        
+
         {/* MES PROJETS RECENTS */}
         <section className="xl:col-span-2 space-y-5 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">Mes projets récents</h2>
-            <button 
-              type="button" 
-              className="text-sm font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400 transition-colors flex items-center gap-1 group" 
+            <button
+              type="button"
+              className="text-sm font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400 transition-colors flex items-center gap-1 group"
               onClick={() => navigate('/projets')}
             >
               Voir tout <span className="transform group-hover:translate-x-1 transition-transform">→</span>
@@ -456,7 +479,7 @@ const AccueilProjetsPage: React.FC = () => {
                 >
                   {/* Subtle top gradient line */}
                   <div className="absolute top-0 left-0 right-0 h-1" style={{ background: project.gradient }} />
-                  
+
                   <header className="flex items-center justify-between mb-4">
                     <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                       {project.status}
@@ -472,8 +495,8 @@ const AccueilProjetsPage: React.FC = () => {
                   <footer className="mt-6 flex items-center justify-between pt-4 border-t border-gray-50 dark:border-gray-700/50">
                     <div className="flex -space-x-2" aria-label="Managers">
                       {project.managers.map((manager, idx) => (
-                        <div 
-                          key={`${project.id}-${manager}-${idx}`} 
+                        <div
+                          key={`${project.id}-${manager}-${idx}`}
                           className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 bg-gray-100 dark:bg-gray-700 text-[10px] font-bold text-gray-600 dark:text-gray-300 shadow-sm"
                         >
                           {manager}
@@ -514,8 +537,8 @@ const AccueilProjetsPage: React.FC = () => {
                     <span className="text-lg font-extrabold text-brand-500">{taskStats.total > 0 ? Math.round((taskStats.termine / taskStats.total) * 100) : 0}%</span>
                   </div>
                   <div className="w-full h-3 bg-gray-100 dark:bg-gray-700/50 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-brand-400 to-brand-500 rounded-full transition-all duration-1000 ease-out" 
+                    <div
+                      className="h-full bg-gradient-to-r from-brand-400 to-brand-500 rounded-full transition-all duration-1000 ease-out"
                       style={{ width: `${taskStats.total > 0 ? (taskStats.termine / taskStats.total) * 100 : 0}%` }}
                     />
                   </div>
@@ -528,7 +551,7 @@ const AccueilProjetsPage: React.FC = () => {
                     <div className="flex-1 text-sm font-medium text-gray-600 dark:text-gray-300">À faire</div>
                     <span className="text-sm font-bold text-gray-900 dark:text-white">{taskStats.aFaire}</span>
                   </div>
-                  
+
                   {/* Stat: En cours */}
                   <div className="flex items-center group cursor-pointer" onClick={() => navigate('/mes-taches')}>
                     <div className="w-2 h-2 rounded-full bg-blue-400 dark:bg-blue-500 mr-3 group-hover:scale-150 transition-transform shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
@@ -542,7 +565,7 @@ const AccueilProjetsPage: React.FC = () => {
                     <div className="flex-1 text-sm font-medium text-gray-600 dark:text-gray-300">En révision / Test</div>
                     <span className="text-sm font-bold text-gray-900 dark:text-white">{taskStats.enRevision}</span>
                   </div>
-                  
+
                   {/* Stat: Terminé */}
                   <div className="flex items-center group cursor-pointer" onClick={() => navigate('/mes-taches')}>
                     <div className="w-2 h-2 rounded-full bg-emerald-400 dark:bg-emerald-500 mr-3 group-hover:scale-150 transition-transform shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
@@ -551,7 +574,7 @@ const AccueilProjetsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <button 
+                <button
                   onClick={() => navigate('/mes-taches')}
                   className="w-full mt-2 py-3 rounded-2xl bg-gray-50 hover:bg-brand-50 dark:bg-gray-700/30 dark:hover:bg-brand-500/10 text-sm font-bold text-gray-600 dark:text-gray-300 hover:text-brand-500 dark:hover:text-brand-400 transition-colors border border-transparent hover:border-brand-500/20"
                 >

@@ -74,7 +74,7 @@ const EmployesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [viewingEmploye, setViewingEmploye] = useState<Employe | null>(null);
    const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(6);
  
   // Referentiel lists
   const [departements, setDepartements] = useState<Referentiel[]>([]);
@@ -675,7 +675,7 @@ const EmployesPage: React.FC = () => {
                     value={pageSize}
                     onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
                   >
-                    {[10, 20, 50, 100].map(size => (
+                    {[6, 10, 20, 50, 100].map(size => (
                       <option key={size} value={size}>{size} / page</option>
                     ))}
                   </select>

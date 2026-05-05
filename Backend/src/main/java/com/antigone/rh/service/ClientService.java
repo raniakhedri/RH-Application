@@ -74,7 +74,7 @@ public class ClientService {
     }
 
     public ClientDTO create(String nom, String email, String telephone, String adresse,
-            String notes, String contactNom, String contactPoste, String contactEmail,
+            String notes, MultipartFile logoFile, String contactNom, String contactPoste, String contactEmail,
             String contactTelephone, boolean createAccount, String clientPages,
             MultipartFile file) throws IOException {
 
@@ -83,6 +83,11 @@ public class ClientService {
         if (file != null && !file.isEmpty()) {
             fileName = file.getOriginalFilename();
             filePath = saveFile(file);
+        }
+
+        String logoPath = null;
+        if (logoFile != null && !logoFile.isEmpty()) {
+            logoPath = saveFile(logoFile);
         }
 
         // Auto-generate credentials if requested
@@ -102,6 +107,7 @@ public class ClientService {
                 .telephone(telephone)
                 .adresse(adresse)
                 .notes(notes)
+                .logoPath(logoPath)
                 .contactNom(contactNom)
                 .contactPoste(contactPoste)
                 .contactEmail(contactEmail)
@@ -126,7 +132,7 @@ public class ClientService {
     }
 
     public ClientDTO update(Long id, String nom, String email, String telephone, String adresse,
-            String notes, String contactNom, String contactPoste, String contactEmail,
+            String notes, MultipartFile logoFile, String contactNom, String contactPoste, String contactEmail,
             String contactTelephone, boolean regeneratePassword, String clientPages,
             MultipartFile file) throws IOException {
 
@@ -165,6 +171,11 @@ public class ClientService {
             client.setFilePath(saveFile(file));
         }
 
+        if (logoFile != null && !logoFile.isEmpty()) {
+            deleteFile(client.getLogoPath());
+            client.setLogoPath(saveFile(logoFile));
+        }
+
         // Always update clientPages (even to null, allowing removal of all access)
         client.setClientPages(clientPages);
 
@@ -178,6 +189,7 @@ public class ClientService {
     public void delete(Long id) {
         Client client = findOrThrow(id);
         deleteFile(client.getFilePath());
+        deleteFile(client.getLogoPath());
         clientRepository.delete(client);
     }
 
@@ -191,6 +203,17 @@ public class ClientService {
         Resource resource = new UrlResource(path.toUri());
         if (!resource.exists())
             throw new RuntimeException("Fichier introuvable.");
+        return resource;
+    }
+
+    public Resource loadLogo(Long id) throws MalformedURLException {
+        Client client = findOrThrow(id);
+        if (client.getLogoPath() == null)
+            throw new RuntimeException("Aucun logo attaché.");
+        Path path = Paths.get(client.getLogoPath()).toAbsolutePath().normalize();
+        Resource resource = new UrlResource(path.toUri());
+        if (!resource.exists())
+            throw new RuntimeException("Logo introuvable.");
         return resource;
     }
 
@@ -251,6 +274,7 @@ public class ClientService {
 
     public ClientDTO toDTO(Client c) {
         String fileUrl = (c.getFilePath() != null) ? "/api/clients/" + c.getId() + "/file" : null;
+        String logoUrlStr = (c.getLogoPath() != null) ? "/api/clients/" + c.getId() + "/logo" : null;
         return ClientDTO.builder()
                 .id(c.getId())
                 .nom(c.getNom())
@@ -258,6 +282,7 @@ public class ClientService {
                 .telephone(c.getTelephone())
                 .adresse(c.getAdresse())
                 .notes(c.getNotes())
+                .logoUrl(logoUrlStr)
                 .contactNom(c.getContactNom())
                 .contactPoste(c.getContactPoste())
                 .contactEmail(c.getContactEmail())

@@ -654,7 +654,13 @@ const CalendrierPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-10">
+      {/* Background Decor (Glassmorphism blobs) */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 dark:bg-brand-500/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500/10 dark:bg-blue-500/5 blur-[100px] rounded-full" />
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -666,35 +672,35 @@ const CalendrierPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800 w-fit">
+      <div className="flex flex-wrap gap-2 rounded-[2rem] bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border border-black/5 dark:border-white/10 p-1.5 w-fit shadow-[0_8px_32px_-12px_rgba(0,0,0,0.05)] dark:shadow-none">
         <button
           onClick={() => setActiveTab('jours')}
-          className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${activeTab === 'jours'
-            ? 'bg-white text-brand-500 shadow-sm dark:bg-gray-700 dark:text-brand-400'
-            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+          className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-all ${activeTab === 'jours'
+            ? 'bg-white text-brand-500 shadow-md dark:bg-gray-800 dark:text-brand-400'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-800/50'
             }`}
         >
-          <HiOutlineCalendar size={16} />
+          <HiOutlineCalendar size={18} />
           Jours fériés / spéciaux
         </button>
         <button
           onClick={() => setActiveTab('horaires')}
-          className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${activeTab === 'horaires'
-            ? 'bg-white text-brand-500 shadow-sm dark:bg-gray-700 dark:text-brand-400'
-            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+          className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-all ${activeTab === 'horaires'
+            ? 'bg-white text-brand-500 shadow-md dark:bg-gray-800 dark:text-brand-400'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-800/50'
             }`}
         >
-          <HiOutlineClock size={16} />
+          <HiOutlineClock size={18} />
           Horaires de travail
         </button>
         <button
           onClick={() => setActiveTab('taches-obligatoires')}
-          className={`flex items-center gap-2 rounded-md px-4 py-2 text-theme-sm font-medium transition-colors ${activeTab === 'taches-obligatoires'
-            ? 'bg-white text-yellow-600 shadow-sm dark:bg-gray-700 dark:text-yellow-400'
-            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+          className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-all ${activeTab === 'taches-obligatoires'
+            ? 'bg-white text-yellow-600 shadow-md dark:bg-gray-800 dark:text-yellow-400'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:bg-gray-800/50'
             }`}
         >
-          <HiOutlineExclamation size={16} />
+          <HiOutlineExclamation size={18} />
           Restriction De congés
         </button>
       </div>
@@ -741,7 +747,9 @@ const CalendrierPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <DataTable columns={jourColumns} data={filteredJours} />
+            <div className="rounded-3xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl overflow-hidden shadow-[0_8px_30px_-10px_rgba(0,0,0,0.05)] dark:shadow-none p-1">
+              <DataTable columns={jourColumns} data={filteredJours} />
+            </div>
           )}
         </div>
       )}
@@ -776,7 +784,9 @@ const CalendrierPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <DataTable columns={horaireColumns} data={filteredHoraires} />
+            <div className="rounded-3xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl overflow-hidden shadow-[0_8px_30px_-10px_rgba(0,0,0,0.05)] dark:shadow-none p-1">
+              <DataTable columns={horaireColumns} data={filteredHoraires} />
+            </div>
           )}
         </div>
       )}
@@ -798,7 +808,7 @@ const CalendrierPage: React.FC = () => {
               <p className="mt-3 text-gray-500">Aucune restriction configurée</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-dark">
+            <div className="overflow-x-auto rounded-3xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl shadow-[0_8px_30px_-10px_rgba(0,0,0,0.05)] dark:shadow-none p-1">
               <p className="px-4 pt-3 pb-1 text-theme-xs text-gray-400 italic">Double-cliquez sur une ligne pour modifier</p>
               <table className="w-full">
                 <thead>
