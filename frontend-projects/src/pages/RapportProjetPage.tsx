@@ -181,13 +181,10 @@ const RapportProjetPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-2">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 text-xs font-bold uppercase tracking-widest mb-3 border border-brand-100 dark:border-brand-500/20">
-            <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
-            Module d'Analyse
-          </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
-            Rapport <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-orange-400">Cycle de Vie</span>
-          </h1>
+         
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Rapport <span className="text-brand-600 dark:text-brand-400">Cycle de vie</span>
+              </h1>
           <p className="text-base font-medium text-gray-500 dark:text-gray-400 mt-3 max-w-2xl leading-relaxed">
             Analyse complète des délais par phase : <strong className="text-gray-700 dark:text-gray-300 font-semibold">mise en place</strong>, <strong className="text-gray-700 dark:text-gray-300 font-semibold">distribution</strong>, <strong className="text-gray-700 dark:text-gray-300 font-semibold">exécution</strong> et <strong className="text-gray-700 dark:text-gray-300 font-semibold">clôture</strong>.
           </p>

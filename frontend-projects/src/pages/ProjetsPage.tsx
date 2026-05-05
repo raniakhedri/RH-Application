@@ -15,7 +15,6 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useConfirm } from '../hooks/useConfirm';
-import '../pages/ProjetsPage.css';
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success' | 'danger'> = {
   PLANIFIE: 'neutral',
@@ -492,63 +491,65 @@ const ProjetsPage: React.FC = () => {
   );
 
   if (loading) return (
-    <div className="pp-loading">
-      <div className="pp-spinner" />
-      Chargement des projets...
+    <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-brand-500 dark:border-gray-700" />
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Chargement des projets...</p>
+      </div>
     </div>
   );
 
   return (
-    <div className="pp-page pp-tousprojets">
+    <div className="min-h-screen bg-[#fcfcfc] dark:bg-gray-900 p-4 lg:p-6 pb-20">
+      <div className="max-w-6xl mx-auto space-y-5">
       {/* ── CLIENTS DASHBOARD (Tous les Projets) ── */}
       {viewState === 'CLIENTS' && (
-        <>
-          <div className="pp-topbar">
+        <div className="space-y-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
             <div>
-              <h1 className="pp-title">
-                Tous les <span className="pp-accent">Projets</span>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Tous les <span className="text-brand-600 dark:text-brand-400">Projets</span>
               </h1>
-              
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Supervision des clients et de leurs projets</p>
             </div>
 
-            <div className="pp-topbar-actions">
+            <div className="flex items-center gap-3">
               <input
-                className="pp-search"
+                className="px-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm w-full sm:w-64"
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
-                placeholder="Rechercher..."
+                placeholder="Rechercher un client..."
                 aria-label="Rechercher un client"
               />
-            
             </div>
           </div>
 
-          <div className="pp-stats">
-            <div className="pp-stat-card">
-              <div className="pp-stat-label">TOTAL PROJETS</div>
-              <div className="pp-stat-value">{statsTotalProjects}</div>
-              <div className="pp-stat-sub text-green-600">+{statsNewThisMonth} ce mois</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 flex flex-col gap-1 text-center sm:text-left">
+              <div className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">TOTAL PROJETS</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{statsTotalProjects}</div>
+              <div className="text-xs font-medium text-emerald-600">+{statsNewThisMonth} ce mois</div>
             </div>
-            <div className="pp-stat-card">
-              <div className="pp-stat-label">CLIENTS ACTIFS</div>
-              <div className="pp-stat-value">{statsClientsCount}</div>
-              <div className="pp-stat-sub text-blue-600">{statsNoProjectsClients} sans assigné</div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 flex flex-col gap-1 text-center sm:text-left">
+              <div className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">CLIENTS ACTIFS</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{statsClientsCount}</div>
+              <div className="text-xs font-medium text-brand-600">{statsNoProjectsClients} sans assigné</div>
             </div>
-            <div className="pp-stat-card">
-              <div className="pp-stat-label">EN ATTENTE</div>
-              <div className="pp-stat-value">{statsPending}</div>
-              <div className="pp-stat-sub text-amber-700">À assigner</div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 flex flex-col gap-1 text-center sm:text-left">
+              <div className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">EN ATTENTE</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{statsPending}</div>
+              <div className="text-xs font-medium text-amber-600">À assigner</div>
             </div>
           </div>
 
-          <div className="pp-tabs" role="tablist" aria-label="Filtres">
-            <button type="button" className={`pp-tab ${clientsTab === 'TOUS' ? 'active' : ''}`} onClick={() => setClientsTab('TOUS')}>Tous</button>
-            <button type="button" className={`pp-tab ${clientsTab === 'ACTIFS' ? 'active' : ''}`} onClick={() => setClientsTab('ACTIFS')}>Actifs</button>
-            <button type="button" className={`pp-tab ${clientsTab === 'NON_ASSIGNE' ? 'active' : ''}`} onClick={() => setClientsTab('NON_ASSIGNE')}>Non assignés</button>
-            <button type="button" className={`pp-tab ${clientsTab === 'RECENTS' ? 'active' : ''}`} onClick={() => setClientsTab('RECENTS')}>Récents</button>
+          <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-gray-100 dark:border-gray-800 pb-2" role="tablist" aria-label="Filtres">
+            <button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${clientsTab === 'TOUS' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`} onClick={() => setClientsTab('TOUS')}>Tous</button>
+            <button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${clientsTab === 'ACTIFS' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`} onClick={() => setClientsTab('ACTIFS')}>Actifs</button>
+            <button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${clientsTab === 'NON_ASSIGNE' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`} onClick={() => setClientsTab('NON_ASSIGNE')}>Non assignés</button>
+            <button type="button" className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${clientsTab === 'RECENTS' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300'}`} onClick={() => setClientsTab('RECENTS')}>Récents</button>
           </div>
 
-          <div className="pp-clients-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {paginatedEntries.map(([key, { client, projects }]) => {
               const name = client?.nom || 'Client';
               const clientKey = getClientKey(name);
@@ -557,13 +558,13 @@ const ProjetsPage: React.FC = () => {
               const hasLogo = Boolean(client?.logoUrl);
 
               const mark = (() => {
-                if (clientKey === 'tecnocasa') return { text: getClientInitials(name), cls: 'pp-mark-tecnocasa' };
-                if (clientKey === 'skinlab') return { text: getClientInitials(name), cls: 'pp-mark-skinlab' };
-                if (clientKey === 'zen') return { text: getClientInitials(name), cls: 'pp-mark-zen' };
-                if (clientKey === 'gmir') return { text: getClientInitials(name), cls: 'pp-mark-gmir' };
-                if (clientKey === 'eshuji') return { text: getClientInitials(name), cls: 'pp-mark-eshuji' };
-                if (clientKey === 'shemi') return { text: getClientInitials(name), cls: 'pp-mark-shemi' };
-                return { text: getClientInitials(name), cls: 'pp-mark-default' };
+                if (clientKey === 'tecnocasa') return { text: getClientInitials(name), cls: 'bg-green-500' };
+                if (clientKey === 'skinlab') return { text: getClientInitials(name), cls: 'bg-pink-500' };
+                if (clientKey === 'zen') return { text: getClientInitials(name), cls: 'bg-amber-500' };
+                if (clientKey === 'gmir') return { text: getClientInitials(name), cls: 'bg-brand-500' };
+                if (clientKey === 'eshuji') return { text: getClientInitials(name), cls: 'bg-purple-500' };
+                if (clientKey === 'shemi') return { text: getClientInitials(name), cls: 'bg-rose-500' };
+                return { text: getClientInitials(name), cls: 'bg-gray-500' };
               })();
 
             
@@ -571,7 +572,7 @@ const ProjetsPage: React.FC = () => {
               return (
                 <div
                   key={key}
-                  className="pp-client-card pp-dashboard-card"
+                  className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 hover:shadow-[0_8px_30px_rgba(255,107,0,0.12)] hover:border-brand-200 dark:hover:border-brand-800 transition-all duration-300 hover:-translate-y-1 cursor-pointer group flex flex-col block-animate"
                   onClick={() => { setSelectedClientKey(key); setViewState('PROJECTS'); }}
                   role="button"
                   tabIndex={0}
@@ -583,41 +584,45 @@ const ProjetsPage: React.FC = () => {
                     }
                   }}
                 >
-                  <div className="pp-dashboard-card-head">
-                    <div className={`pp-client-mark ${mark.cls} ${hasLogo ? 'pp-client-mark--logo' : ''}`}>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg text-white truncate shrink-0 transition-transform duration-300 group-hover:scale-105 ${mark.cls} ${hasLogo ? 'overflow-hidden bg-transparent' : 'bg-brand-500'}`}>
                       {hasLogo ? (
-                        <img src={`${API_BASE}${client!.logoUrl}`} alt={name} />
+                        <img src={`${API_BASE}${client!.logoUrl}`} alt={name} className="w-full h-full object-cover" />
                       ) : (
                         mark.text
                       )}
                     </div>
-                    <div className="pp-client-head-text">
-                      <div className="pp-client-name">{name}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white truncate transition-colors group-hover:text-brand-600">{name}</div>
                     </div>
-                    
                   </div>
 
-                  <div className="pp-progress">
-                    <div className="pp-progress-bar" aria-label={`Progression ${progress}%`}>
-                      <div className="pp-progress-bar-fill" style={{ width: `${progress}%` }} />
+                  <div className="mb-4">
+                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-1.5" aria-label={`Progression ${progress}%`}>
+                      <div className="h-full bg-brand-500 transition-all duration-300" style={{ width: `${progress}%` }} />
                     </div>
-                    {projects.length === 0 ? (
-                      <>
-                        <div className="pp-progress-note">Pas encore démarré</div>
-                        <div className="pp-progress-pct">0%</div>
-                      </>
-                    ) : (
-                      <div className="pp-progress-pct">{progress}%</div>
-                    )}
+                    <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                      {projects.length === 0 ? (
+                        <>
+                          <span>Pas encore démarré</span>
+                          <span>0%</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Progression</span>
+                          <span>{progress}%</span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="pp-dashboard-card-foot">
-                    <span className="pp-pill">{projects.length} projet{projects.length !== 1 ? 's' : ''}</span>
-                    <div className="pp-foot-right">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-50 dark:border-gray-700 mt-auto">
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">{projects.length} projet{projects.length !== 1 ? 's' : ''}</span>
+                    <div className="flex items-center gap-3">
                       {projects.length === 0 ? (
                         <button
                           type="button"
-                          className="pp-assign-link"
+                          className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 transition"
                           onClick={(e) => {
                             e.stopPropagation();
                             openCreateModal(key);
@@ -627,25 +632,25 @@ const ProjetsPage: React.FC = () => {
                         </button>
                       ) : (
                         <>
-                          <div className="pp-avatars" aria-label="Membres">
+                          <div className="flex -space-x-2" aria-label="Membres">
                             {previewMembers.slice(0, 3).map(m => (
-                              <div key={m.id} className="pp-avatar" title={`${m.prenom} ${m.nom}`}>
+                              <div key={m.id} className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 shadow-sm bg-brand-200 text-white flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden" title={`${m.prenom} ${m.nom}`}>
                                 {m.imageUrl
-                                  ? <img src={m.imageUrl} alt={m.nom} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ? <img src={m.imageUrl} alt={m.nom} className="w-full h-full object-cover" />
                                   : <>{(m.prenom?.[0] || '')}{(m.nom?.[0] || '')}</>}
                               </div>
                             ))}
                           </div>
                           <button
                             type="button"
-                            className="pp-view-btn"
+                            className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 flex items-center gap-1 transition-all"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedClientKey(key);
                               setViewState('PROJECTS');
                             }}
                           >
-                            Voir →
+                            Voir <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
                           </button>
                         </>
                       )}
@@ -656,20 +661,20 @@ const ProjetsPage: React.FC = () => {
             })}
           </div>
 
-          <div className="pp-pagination" aria-label="Pagination">
+          <div className="flex items-center justify-center gap-2 mt-8" aria-label="Pagination">
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={safePage === 1}
-              className="pp-page-btn"
+              className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               Précédent
             </button>
-            <div className="pp-page-numbers">
+            <div className="flex items-center gap-1 hidden sm:flex">
               {Array.from({ length: totalPages }).map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentPage(index + 1)}
-                  className={`pp-page-number ${safePage === index + 1 ? 'active' : ''}`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-medium transition-colors ${safePage === index + 1 ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 >
                   {index + 1}
                 </button>
@@ -678,85 +683,104 @@ const ProjetsPage: React.FC = () => {
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={safePage === totalPages}
-              className="pp-page-btn"
+              className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               Suivant
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {/* ── PROJECTS VIEW ── */}
       {viewState === 'PROJECTS' && (
-        <div className="pp-projects-view">
-          <div className="pp-projects-header">
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <button className="pp-back" onClick={() => setViewState('CLIENTS')}>
-                <HiOutlineArrowLeft size={14} /> Retour aux clients
+              <button className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-500 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 mb-3 transition-all duration-300 hover:-translate-x-1" onClick={() => setViewState('CLIENTS')}>
+                <HiOutlineArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" /> Retour aux clients
               </button>
-              <h2 className="pp-section-title">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
                 {getClientForKey(selectedClientKey || 'none')?.nom || 'Sans Client'}
               </h2>
-              <p className="pp-section-meta">
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                 {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).length} projets pour ce client
               </p>
             </div>
             {canManageAllProjets && (
-              <button className="pp-btn-new" onClick={() => openCreateModal(selectedClientKey || 'none')}>
+              <button className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-medium transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5" onClick={() => openCreateModal(selectedClientKey || 'none')}>
                 <HiOutlinePlus size={16} /> Nouveau Projet
               </button>
             )}
           </div>
 
-          <div className="pp-projects-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {(groupedByClient.get(selectedClientKey || 'none')?.projects || []).map((p, i) => {
               const chefs = getChefs(p);
               const statusKey = p.statut.toLowerCase().replace('_', '-');
+              
+              let statusBadgeClass = 'bg-gray-100 text-gray-700';
+              if (p.statut === 'PLANIFIE') statusBadgeClass = 'bg-purple-100 text-purple-700 font-semibold';
+              if (p.statut === 'EN_COURS') statusBadgeClass = 'bg-brand-100 text-brand-700 font-semibold';
+              if (p.statut === 'CLOTURE') statusBadgeClass = 'bg-emerald-100 text-emerald-700 font-semibold';
+              if (p.statut === 'ANNULE') statusBadgeClass = 'bg-red-100 text-red-700 font-semibold';
+
               return (
                 <div
                   key={p.id}
                   onClick={() => { setSelectedProject(p); setViewState('PROJECT_DETAILS'); }}
-                  className={`pp-project-card status-${statusKey}`}
+                  className="bg-white dark:bg-gray-800 rounded-[20px] p-6 border border-gray-200 dark:border-gray-700 shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(255,107,0,0.12)] hover:border-brand-200 dark:hover:border-brand-800 transition-all duration-300 cursor-pointer flex flex-col min-h-[160px] group hover:-translate-y-1 block-animate"
                   style={{ animationDelay: `${i * 0.05}s` }}
                 >
-                  <div className="pp-project-card-head">
-                    <h3 className="pp-project-name">{p.nom}</h3>
-                    <span className={`pp-status-badge ${statusKey}`}>{p.statut.replace('_', ' ')}</span>
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-[1.15rem] font-extrabold text-gray-900 dark:text-white group-hover:text-brand-600 transition-colors pr-2 leading-tight">{p.nom}</h3>
+                    <span className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 ${statusBadgeClass}`}>{p.statut.replace('_', ' ')}</span>
                   </div>
-                  <div className="pp-project-date">
-                    <HiOutlineCalendar size={13} />
+                  
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-6 font-medium">
+                    <HiOutlineCalendar size={14} className="text-gray-400" />
                     <span>{formatDate(p.dateDebut)} — {p.dateFin ? formatDate(p.dateFin) : 'Indéterminé'}</span>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p className="pp-managers-label">Managers</p>
-                    {chefs.length === 0 ? (
-                      <span className="pp-avatar-none">Non assigné</span>
-                    ) : (
-                      <div className="pp-avatars">
-                        {chefs.slice(0, 3).map(c => (
-                          <div key={c.id} className="pp-avatar" title={`${c.prenom} ${c.nom}`}>
-                            {congeAujourdhuiIds.has(c.id) && <div className="pp-on-leave-dot" title="En congé" />}
-                            {c.imageUrl
-                              ? <img src={c.imageUrl} alt={c.nom} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              : <>{c.prenom?.[0]}{c.nom?.[0]}</>}
-                          </div>
-                        ))}
-                        {chefs.length > 3 && <div className="pp-avatar pp-avatar-overflow">+{chefs.length - 3}</div>}
-                      </div>
-                    )}
-                  </div>
-                  <div className="pp-project-footer">
-                    <span className="pp-members-count">{(p.membres || []).length} membres</span>
-                    <span className="pp-details-cta">Détails →</span>
+
+                  <div className="flex items-center justify-between mt-auto pt-2">
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                      {(p.membres || []).length} membre{((p.membres || []).length !== 1) ? 's' : ''}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {chefs.length > 0 && (
+                        <div className="flex -space-x-2" aria-label="Membres">
+                          {chefs.slice(0, 3).map(c => (
+                            <div key={c.id} className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 shadow-sm bg-brand-200 text-white flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden" title={`${c.prenom} ${c.nom}`}>
+                              {congeAujourdhuiIds.has(c.id) && <div className="absolute top-0 right-0 w-2 h-2 bg-amber-400 border border-white rounded-full" title="En congé" />}
+                              {c.imageUrl
+                                ? <img src={c.imageUrl} alt={c.nom} className="w-full h-full object-cover" />
+                                : <>{c.prenom?.[0]}{c.nom?.[0]}</>}
+                            </div>
+                          ))}
+                          {chefs.length > 3 && <div className="w-7 h-7 rounded-full border-2 border-white dark:border-gray-800 shadow-sm bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-600 z-10 shrink-0">+{chefs.length - 3}</div>}
+                        </div>
+                      )}
+                      
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 flex items-center gap-1 group-hover:underline transition-all"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedProject(p);
+                          setViewState('PROJECT_DETAILS');
+                        }}
+                      >
+                        Détails <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
             {canManageAllProjets && (
-              <div onClick={() => openCreateModal(selectedClientKey || 'none')} className="pp-new-project-card">
-                <div className="pp-new-icon"><HiOutlinePlus size={20} /></div>
-                <p className="pp-new-label">Nouveau Projet</p>
-                <p className="pp-new-hint">Lancer une nouvelle initiative</p>
+              <div onClick={() => openCreateModal(selectedClientKey || 'none')} className="bg-gray-50/50 dark:bg-gray-800/50 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-brand-400 dark:hover:border-brand-500 transition-all min-h-[220px]">
+                <div className="w-12 h-12 rounded-full bg-brand-100/50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 flex items-center justify-center mb-3"><HiOutlinePlus size={24} /></div>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">Nouveau Projet</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Lancer une nouvelle initiative</p>
               </div>
             )}
           </div>
@@ -765,95 +789,102 @@ const ProjetsPage: React.FC = () => {
 
       {/* ── PROJECT DETAILS VIEW ── */}
       {viewState === 'PROJECT_DETAILS' && selectedProject && (
-        <div className="space-y-6 lg:space-y-8">
+        <div className="space-y-6">
           {/* Top Header Back Button */}
           <div className="flex items-center gap-4">
-            <button className="pp-back" onClick={() => setViewState('PROJECTS')}>
-              <HiOutlineArrowLeft size={16} /> Détails du Projet
+            <button className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-500 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 transition-all duration-300 hover:-translate-x-1 group" onClick={() => setViewState('PROJECTS')}>
+              <HiOutlineArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" /> Retour
             </button>
           </div>
 
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6 lg:p-8">
             {/* Info Block (Left) */}
-            <div className="max-w-2xl pp-detail-header">
-              <h1 className="pp-detail-title">
-                {selectedProject.isMediaPlanProject && <span style={{ marginRight: '8px' }}>👉</span>}
+            <div className="max-w-2xl">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-4">
+                {selectedProject.isMediaPlanProject && <span className="mr-2">👉</span>}
                 {selectedProject.nom}
               </h1>
-              <div className="pp-detail-meta">
-                <span className={`pp-status-badge ${selectedProject.statut.toLowerCase().replace('_', '-')}`}>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={`text-[11px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-full ${
+                  selectedProject.statut === 'PLANIFIE' ? 'bg-purple-100 text-purple-700' :
+                  selectedProject.statut === 'EN_COURS' ? 'bg-brand-100 text-brand-700' :
+                  selectedProject.statut === 'CLOTURE' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
                   {selectedProject.statut.replace('_', ' ')}
                 </span>
                 {selectedProject.typeProjet === 'INDETERMINE' && (
-                  <span className="pp-status-badge planifie">
+                  <span className="text-[11px] uppercase font-bold tracking-wider px-3 py-1.5 rounded-full bg-gray-100 text-gray-700">
                     Projet Indéterminé
                   </span>
                 )}
-                <div className="pp-detail-date-chip">
-                  <HiOutlineCalendar size={14} />
+                <div className="flex items-center gap-2 text-sm text-gray-500 font-medium px-3 py-1.5 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <HiOutlineCalendar size={16} className="text-gray-400" />
                   <span>{formatDate(selectedProject.dateDebut)} au {selectedProject.dateFin ? formatDate(selectedProject.dateFin) : 'Non défini'}</span>
                 </div>
               </div>
             </div>
 
             {/* Actions Block (Right) */}
-            <div className="pp-actions-bar">
-              {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'PLANIFIE' && (
-                <button className="pp-btn-action" onClick={() => { handleChangeStatut(selectedProject.id, StatutProjet.EN_COURS); setSelectedProject({ ...selectedProject, statut: StatutProjet.EN_COURS }); }}>
-                  Démarrer
-                </button>
-              )}
-              {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'EN_COURS' && (
-                <button className="pp-btn-action" onClick={() => { handleChangeStatut(selectedProject.id, StatutProjet.CLOTURE); setSelectedProject({ ...selectedProject, statut: StatutProjet.CLOTURE }); }}>
-                  Clôturer
-                </button>
-              )}
-              {(canManageAllProjets || canViewProjetsCreateTaches) && (
-                <button className="pp-btn-action" onClick={() => navigate(`/projets/${selectedProject.id}/taches`)}>
-                  <HiOutlineClipboardList size={16} /> Tâches
-                </button>
-              )}
-              {(canManageAllProjets || canViewProjetsCreateTaches) && ((selectedProject.chefsDeProjet && selectedProject.chefsDeProjet.some(c => c.id === user?.employeId)) || selectedProject.chefDeProjet?.id === user?.employeId) && (
-                <button className="pp-btn-action" onClick={() => handleAffectMembers(selectedProject)}>
-                  <HiOutlineUserGroup size={16} /> Affecter
-                </button>
-              )}
-              {canManageAllProjets && (
-                <button className="pp-btn-action" onClick={() => handleEdit(selectedProject)}>
-                  <HiOutlinePencil size={16} /> Modifier
-                </button>
-              )}
-              {canManageAllProjets && (
-                <button className="pp-btn-action pp-btn-danger" onClick={() => handleDelete(selectedProject.id)}>
-                  <HiOutlineTrash size={16} /> Supprimer
-                </button>
-              )}
+            <div className="flex flex-wrap gap-2 lg:flex-col lg:items-end">
+              <div className="flex flex-wrap items-center gap-2">
+                {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'PLANIFIE' && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-brand-300 hover:text-brand-600" onClick={() => { handleChangeStatut(selectedProject.id, StatutProjet.EN_COURS); setSelectedProject({ ...selectedProject, statut: StatutProjet.EN_COURS }); }}>
+                    <HiOutlineSun className="text-brand-500" size={16} /> Démarrer
+                  </button>
+                )}
+                {(canManageAllProjets || canViewProjetsCreateTaches) && selectedProject.statut === 'EN_COURS' && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm" onClick={() => { handleChangeStatut(selectedProject.id, StatutProjet.CLOTURE); setSelectedProject({ ...selectedProject, statut: StatutProjet.CLOTURE }); }}>
+                    <HiOutlineClipboardList className="text-emerald-500" size={16} /> Clôturer
+                  </button>
+                )}
+                {(canManageAllProjets || canViewProjetsCreateTaches) && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800 rounded-xl text-sm font-medium text-brand-700 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition shadow-sm hover:-translate-y-0.5" onClick={() => navigate(`/projets/${selectedProject.id}/taches`)}>
+                    <HiOutlineClipboardList size={16} /> Tâches
+                  </button>
+                )}
+                {(canManageAllProjets || canViewProjetsCreateTaches) && ((selectedProject.chefsDeProjet && selectedProject.chefsDeProjet.some(c => c.id === user?.employeId)) || selectedProject.chefDeProjet?.id === user?.employeId) && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:-translate-y-0.5" onClick={() => handleAffectMembers(selectedProject)}>
+                    <HiOutlineUserGroup size={16} /> Affecter
+                  </button>
+                )}
+                {canManageAllProjets && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:-translate-y-0.5" onClick={() => handleEdit(selectedProject)}>
+                    <HiOutlinePencil size={16} /> Modifier
+                  </button>
+                )}
+                {canManageAllProjets && (
+                  <button className="flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition shadow-sm hover:-translate-y-0.5" onClick={() => handleDelete(selectedProject.id)}>
+                    <HiOutlineTrash size={16} /> Supprimer
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Media Plan Details Panel */}
           {selectedProject.isMediaPlanProject && mediaPlanDetails && (
-            <div className="pp-mediaplan">
-              <h4 className="pp-mediaplan-title">
-                <HiOutlineDocumentText size={16} /> Détails Media Plan
+            <div className="bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800 rounded-2xl p-6">
+              <h4 className="flex items-center gap-2 text-lg font-bold text-brand-800 dark:text-brand-300 mb-5">
+                <HiOutlineDocumentText size={20} /> Détails Media Plan
               </h4>
-              <div className="pp-mediaplan-grid">
-                <div className="pp-mediaplan-field"><label>Format</label><span>{mediaPlanDetails.format}</span></div>
-                <div className="pp-mediaplan-field"><label>Type</label><span>{mediaPlanDetails.type || '-'}</span></div>
-                <div className="pp-mediaplan-field"><label>Publication</label><span>{mediaPlanDetails.datePublication ? formatDate(mediaPlanDetails.datePublication) : '-'}</span></div>
-                <div className="pp-mediaplan-field"><label>Lien Drive</label>
-                  {mediaPlanDetails.lienDrive ? <a href={mediaPlanDetails.lienDrive} target="_blank" rel="noreferrer">Ouvrir Drive</a> : <span>-</span>}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+                <div className="flex flex-col"><label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Format</label><span className="text-sm font-medium text-brand-900 dark:text-brand-100">{mediaPlanDetails.format}</span></div>
+                <div className="flex flex-col"><label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Type</label><span className="text-sm font-medium text-brand-900 dark:text-brand-100">{mediaPlanDetails.type || '-'}</span></div>
+                <div className="flex flex-col"><label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Publication</label><span className="text-sm font-medium text-brand-900 dark:text-brand-100">{mediaPlanDetails.datePublication ? formatDate(mediaPlanDetails.datePublication) : '-'}</span></div>
+                <div className="flex flex-col"><label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Lien Drive</label>
+                  {mediaPlanDetails.lienDrive ? <a href={mediaPlanDetails.lienDrive} target="_blank" rel="noreferrer" className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 underline transition-colors">Ouvrir Drive</a> : <span className="text-sm font-medium text-brand-900 dark:text-brand-100">-</span>}
                 </div>
               </div>
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(232, 106, 46, 0.2)' }}>
+              <div className="pt-5 border-t border-brand-200 dark:border-brand-800">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="pp-mediaplan-field">
-                    <label>Texte sur Visuel</label>
-                    <span style={{ fontWeight: 'normal' }}>{mediaPlanDetails.texteSurVisuel || '-'}</span>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Texte sur Visuel</label>
+                    <span className="text-sm text-brand-900 dark:text-brand-100 leading-relaxed bg-white/50 dark:bg-gray-800/50 p-3 rounded-xl">{mediaPlanDetails.texteSurVisuel || '-'}</span>
                   </div>
-                  <div className="pp-mediaplan-field">
-                    <label>Inspiration / Autres</label>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontWeight: 'normal' }}>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase text-brand-600/70 dark:text-brand-400 mb-1">Inspiration / Autres</label>
+                    <div className="flex flex-wrap gap-2 text-sm text-brand-900 dark:text-brand-100 items-start bg-white/50 dark:bg-gray-800/50 p-3 rounded-xl h-full">
                       {mediaPlanDetails.inspiration ? (
                         mediaPlanDetails.inspiration.startsWith('http') || mediaPlanDetails.inspiration.startsWith('www') ?
                           <a href={mediaPlanDetails.inspiration.startsWith('http') ? mediaPlanDetails.inspiration : `https://${mediaPlanDetails.inspiration}`} target="_blank" rel="noreferrer">Inspiration (Lien)</a>
@@ -867,54 +898,62 @@ const ProjetsPage: React.FC = () => {
             </div>
           )}
 
-          <div className="pp-panels-grid">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
             {/* Managers Panel */}
-            <div className="pp-panel">
-              <h4 className="pp-panel-title">
-                <div className="pp-panel-title-icon"><HiOutlineUserGroup size={14} /></div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col h-full">
+              <h4 className="flex items-center gap-2 px-5 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700 text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest shrink-0">
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"><HiOutlineUserGroup size={16} /></div>
                 Department Managers
               </h4>
-              <div className="pp-panel-list">
+              <div className="flex-1 overflow-y-auto p-2">
                 {getChefs(selectedProject).length === 0 ? (
-                  <p className="pp-empty-panel">Aucun manager assigné</p>
+                  <div className="h-full flex items-center justify-center p-6">
+                    <p className="text-sm font-medium text-gray-400 text-center italic px-4 py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 w-full">Aucun manager assigné</p>
+                  </div>
                 ) : (
-                  getChefs(selectedProject).map(m => (
-                    <div key={m.id} className="pp-member-row">
-                      <div className="pp-member-avatar">
-                        {congeAujourdhuiIds.has(m.id) && <div className="pp-on-leave-dot" title="En congé" />}
-                        {m.imageUrl ? <img src={m.imageUrl} alt={m.nom} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{m.prenom?.[0]}{m.nom?.[0]}</span>}
+                  <div className="space-y-1">
+                    {getChefs(selectedProject).map(m => (
+                      <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                        <div className="relative w-10 h-10 rounded-full border border-gray-200 dark:border-gray-600 shrink-0">
+                          {congeAujourdhuiIds.has(m.id) && <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 border-2 border-white dark:border-gray-800 rounded-full" title="En congé" />}
+                          {m.imageUrl ? <img src={m.imageUrl} alt={m.nom} className="w-full h-full object-cover rounded-full" /> : <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-300 rounded-full">{m.prenom?.[0]}{m.nom?.[0]}</div>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{m.prenom} {m.nom}</p>
+                          <p className="text-[11px] font-medium text-gray-500 uppercase tracking-widest mt-0.5">Manager</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="pp-member-name">{m.prenom} {m.nom}</p>
-                        <p className="pp-member-role">Manager</p>
-                      </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
 
             {/* Members Panel */}
-            <div className="pp-panel">
-              <h4 className="pp-panel-title">
-                <div className="pp-panel-title-icon" style={{ background: '#f2f4f7', color: '#667085' }}><HiOutlineUserGroup size={14} /></div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col h-full">
+              <h4 className="flex items-center gap-2 px-5 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700 text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest shrink-0">
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"><HiOutlineUserGroup size={16} /></div>
                 Membres du projet
               </h4>
-              <div className="pp-panel-list">
+              <div className="flex-1 overflow-y-auto p-2">
                 {!(selectedProject.membres ?? []).length ? (
-                  <p className="pp-empty-panel">Aucun membre assigné</p>
+                  <div className="h-full flex items-center justify-center p-6">
+                    <p className="text-sm font-medium text-gray-400 text-center italic px-4 py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 w-full">Aucun membre assigné</p>
+                  </div>
                 ) : (
-                  (selectedProject.membres ?? []).map(m => (
-                    <div key={m.id} className="pp-member-row">
-                      <div className="pp-member-avatar member">
-                        {m.imageUrl ? <img src={m.imageUrl} alt={m.nom} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{m.prenom?.[0]}{m.nom?.[0]}</span>}
+                  <div className="space-y-1">
+                    {(selectedProject.membres ?? []).map(m => (
+                      <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                        <div className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-600 shrink-0">
+                          {m.imageUrl ? <img src={m.imageUrl} alt={m.nom} className="w-full h-full object-cover rounded-full" /> : <div className="w-full h-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-sm font-bold text-brand-600 dark:text-brand-400 rounded-full">{m.prenom?.[0]}{m.nom?.[0]}</div>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{m.prenom} {m.nom}</p>
+                          <p className="text-[11px] font-medium text-gray-500 uppercase tracking-widest mt-0.5">{m.departement || 'Membre'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="pp-member-name">{m.prenom} {m.nom}</p>
-                        <p className="pp-member-role">{m.departement || 'Membre'}</p>
-                      </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -939,7 +978,7 @@ const ProjetsPage: React.FC = () => {
 
                 {/* Client (read-only) */}
                 <div className="h-10 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 text-theme-sm text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                  <HiOutlineBriefcase className="pp-anim-float text-brand-500" size={16} />
+                  <HiOutlineBriefcase className="text-brand-500" size={16} />
                   <span>{clientObj ? clientObj.nom : 'Aucun client'}</span>
                 </div>
 
@@ -963,7 +1002,7 @@ const ProjetsPage: React.FC = () => {
                           <input type="checkbox" checked={sel} onChange={() => toggleRowChef(idx, m.id)} className="h-3.5 w-3.5 rounded text-warning-500" />
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warning-100 text-[9px] font-bold text-warning-700">{m.prenom?.[0]}{m.nom?.[0]}</span>
                           <span className="text-theme-xs font-medium text-gray-700 dark:text-gray-300 truncate">{m.prenom} {m.nom}</span>
-                          {congeAujourdhuiIds.has(m.id) && <span className="text-[10px] text-warning-500 pp-anim-pulse"><HiOutlineSun size={14} /></span>}
+                          {congeAujourdhuiIds.has(m.id) && <span className="text-[10px] text-warning-500 animate-pulse"><HiOutlineSun size={14} /></span>}
                         </label>
                       );
                     })}
@@ -1112,7 +1151,7 @@ const ProjetsPage: React.FC = () => {
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-theme-xs font-bold text-brand-600">{sub.prenom?.[0]}{sub.nom?.[0]}</div>
                     <div className="min-w-0 flex-1">
                       <p className="text-theme-sm font-semibold text-gray-800 dark:text-white truncate">{sub.prenom} {sub.nom}</p>
-                      {sub.departement && <p className="text-theme-xs text-gray-400 flex items-center gap-1"><HiOutlineOfficeBuilding className="pp-anim-float" size={12} /> {sub.departement}</p>}
+                      {sub.departement && <p className="text-theme-xs text-gray-400 flex items-center gap-1"><HiOutlineOfficeBuilding size={12} /> {sub.departement}</p>}
                     </div>
                   </label>
                 );
@@ -1127,6 +1166,7 @@ const ProjetsPage: React.FC = () => {
       </Modal>
 
       <ConfirmDialog isOpen={confirmState.isOpen} message={confirmState.message} title={confirmState.title} onConfirm={handleConfirm} onCancel={handleCancel} />
+      </div>
     </div>
   );
 };

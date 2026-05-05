@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { relayAuthSnapshotForSwitch } from '../../utils/authStorage';
@@ -10,63 +10,10 @@ const resolveAppKind = (): 'projects' | 'rh' => {
 
 type AppKind = 'projects' | 'rh';
 
-const shellStyle: React.CSSProperties = {
-  position: 'fixed',
-  right: '24px',
-  bottom: '24px',
-  zIndex: 10000,
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-  padding: '6px',
-  borderRadius: '999px',
-  background: 'rgba(255, 255, 255, 0.9)',
-  border: '1px solid rgba(232, 230, 224, 0.95)',
-  boxShadow: '0 16px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)',
-  backdropFilter: 'blur(16px)',
-  WebkitBackdropFilter: 'blur(16px)'
-};
-
-const baseButtonStyle: React.CSSProperties = {
-  minWidth: '112px',
-  height: '44px',
-  borderRadius: '999px',
-  border: 'none',
-  padding: '0 16px',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '8px',
-  fontSize: '13px',
-  fontWeight: 700,
-  letterSpacing: '0.01em',
-  fontFamily: "'Plus Jakarta Sans', sans-serif",
-  transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
-  cursor: 'pointer',
-  whiteSpace: 'nowrap'
-};
-
-const activeButtonStyle: React.CSSProperties = {
-  background: 'linear-gradient(135deg, #683b77 0%, #ab78c3 100%)',
-  color: '#ffffff',
-  boxShadow: '0 8px 18px rgba(104, 59, 119, 0.28)',
-  transform: 'translateY(-1px)'
-};
-
-const inactiveButtonStyle: React.CSSProperties = {
-  background: 'transparent',
-  color: '#8d8a84'
-};
-
-const hoverButtonStyle: React.CSSProperties = {
-  background: '#f5f4f1',
-  color: '#1a1814'
-};
-
 const AppSwitchButton: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const [hoveredOption, setHoveredOption] = React.useState<AppKind | null>(null);
+  const [hoveredOption, setHoveredOption] = useState<AppKind | null>(null);
 
   if (!isAuthenticated) return null;
 
@@ -93,81 +40,50 @@ const AppSwitchButton: React.FC = () => {
     navigate(fallbackPath);
   };
 
-  const getButtonStyle = (option: AppKind): React.CSSProperties => {
-    const isActive = option === appKind;
-    const isHovered = hoveredOption === option;
-    return {
-      ...baseButtonStyle,
-      ...(isActive ? activeButtonStyle : inactiveButtonStyle),
-      ...(isHovered && !isActive ? hoverButtonStyle : {}),
-      cursor: isActive ? 'default' : 'pointer'
-    };
-  };
-
   return (
-    <div
-      style={{
-        ...shellStyle,
-        transform: 'translateZ(0)'
-      }}
-    >
+    <div className="fixed right-6 bottom-6 z-[10000] flex items-center gap-1.5 p-1.5 rounded-full bg-white/90 dark:bg-gray-800/90 border border-gray-200/90 dark:border-gray-700/90 shadow-2xl shadow-black/10 dark:shadow-black/30 backdrop-blur-xl transition-all">
       <button
         type="button"
         onClick={() => switchTo('projects')}
         onMouseEnter={() => setHoveredOption('projects')}
         onMouseLeave={() => setHoveredOption(null)}
-        style={getButtonStyle('projects')}
         disabled={appKind === 'projects'}
         title="Aller vers Projets"
+        className={`min-w-[112px] h-11 rounded-full px-4 inline-flex items-center justify-center gap-2 text-[13px] font-bold tracking-wide transition-all duration-200 whitespace-nowrap ${
+          appKind === 'projects'
+            ? 'bg-gradient-to-r from-brand-600 to-brand-500 dark:from-brand-500 dark:to-brand-400 text-white shadow-lg shadow-brand-500/30 -translate-y-[1px] cursor-default'
+            : 'bg-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white cursor-pointer'
+        }`}
       >
         <span aria-hidden="true">💼</span>
         <span>Projets</span>
       </button>
 
-      <span
-        aria-hidden="true"
-        style={{
-          width: '1px',
-          height: '20px',
-          background: '#e8e6e0',
-          flexShrink: 0
-        }}
-      />
+      <span aria-hidden="true" className="w-[1px] h-5 bg-gray-200 dark:bg-gray-700 shrink-0" />
 
       <button
         type="button"
         onClick={() => switchTo('rh')}
         onMouseEnter={() => setHoveredOption('rh')}
         onMouseLeave={() => setHoveredOption(null)}
-        style={getButtonStyle('rh')}
         disabled={appKind === 'rh'}
         title="Aller vers RH"
+        className={`min-w-[112px] h-11 rounded-full px-4 inline-flex items-center justify-center gap-2 text-[13px] font-bold tracking-wide transition-all duration-200 whitespace-nowrap ${
+          appKind === 'rh'
+            ? 'bg-gradient-to-r from-brand-600 to-brand-500 dark:from-brand-500 dark:to-brand-400 text-white shadow-lg shadow-brand-500/30 -translate-y-[1px] cursor-default'
+            : 'bg-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white cursor-pointer'
+        }`}
       >
         <span aria-hidden="true">👥</span>
         <span>RH</span>
       </button>
 
-      <span
-        style={{
-          position: 'absolute',
-          right: '0',
-          bottom: '62px',
-          transform: 'translateY(4px)',
-          background: '#1a1814',
-          color: '#fff',
-          fontSize: '11px',
-          fontWeight: 600,
-          padding: '5px 10px',
-          borderRadius: '6px',
-          whiteSpace: 'nowrap',
-          opacity: hoveredOption ? 1 : 0,
-          pointerEvents: 'none',
-          transition: 'opacity 0.15s ease, transform 0.15s ease',
-          boxShadow: '0 8px 18px rgba(0,0,0,0.18)'
-        }}
+      {/* Tooltip */}
+      <div 
+        className={`absolute right-0 bottom-[62px] translate-y-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-[11px] font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap pointer-events-none transition-all duration-150 shadow-lg ${hoveredOption ? 'opacity-100' : 'opacity-0'}`}
       >
         {`Aller vers ${targetLabel}`}
-      </span>
+      </div>
     </div>
   );
 };

@@ -13,9 +13,14 @@ import {
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineX,
+  HiOutlineOfficeBuilding,
+  HiOutlineFolder,
+  HiOutlineChartBar
 } from 'react-icons/hi';
 import { adminDashboardProjectService, AdminDashboardDTO, ProjetSummaryDTO, AlerteDTO } from '../api/adminDashboardProjectService';
 import { tacheService } from '../api/tacheService';
+import { clientService, ClientDTO } from '../api/clientService';
+import { API_BASE } from '../api/axios';
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -34,6 +39,7 @@ const tacheStatutLabels: Record<string, string> = { TODO: 'À faire', IN_PROGRES
 
 interface ClientGroup {
   clientNom: string;
+  clientObj: ClientDTO | null;
   projets: ProjetSummaryDTO[];
   totalTaches: number;
   tachesDone: number;
@@ -53,6 +59,7 @@ const AdminProjectDashboardPage: React.FC = () => {
   const [projetTaches, setProjetTaches] = useState<Record<number, any[]>>({});
   const [loadingTaches, setLoadingTaches] = useState<number | null>(null);
   const [showAlertes, setShowAlertes] = useState(false);
+  const [allClients, setAllClients] = useState<ClientDTO[]>([]);
 
   useEffect(() => {
     loadDashboard();
@@ -62,8 +69,12 @@ const AdminProjectDashboardPage: React.FC = () => {
 
   const loadDashboard = async () => {
     try {
-      const res = await adminDashboardProjectService.getDashboard();
+      const [res, clientsRes] = await Promise.all([
+        adminDashboardProjectService.getDashboard(),
+        clientService.getAllClients()
+      ]);
       setDashboard(res.data.data);
+      setAllClients(Array.isArray(clientsRes.data) ? clientsRes.data : (clientsRes.data?.data || []));
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -78,13 +89,14 @@ const AdminProjectDashboardPage: React.FC = () => {
       map.get(key)!.push(p);
     }
     return Array.from(map.entries()).map(([clientNom, projets]) => {
+      const clientObj = allClients.find(c => c.nom === clientNom) || null;
       const totalTaches = projets.reduce((s, p) => s + p.totalTaches, 0);
       const tachesDone = projets.reduce((s, p) => s + p.tachesDone, 0);
       const tachesEnRetard = projets.reduce((s, p) => s + p.tachesEnRetard, 0);
       const progression = totalTaches > 0 ? Math.round((tachesDone / totalTaches) * 100) : 0;
-      return { clientNom, projets, totalTaches, tachesDone, tachesEnRetard, progression };
+      return { clientNom, clientObj, projets, totalTaches, tachesDone, tachesEnRetard, progression };
     }).sort((a, b) => b.tachesEnRetard - a.tachesEnRetard || b.projets.length - a.projets.length);
-  }, [dashboard]);
+  }, [dashboard, allClients]);
 
   const filtered = useMemo(() => {
     if (!search) return clientGroups;
@@ -142,13 +154,10 @@ const AdminProjectDashboardPage: React.FC = () => {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6 mb-2">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 text-xs font-bold uppercase tracking-widest mb-3 border border-brand-100 dark:border-brand-500/20">
-            <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
-            Vue consolidée par client
-          </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
-            Suivi des <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-orange-400">Projets</span>
-          </h1>
+          
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Suivi des <span className="text-brand-600 dark:text-brand-400">Projets</span>
+              </h1>
         </div>
         {dashboard.alertes.length > 0 && (
           <button
@@ -171,14 +180,14 @@ const AdminProjectDashboardPage: React.FC = () => {
         <KpiCard
           label="Clients"
           value={clientGroups.length}
-          icon="🏢"
+          icon={<HiOutlineOfficeBuilding size={24} />}
           gradient="from-brand-500/10 to-violet-500/10 dark:from-brand-500/5 dark:to-violet-500/5"
           border="border-brand-200/50 dark:border-brand-500/20"
         />
         <KpiCard
           label="Projets actifs"
           value={dashboard.projetsActifs}
-          icon="📁"
+          icon={<HiOutlineFolder size={24} />}
           sub={`${dashboard.totalProjets} total`}
           gradient="from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/5 dark:to-teal-500/5"
           border="border-emerald-200/50 dark:border-emerald-500/20"
@@ -186,7 +195,7 @@ const AdminProjectDashboardPage: React.FC = () => {
         <KpiCard
           label="Progression"
           value={`${dashboard.progressionMoyenne}%`}
-          icon="📊"
+          icon={<HiOutlineChartBar size={24} />}
           progress={dashboard.progressionMoyenne}
           gradient="from-violet-500/10 to-purple-500/10 dark:from-violet-500/5 dark:to-purple-500/5"
           border="border-violet-200/50 dark:border-violet-500/20"
@@ -194,7 +203,7 @@ const AdminProjectDashboardPage: React.FC = () => {
         <KpiCard
           label="En retard"
           value={dashboard.tachesEnRetard}
-          icon={dashboard.tachesEnRetard > 0 ? '⚠️' : '✅'}
+          icon={dashboard.tachesEnRetard > 0 ? <HiOutlineExclamation size={24} className="text-red-500" /> : <HiOutlineCheckCircle size={24} className="text-green-500" />}
           sub={dashboard.tachesEnRetard > 0 ? 'Action requise' : 'Tout va bien'}
           gradient={dashboard.tachesEnRetard > 0 ? 'from-red-500/10 to-orange-500/10 dark:from-red-500/5 dark:to-orange-500/5' : 'from-green-500/10 to-emerald-500/10 dark:from-green-500/5 dark:to-emerald-500/5'}
           border={dashboard.tachesEnRetard > 0 ? 'border-red-200/50 dark:border-red-500/20' : 'border-green-200/50 dark:border-green-500/20'}
@@ -248,13 +257,13 @@ const AdminProjectDashboardPage: React.FC = () => {
 /* ── KPI Card ─────────────────────────────────────────────────────────── */
 
 const KpiCard: React.FC<{
-  label: string; value: string | number; icon: string; sub?: string;
+  label: string; value: string | number; icon: React.ReactNode; sub?: string;
   gradient: string; border: string; progress?: number;
 }> = ({ label, value, icon, sub, gradient, border, progress }) => (
   <div className={`relative overflow-hidden rounded-[2rem] border ${border} bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.06)] dark:shadow-none hover:-translate-y-1 hover:shadow-lg transition-all duration-300`}>
     <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full bg-gradient-to-br ${gradient} blur-2xl opacity-60 dark:opacity-40`} />
     <div className="flex items-center justify-between mb-4 relative z-10">
-      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} shadow-sm text-2xl`}>
+      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} shadow-sm text-gray-700 dark:text-gray-100`}>
         {icon}
       </div>
       <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{label}</span>
@@ -288,6 +297,8 @@ const ClientCard: React.FC<{
     : group.progression >= 20 ? 'from-amber-400 to-orange-500'
     : 'from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-500';
 
+  const hasLogo = Boolean(group.clientObj?.logoUrl);
+
   return (
     <div className={`rounded-[2rem] border transition-all duration-300 ${isExpanded
       ? 'md:col-span-2 xl:col-span-3 border-brand-300 dark:border-brand-500/30 shadow-xl shadow-brand-500/5 bg-white/90 dark:bg-gray-900/90'
@@ -297,8 +308,12 @@ const ClientCard: React.FC<{
       {/* Header — always visible */}
       <button onClick={onToggle} className="w-full text-left p-5 flex items-center gap-4 group">
         {/* Client avatar */}
-        <div className={`shrink-0 h-12 w-12 rounded-2xl bg-gradient-to-br ${group.tachesEnRetard > 0 ? 'from-red-400 to-orange-500' : 'from-brand-400 to-violet-500'} flex items-center justify-center text-white font-black text-lg shadow-lg ${group.tachesEnRetard > 0 ? 'shadow-red-500/20' : 'shadow-brand-500/20'}`}>
-          {group.clientNom.charAt(0).toUpperCase()}
+        <div className={`shrink-0 h-12 w-12 rounded-2xl flex items-center justify-center font-black text-lg text-white shadow-lg ${hasLogo ? 'overflow-hidden bg-transparent shadow-none border border-black/5 dark:border-white/10' : group.tachesEnRetard > 0 ? 'bg-gradient-to-br from-red-400 to-orange-500 shadow-red-500/20' : 'bg-brand-500 shadow-brand-500/20'}`}>
+          {hasLogo ? (
+            <img src={`${API_BASE}${group.clientObj!.logoUrl}`} alt={group.clientNom} className="w-full h-full object-cover" />
+          ) : (
+            group.clientNom.charAt(0).toUpperCase()
+          )}
         </div>
 
         <div className="flex-1 min-w-0">

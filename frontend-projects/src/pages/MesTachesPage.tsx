@@ -461,8 +461,9 @@ const MesTachesPage: React.FC = () => {
                     {/* Header row */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Mes Projets</h1>
-                            <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
+ <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Mes <span className="text-brand-600 dark:text-brand-400">Projets</span>
+              </h1>                            <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
                                 Explorez vos projets et les membres de chaque projet
                             </p>
                         </div>
@@ -627,7 +628,9 @@ const MesTachesPage: React.FC = () => {
             {/* ══════════════════════ MES TÂCHES (BOTTOM) ══════════════════ */}
             <div className="space-y-6 pt-10">
                 <div>
-                    <h1 className="text-title-sm font-bold text-gray-800 dark:text-white">Mes Tâches</h1>
+<h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Mes <span className="text-brand-600 dark:text-brand-400">Projets</span>
+              </h1>
                     <p className="text-theme-sm text-gray-500 dark:text-gray-400 mt-1">
                         Glissez-déposez pour changer le statut · Cliquez ✏️ pour modifier
                     </p>
