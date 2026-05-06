@@ -25,6 +25,8 @@ import ClientProjectsDashboardPage from './pages/ClientProjectsDashboardPage';
 import ClientDriveFilesPage from './pages/ClientDriveFilesPage';
 import ClientAccueilPage from './pages/ClientAccueilPage';
 import ClientLayout from './components/layout/ClientLayout';
+import ReactifInternPage from './pages/ReactifInternPage';
+import ReactifExternPage from './pages/ReactifExternPage';
 import { NotificationProvider } from './context/NotificationContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -96,7 +98,7 @@ const App: React.FC = () => {
           <Route path="mon-profil" element={<MonProfilPage />} />
           <Route path="mes-taches" element={<MesTachesPage />} />
           <Route path="projets/:projetId/taches" element={<PermissionRoute permission="VIEW_PROJETS"><ProjetTachesPage /></PermissionRoute>} />
-          <Route path="admin/calendrier-projets" element={<AnyPermissionRoute permissions={['VIEW_CALENDRIER_PROJETS','VIEW_DEADLINES','VIEW_REUNIONS']}><CalendrierProjetsAdminPage /></AnyPermissionRoute>} />
+          <Route path="admin/calendrier-projets" element={<AnyPermissionRoute permissions={['VIEW_CALENDRIER_PROJETS', 'VIEW_DEADLINES', 'VIEW_REUNIONS']}><CalendrierProjetsAdminPage /></AnyPermissionRoute>} />
           <Route path="admin/projets/:projetId/taches" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjetTachesPage /></PermissionRoute>} />
           <Route path="admin/clients" element={<PermissionRoute permission="VIEW_CLIENTS"><ClientsPage /></PermissionRoute>} />
           <Route path="media-plan" element={<PermissionRoute permission="VIEW_MEDIA_PLAN"><MediaPlanPage /></PermissionRoute>} />
@@ -105,6 +107,12 @@ const App: React.FC = () => {
           <Route path="rapport-projet" element={<PermissionRoute permission="VIEW_PROJETS"><RapportProjetPage /></PermissionRoute>} />
           <Route path="admin/dashboard-projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjectDashboardPage /></PermissionRoute>} />
           <Route path="admin/dashboard-projets/:projetId" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjectDetailPage /></PermissionRoute>} />
+          <Route path="reactifs/intern" element={<PermissionRoute permission="VIEW_PROJETS"><ReactifInternPage /></PermissionRoute>} />
+          <Route path="reactifs/extern" element={<PermissionRoute permission="VIEW_PROJETS"><ReactifExternPage /></PermissionRoute>} />
+          {/* ── Client portal ── */}
+          <Route path="client/media-plans" element={<ClientRoute pageKey="MEDIA_PLANS"><ClientMediaPlansPage /></ClientRoute>} />
+          <Route path="client/projets" element={<ClientRoute pageKey="PROJETS"><ClientProjectsDashboardPage /></ClientRoute>} />
+          <Route path="client/fichiers" element={<ClientRoute pageKey="FICHIERS"><ClientDriveFilesPage /></ClientRoute>} />
         </Route>
         
         {/* ── Client Portal ── */}

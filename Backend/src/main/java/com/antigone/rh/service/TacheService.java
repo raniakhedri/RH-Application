@@ -40,20 +40,24 @@ public class TacheService {
     }
 
     public List<Tache> findByProjet(Long projetId) {
-        return tacheRepository.findByProjetId(projetId);
+        return tacheRepository.findByProjetIdAndArchivedFalse(projetId);
     }
 
     public List<Tache> findByAssignee(Long employeId) {
-        return tacheRepository.findByAssigneeId(employeId);
+        return tacheRepository.findByAssigneeIdAndArchivedFalse(employeId);
     }
 
     public List<TacheDetailDTO> findDetailByAssignee(Long employeId) {
-        List<Tache> taches = tacheRepository.findByAssigneeId(employeId);
+        List<Tache> taches = tacheRepository.findByAssigneeIdAndArchivedFalse(employeId);
         return taches.stream().map(this::toDetailDTO).collect(Collectors.toList());
     }
 
+    public List<Tache> findArchiveByProjet(Long projetId) {
+        return tacheRepository.findByProjetIdAndArchivedTrue(projetId);
+    }
+
     public List<Tache> findByProjetAndStatut(Long projetId, StatutTache statut) {
-        return tacheRepository.findByProjetIdAndStatut(projetId, statut);
+        return tacheRepository.findByProjetIdAndStatutAndArchivedFalse(projetId, statut);
     }
 
     public Tache create(Long projetId, Tache tache) {
@@ -142,7 +146,7 @@ public class TacheService {
                 && tache.getAssignee() == null) {
             throw new IllegalStateException(
                     "⛔ Impossible de changer le statut — aucun employé assigné. "
-                    + "Veuillez d'abord assigner un responsable à la tâche \"" + tache.getTitre() + "\".");
+                            + "Veuillez d'abord assigner un responsable à la tâche \"" + tache.getTitre() + "\".");
         }
 
         tache.setStatut(statut);
@@ -272,6 +276,17 @@ public class TacheService {
 
     public void delete(Long id) {
         tacheRepository.deleteById(id);
+    }
+
+    public Tache unarchive(Long tacheId) {
+        Tache tache = findById(tacheId);
+        tache.setArchived(false);
+        // Reset dateFinExecution to now so it doesn't get immediately re-archived on
+        // the next cron run
+        if (tache.getStatut() == StatutTache.DONE) {
+            tache.setDateFinExecution(LocalDateTime.now());
+        }
+        return tacheRepository.save(tache);
     }
 
     private TacheDetailDTO toDetailDTO(Tache tache) {

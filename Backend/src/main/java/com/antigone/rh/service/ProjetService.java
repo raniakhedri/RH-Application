@@ -99,6 +99,7 @@ public class ProjetService {
         projet.setDateDebut(request.getDateDebut());
         projet.setDateFin(isIndetermine ? null : request.getDateFin());
         projet.setTypeProjet(type);
+        projet.setDescription(request.getDescription());
         projet.setIsMediaPlanProject(Boolean.TRUE.equals(request.getIsMediaPlanProject()));
         projet.setMediaPlanLigneId(request.getMediaPlanLigneId());
         projet.setStatut(StatutProjet.PLANIFIE);
@@ -174,6 +175,7 @@ public class ProjetService {
         projet.setDateDebut(request.getDateDebut());
         projet.setDateFin(isIndetermine ? null : request.getDateFin());
         projet.setTypeProjet(type);
+        projet.setDescription(request.getDescription());
         if (request.getIsMediaPlanProject() != null)
             projet.setIsMediaPlanProject(request.getIsMediaPlanProject());
         if (request.getMediaPlanLigneId() != null)
@@ -401,6 +403,7 @@ public class ProjetService {
                 .dateDebut(projet.getDateDebut())
                 .dateFin(projet.getDateFin())
                 .typeProjet(projet.getTypeProjet() != null ? projet.getTypeProjet() : "DETERMINE")
+                .description(projet.getDescription())
                 .isMediaPlanProject(projet.getIsMediaPlanProject())
                 .mediaPlanLigneId(projet.getMediaPlanLigneId())
                 .chefDeProjet(chefDTO)

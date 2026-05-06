@@ -21,6 +21,7 @@ public class ProjetDTO {
     private LocalDate dateFin;
     /** DETERMINE or INDETERMINE */
     private String typeProjet;
+    private String description;
 
     private Boolean isMediaPlanProject;
     private Long mediaPlanLigneId;

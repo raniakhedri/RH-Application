@@ -12,6 +12,8 @@ import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useConfirm } from '../hooks/useConfirm';
 import { useAuth } from '../context/AuthContext';
+import { HiOutlineChatAlt2 } from 'react-icons/hi';
+import { reactifService } from '../api/reactifService';
 
 const statutBadgeMap: Record<string, 'neutral' | 'primary' | 'success'> = {
     TODO: 'neutral',
@@ -81,6 +83,24 @@ const ProjetTachesPage: React.FC = () => {
     // View modal
     const [viewingTache, setViewingTache] = useState<Tache | null>(null);
     const [mediaPlanDetails, setMediaPlanDetails] = useState<MediaPlan | null>(null);
+
+    // Reactif modal
+    const [reactifTache, setReactifTache] = useState<Tache | null>(null);
+    const [reactifContenu, setReactifContenu] = useState('');
+    const [reactifLoading, setReactifLoading] = useState(false);
+    const [reactifError, setReactifError] = useState<string | null>(null);
+
+    const handleReactif = async () => {
+        if (!reactifTache || !reactifContenu.trim()) { setReactifError('Le reactif est obligatoire'); return; }
+        if (!user?.employeId) { setReactifError('Utilisateur non identifie'); return; }
+        setReactifLoading(true);
+        try {
+            await reactifService.createForTache(reactifTache.id, user.employeId, reactifContenu.trim());
+            setReactifTache(null); setReactifContenu(''); setReactifError(null);
+            loadData();
+        } catch { setReactifError('Erreur enregistrement reactif'); }
+        finally { setReactifLoading(false); }
+    };
 
     const pid = Number(projetId);
 
@@ -493,6 +513,16 @@ const ProjetTachesPage: React.FC = () => {
                                                         )}
                                                     </div>
                                                 </div>
+                                                {tache.statut === 'DONE' && (
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); setReactifTache(tache); setReactifContenu(''); setReactifError(null); }}
+                                                        className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 py-1.5 text-[11px] font-semibold text-amber-600 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400"
+                                                        title="Reactif"
+                                                    >
+                                                        <HiOutlineChatAlt2 size={12} />
+                                                        Reactif
+                                                    </button>
+                                                )}
                                             </div>
                                         )
                                     })
@@ -514,6 +544,37 @@ const ProjetTachesPage: React.FC = () => {
                     ))}
                 </div>
             )}
+
+            {/* Reactif Modal */}
+            <Modal
+                isOpen={!!reactifTache}
+                onClose={() => { setReactifTache(null); setReactifContenu(''); setReactifError(null); }}
+                title="Ajouter un reactif"
+                size="md"
+            >
+                <div className="space-y-4">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-theme-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+                        Cette tache sera remise A faire et l'assigne recevra votre reactif.
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-theme-sm font-medium text-gray-700 dark:text-gray-300">Reactif (raison / correction)</label>
+                        <textarea
+                            value={reactifContenu}
+                            onChange={e => setReactifContenu(e.target.value)}
+                            rows={4}
+                            placeholder="Decrivez ce qui doit etre corrige..."
+                            className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-theme-sm text-gray-700 focus:border-amber-300 focus:outline-none focus:ring focus:ring-amber-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
+                        />
+                    </div>
+                    {reactifError && <p className="text-theme-xs text-error-500">{reactifError}</p>}
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setReactifTache(null)}>Annuler</Button>
+                        <Button onClick={handleReactif} disabled={reactifLoading}>
+                            {reactifLoading ? 'Envoi...' : 'Envoyer le reactif'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* ── Create Modal ─────────────────────────────────────── */}
             <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Créer des tâches" size="lg">

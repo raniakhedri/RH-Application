@@ -11,6 +11,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { mediaPlanService } from '../api/mediaPlanService';
 import { clientService } from '../api/clientService';
+import { reactifService } from '../api/reactifService';
+import Modal from '../components/ui/Modal';
 import {
     MediaPlan,
     EtatPublicationLabels,
@@ -302,13 +304,21 @@ const ClientMediaPlansPage: React.FC = () => {
     };
 
     const handleClientDisapprove = async (mp: MediaPlan) => {
-        if (!window.confirm(`Désapprouver la ligne "${mp.titre}" ?`)) return;
+        if (!clientId) return;
+        const rectifs = mp.rectifs?.trim() || '';
+        if (!rectifs) {
+            alert(`Le motif de refus (colonne RECTIFS) est obligatoire pour refuser la ligne.`);
+            return;
+        }
         setActionLoading(mp.id);
         try {
             await mediaPlanService.clientDisapprove(mp.id);
+            await reactifService.createForMediaPlanExtern(mp.id, clientId, rectifs);
+            await mediaPlanService.updateRectifs(mp.id, rectifs);
+
             await loadPlans();
         } catch (e: any) {
-            alert(e.response?.data?.message || 'Erreur');
+            alert(e.response?.data?.message || 'Erreur lors du refus');
         } finally {
             setActionLoading(null);
         }
@@ -319,7 +329,7 @@ const ClientMediaPlansPage: React.FC = () => {
             .filter(p => p.statut === 'EN_ATTENTE_CLIENT')
             .map(p => p.id);
         if (pendingIds.length === 0) return;
-        setActionLoading(-1); // -1 = batch loading
+        setActionLoading(-1);
         try {
             await mediaPlanService.clientApproveAll(pendingIds);
             await loadPlans();
@@ -331,17 +341,28 @@ const ClientMediaPlansPage: React.FC = () => {
     };
 
     const handleClientDisapproveAll = async (batch: PlanBatch) => {
-        if (!window.confirm(`Refuser toutes les ${batch.plans.length} ligne(s) de ce plan ?`)) return;
+        if (!clientId) return;
+        const pending = batch.plans.filter(p => p.statut === 'EN_ATTENTE_CLIENT');
+        if (pending.length === 0) return;
+
+        for (const mp of pending) {
+            if (!mp.rectifs?.trim()) {
+                alert(`Veuillez spécifier un motif de refus (colonne RECTIFS) pour toutes les lignes que vous souhaitez refuser.`);
+                return;
+            }
+        }
+
         setActionLoading(-1);
         try {
-            for (const mp of batch.plans) {
-                if (mp.statut === 'EN_ATTENTE_CLIENT') {
-                    await mediaPlanService.clientDisapprove(mp.id);
-                }
+            for (const mp of pending) {
+                const rectifs = mp.rectifs?.trim() || '';
+                await mediaPlanService.clientDisapprove(mp.id);
+                await reactifService.createForMediaPlanExtern(mp.id, clientId, rectifs);
+                await mediaPlanService.updateRectifs(mp.id, rectifs);
             }
             await loadPlans();
         } catch (e: any) {
-            alert(e.response?.data?.message || 'Erreur');
+            alert(e.response?.data?.message || 'Erreur lors du refus groupé');
         } finally {
             setActionLoading(null);
         }
