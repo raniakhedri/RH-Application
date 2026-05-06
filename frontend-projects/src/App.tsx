@@ -23,6 +23,8 @@ import AdminProjectDetailPage from './pages/AdminProjectDetailPage';
 import ClientMediaPlansPage from './pages/ClientMediaPlansPage';
 import ClientProjectsDashboardPage from './pages/ClientProjectsDashboardPage';
 import ClientDriveFilesPage from './pages/ClientDriveFilesPage';
+import ClientAccueilPage from './pages/ClientAccueilPage';
+import ClientLayout from './components/layout/ClientLayout';
 import { NotificationProvider } from './context/NotificationContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -54,12 +56,8 @@ const ClientRoute: React.FC<{ children: React.ReactNode; pageKey?: string }> = (
   if (pageKey) {
     const allowed = user?.clientPages ?? [];
     if (allowed.length > 0 && !allowed.includes(pageKey)) {
-      // Redirect to first allowed page
-      const fallback = allowed.includes('MEDIA_PLANS') ? '/client/media-plans'
-        : allowed.includes('PROJETS') ? '/client/projets'
-        : allowed.includes('FICHIERS') ? '/client/fichiers'
-        : '/login';
-      return <Navigate to={fallback} replace />;
+      // Redirect to accueil instead of the first allowed page, as accueil is always available
+      return <Navigate to="/client/accueil" replace />;
     }
   }
   return <>{children}</>;
@@ -69,12 +67,7 @@ const ClientRoute: React.FC<{ children: React.ReactNode; pageKey?: string }> = (
 const SmartRedirect: React.FC = () => {
   const { user } = useAuth();
   if (user?.isClient) {
-    const pages = user.clientPages ?? [];
-    const path = pages.includes('MEDIA_PLANS') ? '/client/media-plans'
-      : pages.includes('PROJETS') ? '/client/projets'
-      : pages.includes('FICHIERS') ? '/client/fichiers'
-      : '/client/media-plans';
-    return <Navigate to={path} replace />;
+    return <Navigate to="/client/accueil" replace />;
   }
   return <Navigate to="/projets" replace />;
 };
@@ -112,11 +105,24 @@ const App: React.FC = () => {
           <Route path="rapport-projet" element={<PermissionRoute permission="VIEW_PROJETS"><RapportProjetPage /></PermissionRoute>} />
           <Route path="admin/dashboard-projets" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjectDashboardPage /></PermissionRoute>} />
           <Route path="admin/dashboard-projets/:projetId" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjectDetailPage /></PermissionRoute>} />
-          {/* ── Client portal ── */}
-          <Route path="client/media-plans" element={<ClientRoute pageKey="MEDIA_PLANS"><ClientMediaPlansPage /></ClientRoute>} />
-          <Route path="client/projets" element={<ClientRoute pageKey="PROJETS"><ClientProjectsDashboardPage /></ClientRoute>} />
-          <Route path="client/fichiers" element={<ClientRoute pageKey="FICHIERS"><ClientDriveFilesPage /></ClientRoute>} />
         </Route>
+        
+        {/* ── Client Portal ── */}
+        <Route
+          path="/client"
+          element={
+            <ProtectedRoute>
+              <ClientLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/client/accueil" replace />} />
+          <Route path="accueil" element={<ClientRoute><ClientAccueilPage /></ClientRoute>} />
+          <Route path="media-plans" element={<ClientRoute pageKey="MEDIA_PLANS"><ClientMediaPlansPage /></ClientRoute>} />
+          <Route path="projets" element={<ClientRoute pageKey="PROJETS"><ClientProjectsDashboardPage /></ClientRoute>} />
+          <Route path="fichiers" element={<ClientRoute pageKey="FICHIERS"><ClientDriveFilesPage /></ClientRoute>} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/accueil" replace />} />
       </Routes>
     </NotificationProvider>

@@ -23,4 +23,8 @@ public interface ReunionRepository extends JpaRepository<Reunion, Long> {
     List<Reunion> findByEmployeAndBetween(@Param("empId") Long employeId, @Param("start") LocalDate start, @Param("end") LocalDate end);
 
     List<Reunion> findByParticipantIdAndStatut(Long participantId, StatutReunion statut);
+
+    List<Reunion> findByClientParticipantId(Long clientId);
+
+    List<Reunion> findByClientParticipantIdAndDateReunionBetween(Long clientId, LocalDate start, LocalDate end);
 }

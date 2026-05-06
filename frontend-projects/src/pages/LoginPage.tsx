@@ -39,8 +39,12 @@ const LoginPage: React.FC = () => {
       navigate('/change-password', { replace: true });
       return;
     }
+    if (user?.isClient) {
+      navigate('/client/accueil', { replace: true });
+      return;
+    }
     redirectToProjectsHome();
-  }, [isAuthenticated, user?.mustChangePassword, navigate, redirectToProjectsHome]);
+  }, [isAuthenticated, user?.mustChangePassword, user?.isClient, navigate, redirectToProjectsHome]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +86,7 @@ const LoginPage: React.FC = () => {
           mustChangePassword: false,
           genre: null,
           message: '',
-          imageUrl: null,
+          imageUrl: c.logoUrl || null,
           isClient: true,
           clientId: c.clientId,
           clientPages: c.clientPages ?? [],

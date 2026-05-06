@@ -18,6 +18,11 @@ app:
       parent-folder-id: ${GOOGLE_DRIVE_PARENT_FOLDER_ID:1Rk6jabDXelPFK_P1jkvABVhwf-hwnQdC}
       # Must match the redirect URI registered in Google Cloud Console
       redirect-uri: ${GOOGLE_DRIVE_REDIRECT_URI:http://localhost:8080/api/media-plans/google-drive/callback}
+  ai:
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-2.5-flash}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1}
 
 spring:
   datasource:

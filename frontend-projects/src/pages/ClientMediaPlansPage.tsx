@@ -99,6 +99,10 @@ const ClientMediaPlansPage: React.FC = () => {
     const [selectedBatchKey, setSelectedBatchKey] = useState<string | null>(null);
     const [viewState, setViewState] = useState<'BATCHES' | 'BATCH_DETAILS'>('BATCHES');
 
+    // Real KPIs
+    const [totalPlansCount, setTotalPlansCount] = useState(0);
+    const [lastUpdateDate, setLastUpdateDate] = useState<string | null>(null);
+
     const [colWidths, setColWidths] = useState<number[]>(COLUMNS.map(c => c.defaultWidth));
     const [approvedColWidths, setApprovedColWidths] = useState<number[]>(APPROVED_COLUMNS.map(c => c.defaultWidth));
     const [resizingCol, setResizingCol] = useState<number | null>(null);
@@ -112,6 +116,18 @@ const ClientMediaPlansPage: React.FC = () => {
         try {
             const res = await mediaPlanService.getByClient(clientId);
             const all = res.data.data || [];
+            
+            // Set real KPIs before filtering
+            setTotalPlansCount(all.length);
+            const dates = all
+                .map(m => m.dateCreation ? new Date(m.dateCreation).getTime() : 0)
+                .filter(t => t > 0);
+            if (dates.length > 0) {
+                setLastUpdateDate(new Date(Math.max(...dates)).toLocaleDateString('fr-FR'));
+            } else {
+                setLastUpdateDate('—');
+            }
+
             // Show approved AND pending-client plans
             setMediaPlans(all.filter(mp => mp.statut === 'APPROUVE' || mp.statut === 'EN_ATTENTE_CLIENT' || mp.statut === 'DESAPPROUVE'));
         } catch (e) { console.error(e); }
@@ -490,17 +506,18 @@ const ClientMediaPlansPage: React.FC = () => {
     const activeBatch = (approvedBatches as PlanBatch[]).find(b => b.key === selectedBatchKey);
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div>
+        <div className="space-y-8 bg-[#F5F4F1] min-h-screen p-2 sm:p-4 -m-4 sm:-m-6 lg:-m-8">
+            {/* Header / Hero Zone */}
+            <div className="flex flex-col gap-6">
                 <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
-                            <HiOutlinePhotograph size={22} />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mes Media Plans</h1>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{clientNom}</p>
+                    <div className="flex flex-col justify-center">
+                        <h1 className="text-2xl font-medium text-gray-900 tracking-tight">Mes Media Plans</h1>
+                        <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[13px] font-medium text-[#E8521A] bg-[#E8521A]/10 px-2.5 py-0.5 rounded-[6px]">
+                                {clientNom}
+                            </span>
+                            <span className="text-gray-300">•</span>
+                            <p className="text-[13px] text-gray-500">Consultez le déroulement de vos campagnes</p>
                         </div>
                     </div>
                     {driveLoading ? (
@@ -528,6 +545,22 @@ const ClientMediaPlansPage: React.FC = () => {
                         </a>
                     ) : null}
                 </div>
+
+                {/* Metrics Row */}
+                <div className="flex items-center gap-4">
+                    <div className="flex-1 bg-white rounded-[12px] border border-gray-200 p-4 shadow-sm">
+                        <p className="text-xs text-gray-500">Total de plans</p>
+                        <p className="text-lg font-medium text-gray-900">{totalPlansCount}</p>
+                    </div>
+                    <div className="flex-1 bg-white rounded-[12px] border border-gray-200 p-4 shadow-sm">
+                        <p className="text-xs text-gray-500">Plans approuvés</p>
+                        <p className="text-lg font-medium text-gray-900">{approvedPlans.length}</p>
+                    </div>
+                    <div className="flex-1 bg-white rounded-[12px] border border-gray-200 p-4 shadow-sm">
+                        <p className="text-xs text-gray-500">Dernière mise à jour</p>
+                        <p className="text-lg font-medium text-gray-900">{lastUpdateDate || '—'}</p>
+                    </div>
+                </div>
             </div>
 
             {/* ══ SECTION : En attente de votre approbation ══════════════════════════ */}
@@ -538,7 +571,7 @@ const ClientMediaPlansPage: React.FC = () => {
                             <HiOutlineClock size={18} className="text-yellow-600 dark:text-yellow-400" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">En attente de votre approbation</h2>
+                            <h2 className="text-lg font-medium text-gray-900 dark:text-white">En attente de votre approbation</h2>
                             <p className="text-xs text-gray-500">Veuillez approuver ou refuser chaque ligne ci-dessous.</p>
                         </div>
                     </div>
@@ -551,7 +584,7 @@ const ClientMediaPlansPage: React.FC = () => {
                                 <div className="flex items-center justify-between px-5 py-3 bg-yellow-50 dark:bg-yellow-900/10 border-b border-yellow-200 dark:border-yellow-800">
                                     <div className="flex items-center gap-3 flex-wrap">
                                         <div>
-                                            <span className="font-semibold text-yellow-800 dark:text-yellow-300 text-sm">
+                                            <span className="font-medium text-yellow-800 dark:text-yellow-300 text-sm">
                                                 {batch.monthLabel || 'Indéterminé'} · {batch.plans.length} ligne{batch.plans.length > 1 ? 's' : ''}
                                             </span>
                                             <span className="ml-3 text-xs text-yellow-600 dark:text-yellow-500">Envoyé le {batch.sentDate}</span>
@@ -561,7 +594,7 @@ const ClientMediaPlansPage: React.FC = () => {
                                                 <button
                                                     disabled={actionLoading !== null}
                                                     onClick={() => handleClientApproveAll(batch)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 disabled:opacity-50 transition-colors shadow"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1D9E75] text-white text-xs font-medium hover:bg-green-700 disabled:opacity-50 transition-colors shadow-sm"
                                                 >
                                                     {actionLoading === -1 ? (
                                                         <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -573,14 +606,14 @@ const ClientMediaPlansPage: React.FC = () => {
                                                 <button
                                                     disabled={actionLoading !== null}
                                                     onClick={() => handleClientDisapproveAll(batch)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600 disabled:opacity-50 transition-colors shadow"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 disabled:opacity-50 transition-colors shadow-sm"
                                                 >
                                                     <HiOutlineX size={13} /> Refuser tout
                                                 </button>
                                             </div>
                                         )}
                                         {allDecided && (
-                                            <span className={`ml-auto text-xs font-semibold px-3 py-1 rounded-full ${hasDisapproved ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300' : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'}`}>
+                                            <span className={`ml-auto text-xs font-medium px-3 py-1 rounded-[20px] ${hasDisapproved ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300' : 'bg-[#1D9E75]/10 text-[#1D9E75] dark:bg-green-900/20 dark:text-green-300'}`}>
                                                 {hasDisapproved ? '❌ Contient des refus' : '✅ Tout approuvé'}
                                             </span>
                                         )}
@@ -601,30 +634,33 @@ const ClientMediaPlansPage: React.FC = () => {
             )}
 
             {/* ══ SECTION : Media plans approuvés ═══════════════════════════════════ */}
-            <div className="space-y-4">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Mes media plans approuvés</h2>
+            <div className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-white">Mes media plans approuvés</h2>
 
-                {/* Month tabs */}
-                {availableMonths.length > 0 && viewState === 'BATCHES' && (
-                    <div className="flex overflow-x-auto pb-2 scrollbar-hide gap-2">
-                        {availableMonths.map(m => (
-                            <button key={m} onClick={() => setSelectedMonthLabel(m)}
-                                className={`shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${selectedMonthLabel === m
-                                    ? 'bg-brand-500 text-white shadow' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
-                                {m}
-                            </button>
-                        ))}
-                    </div>
-                )}
+                    {/* Month tabs */}
+                    {availableMonths.length > 0 && viewState === 'BATCHES' && (
+                        <div className="flex overflow-x-auto scrollbar-hide gap-2">
+                            {availableMonths.map(m => (
+                                <button key={m} onClick={() => setSelectedMonthLabel(m)}
+                                    className={`shrink-0 rounded-[20px] px-4 py-1.5 text-sm font-medium transition-colors border ${selectedMonthLabel === m
+                                        ? 'bg-[#E8521A] text-white border-[#E8521A]' 
+                                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 {viewState === 'BATCHES' && (
                     <div className="space-y-4">
                         {/* Search */}
-                        <div className="relative max-w-md">
-                            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <div className="relative max-w-md group mb-6">
+                            <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input type="text" placeholder="Rechercher par titre, format…"
                                 value={search} onChange={e => setSearch(e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 dark:text-white" />
+                                className="w-full rounded-[20px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pl-10 pr-4 py-2.5 text-sm font-medium focus:ring-1 focus:ring-gray-300 focus:border-gray-300 dark:text-white outline-none transition-all shadow-sm" />
                         </div>
 
                         {approvedBatches.length === 0 ? (
@@ -632,25 +668,54 @@ const ClientMediaPlansPage: React.FC = () => {
                                 Aucun media plan approuvé pour le moment.
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                                {approvedBatches.map(batch => (
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                {approvedBatches.map(batch => {
+                                    const isApproved = !batch.isPendingClient;
+                                    return (
                                     <div key={batch.key}
                                         onClick={() => { setSelectedBatchKey(batch.key); setViewState('BATCH_DETAILS'); }}
-                                        className="group relative flex cursor-pointer flex-col rounded-[20px] border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-brand-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
-                                        <div className="mb-3 flex items-start justify-between gap-3">
-                                            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">
-                                                {batch.monthLabel || 'Indéterminé'} · {batch.plans.length} ligne{batch.plans.length > 1 ? 's' : ''}
-                                            </h3>
-                                            <Badge variant="success">Approuvé</Badge>
+                                        className="cursor-pointer flex flex-col rounded-[12px] border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
+                                        
+                                        {/* Card Header */}
+                                        <div className="p-4 pb-3 flex flex-col">
+                                            <div className="flex items-start justify-between gap-4 mb-3">
+                                                <div className="flex items-center gap-3">
+                                                    <HiOutlinePhotograph size={20} className="text-gray-400" />
+                                                    <div>
+                                                        <h3 className="text-sm font-medium text-gray-900 dark:text-white leading-tight">
+                                                            {batch.monthLabel || 'Indéterminé'}
+                                                        </h3>
+                                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">
+                                                            {batch.plans.length} ligne{batch.plans.length > 1 ? 's' : ''}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className={`shrink-0 px-2 py-0.5 rounded-[20px] text-[11px] font-medium ${isApproved ? 'bg-[#1D9E75]/10 text-[#1D9E75]' : 'bg-orange-50 text-orange-600'}`}>
+                                                    {isApproved ? 'Approuvé' : 'En attente'}
+                                                </div>
+                                            </div>
+                                            {/* Progress bar */}
+                                            <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden mt-1">
+                                                <div className={`h-full ${isApproved ? 'bg-[#1D9E75]' : 'bg-orange-400'}`} style={{ width: '100%' }}></div>
+                                            </div>
                                         </div>
-                                        <p className="text-xs text-gray-400">Envoyé le {batch.sentDate || '—'}</p>
-                                        <div className="mt-4 flex items-center justify-end border-t border-gray-100 pt-3 dark:border-gray-700/50">
-                                            <span className="text-[11px] font-bold uppercase tracking-widest text-brand-600 dark:text-brand-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                Voir Détails →
-                                            </span>
+                                        
+                                        {/* Separator */}
+                                        <div className="h-px bg-gray-100 dark:bg-gray-700"></div>
+
+                                        {/* Card Footer */}
+                                        <div className="flex items-center justify-between p-4 pt-3">
+                                            <p className="text-xs text-gray-400 dark:text-gray-500">
+                                                Envoyé le {batch.sentDate || '—'}
+                                            </p>
+                                            <div className="flex items-center gap-1 text-[13px] font-medium text-[#E8521A]">
+                                                <span>Voir</span>
+                                                <span>→</span>
+                                            </div>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -661,11 +726,11 @@ const ClientMediaPlansPage: React.FC = () => {
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => setViewState('BATCHES')}
-                                className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                                className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
                             >
                                 ← Retour
                             </button>
-                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
                                 {activeBatch.monthLabel || 'Indéterminé'} · {activeBatch.plans.length} ligne{activeBatch.plans.length > 1 ? 's' : ''}
                             </h2>
                         </div>

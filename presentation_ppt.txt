@@ -1,0 +1,401 @@
+================================================================================
+         CONTENU POUR PRÉSENTATION PPT — ANTIGONE RH & GESTION DE PROJETS
+================================================================================
+
+
+================================================================================
+DIAPO 1 — PAGE DE GARDE
+================================================================================
+
+Titre : Conception et développement d'une application web de gestion
+        des ressources humaines et de suivi de projets clients
+
+Réalisé par : [Votre nom]
+Encadrant entreprise : [Nom encadrant]
+Organisme d'accueil : Antigone Creative Agency — Antigone Consulting
+Année universitaire : 2025 / 2026
+
+
+================================================================================
+DIAPO 2 — PLAN DE LA PRÉSENTATION
+================================================================================
+
+1. Introduction & cadre du projet
+2. Organisme d'accueil
+3. Problématique & étude de l'existant
+4. Solution proposée
+5. Analyse des besoins
+6. Conception & méthodologie
+7. Architecture & outils technologiques
+8. Réalisations (captures d'écran)
+9. Planning (Gantt)
+10. Conclusion & perspectives
+
+
+================================================================================
+DIAPO 3 — INTRODUCTION
+================================================================================
+
+À l'ère du numérique, la transformation digitale est devenue un levier
+incontournable pour les entreprises souhaitant rester compétitives.
+Les agences de communication, en particulier, font face à un double
+défi : gérer efficacement leurs ressources humaines internes tout en
+assurant un suivi rigoureux des projets de leurs clients.
+
+C'est dans ce cadre que s'inscrit notre projet de fin d'études, réalisé
+au sein d'Antigone Creative Agency. Ce stage a pour vocation de répondre
+à un besoin concret : concevoir et développer une application web
+capable de centraliser la gestion RH et le pilotage de projets clients
+au sein d'une plateforme unique, moderne et intuitive.
+
+
+================================================================================
+DIAPO 4 — CONTEXTE DU PROJET
+================================================================================
+
+Contexte :
+- Les agences de communication digitale gèrent simultanément plusieurs
+  clients, projets, équipes et campagnes de contenu (media plans).
+- La coordination entre RH, chefs de projets et clients repose souvent
+  sur des outils éclatés (Excel, e-mails, WhatsApp), ce qui engendre
+  des pertes d'information et un manque de traçabilité.
+
+Objectif du stage :
+- Concevoir et développer une application web complète permettant de
+  centraliser la gestion RH (employés, congés, demandes, pointage)
+  et la gestion de projets clients (tâches, media plans, calendrier,
+  rapports) au sein d'une plateforme unique et moderne.
+
+Durée : [X mois] — du [date début] au [date fin]
+
+
+================================================================================
+DIAPO 4 — ORGANISME D'ACCUEIL
+================================================================================
+
+Nom : Antigone Creative Agency (filiale d'Antigone Consulting)
+Localisation : Tunis, Tunisie
+Fondation : 2021
+
+Activité :
+ANTIGONE est une agence de stratégie digitale qui assiste ses clients
+dans la construction de leur stratégie de marketing digital. L'agence
+réalise un diagnostic consciencieux de la situation présente afin de
+déterminer les axes de la stratégie de communication.
+
+Services proposés :
+• Conseil en stratégie de marketing digital
+• Création et développement de sites web et applications mobiles
+• Gestion de campagnes sur les réseaux sociaux
+• Accompagnement sur mesure garantissant des résultats rapides
+
+Mission :
+Pour chaque projet en marketing, ANTIGONE fait bénéficier ses clients
+de son savoir-faire et de son expertise afin d'optimiser le
+développement de l'entreprise cliente. Sa démarche de conseil et
+d'accompagnement est basée sur des méthodes pragmatiques et sur mesure.
+
+
+================================================================================
+DIAPO 5 — PROBLÉMATIQUE & ÉTUDE DE L'EXISTANT
+================================================================================
+
+Problématique :
+Comment centraliser la gestion des ressources humaines et le suivi
+des projets clients au sein d'une agence de communication digitale,
+tout en offrant un portail client sécurisé et une visibilité en
+temps réel sur l'avancement des campagnes ?
+
+Étude de l'existant — Limites constatées :
+• Gestion RH manuelle via fichiers Excel (employés, congés, pointage)
+• Suivi de projets éparpillé entre Google Sheets et e-mails
+• Aucun portail client → les clients n'ont pas de visibilité autonome
+  sur l'état de leurs campagnes et media plans
+• Absence de notifications et d'alertes automatisées
+• Pas de calendrier unifié pour les tournages, réunions et deadlines
+• Rapports de performance générés manuellement
+
+Solutions existantes sur le marché :
+• Outils RH (Odoo, BambooHR) → pas adaptés à la gestion de projets créatifs
+• Outils de gestion de projet (Trello, Asana) → pas de module RH intégré
+• Aucune solution ne combine RH + gestion de projets + portail client
+
+
+================================================================================
+DIAPO 6 — SOLUTION PROPOSÉE
+================================================================================
+
+Nom de la solution : Antigone RH & Project Management
+
+Application web full-stack composée de 3 espaces :
+
+1. Espace Admin / RH :
+   • Tableau de bord avec KPIs en temps réel
+   • Gestion complète des employés (CRUD, contrats, documents)
+   • Système de congés et demandes avec workflow de validation
+   • Suivi de présence et pointage
+   • Organigramme dynamique
+   • Calendrier unifié (congés, réunions, deadlines)
+
+2. Espace Gestion de Projets :
+   • Création et suivi de projets avec statuts (Planifié, En cours, Clôturé)
+   • Affectation de tâches aux employés avec deadlines
+   • Media Plans : planification des contenus par client (format, plateforme, date)
+   • Calendrier de tournage (Shooting) intégré
+   • Rapports d'analyse de performance par projet
+   • Intégration Google Drive pour le stockage de fichiers
+
+3. Portail Client (vitrine sécurisée) :
+   • Connexion sécurisée avec identifiants dédiés
+   • Consultation des media plans en lecture seule
+   • Suivi des projets en cours avec barre de progression
+   • Approbation / refus des contenus proposés
+   • Accès au dossier Google Drive partagé
+   • Assistant IA intégré pour les clients
+
+
+================================================================================
+DIAPO 7 — ANALYSE DES BESOINS FONCTIONNELS
+================================================================================
+
+Module RH :
+• BF1 : Authentification sécurisée (login / mot de passe hashé BCrypt)
+• BF2 : Gestion des employés (CRUD, matricule, CIN, CNSS, contrat, salaire)
+• BF3 : Gestion des congés (demande, validation multi-niveaux, solde auto)
+• BF4 : Gestion des demandes administratives (attestation, fiche de paie, etc.)
+• BF5 : Suivi du pointage et de la présence
+• BF6 : Gestion des rôles et permissions (Admin, RH, Manager, Employé)
+• BF7 : Notifications en temps réel
+• BF8 : Tableaux de bord avec statistiques
+
+Module Projets :
+• BF9 : Gestion des clients (CRUD, logo, contact, portail)
+• BF10 : Gestion des projets (création, affectation chefs, statuts)
+• BF11 : Gestion des tâches (assignation, deadlines, urgence, Drive auto)
+• BF12 : Media Plans (création, approbation client, workflow shooting)
+• BF13 : Calendrier multi-vues (tournages, deadlines, réunions)
+• BF14 : Rapports d'analyse de projet (durées, bottlenecks, KPIs)
+• BF15 : Gestion des réunions (présentiel / en ligne, liens Meet/Zoom)
+
+Module Client :
+• BF16 : Portail client sécurisé avec pages configurables
+• BF17 : Consultation des media plans et projets en lecture seule
+• BF18 : Système d'approbation / refus des contenus
+• BF19 : Accès aux fichiers Google Drive partagés
+
+
+================================================================================
+DIAPO 8 — ANALYSE DES BESOINS NON FONCTIONNELS
+================================================================================
+
+• BNF1 — Performance : Temps de réponse < 2s pour toutes les pages
+• BNF2 — Sécurité : Hashage BCrypt des mots de passe, sessions stateless
+• BNF3 — Ergonomie : Interface moderne et responsive (desktop + mobile)
+• BNF4 — Maintenabilité : Architecture en couches, code modulaire
+• BNF5 — Scalabilité : Architecture RESTful permettant l'ajout de modules
+• BNF6 — Disponibilité : Déploiement cloud avec Docker (Render.com)
+• BNF7 — Compatibilité : Fonctionne sur Chrome, Firefox, Safari, Edge
+• BNF8 — Fiabilité : Validation des données côté serveur et client
+
+
+================================================================================
+DIAPO 9 — CONCEPTION — MÉTHODOLOGIE
+================================================================================
+
+Méthodologie adoptée : Approche Agile (itérative)
+
+Justification :
+• Besoins évolutifs pendant le stage (ajout du portail client, IA, etc.)
+• Livraisons fréquentes permettant des retours rapides du tuteur
+• Flexibilité pour intégrer de nouvelles fonctionnalités
+
+Organisation du travail :
+• Sprints de 2 semaines
+• Réunions de suivi hebdomadaires avec le tuteur
+• Livraison incrémentale des modules (RH → Projets → Client)
+
+Outils de gestion :
+• Git / GitHub pour le versioning
+• GitHub Actions pour le CI/CD
+
+
+================================================================================
+DIAPO 10 — ARCHITECTURE LOGIQUE (DIAGRAMME EN COUCHES)
+================================================================================
+
+Architecture 3-tiers :
+
+┌─────────────────────────────────────────┐
+│          COUCHE PRÉSENTATION            │
+│  Frontend RH (React + Vite + Tailwind)  │
+│  Frontend Projets (React + Vite)        │
+│  Portail Client (React)                 │
+└────────────────┬────────────────────────┘
+                 │ API REST (HTTP/JSON)
+┌────────────────┴────────────────────────┐
+│          COUCHE MÉTIER (Backend)        │
+│  Spring Boot 3.x (Java 17+)            │
+│  Controllers → Services → Repositories │
+│  Spring Security (BCrypt, Stateless)    │
+└────────────────┬────────────────────────┘
+                 │ JPA / Hibernate
+┌────────────────┴────────────────────────┐
+│          COUCHE DONNÉES                 │
+│  PostgreSQL 16 (Render.com)             │
+│  35 entités JPA                         │
+│  Google Drive API (stockage fichiers)   │
+└─────────────────────────────────────────┘
+
+
+================================================================================
+DIAPO 11 — ARCHITECTURE PHYSIQUE (DÉPLOIEMENT)
+================================================================================
+
+Environnement de développement :
+• OS : Windows
+• IDE Backend : IntelliJ IDEA
+• IDE Frontend : VS Code
+• Serveur local : Spring Boot (port 8080) + Vite (port 3000)
+
+Environnement de production :
+• Backend : Render.com (Docker, région Frankfurt)
+• Base de données : PostgreSQL 16 hébergé sur Render.com
+• Frontend : Build statique déployable (Vite build)
+• Stockage fichiers : Google Drive API
+
+
+================================================================================
+DIAPO 12 — TECHNOLOGIES & OUTILS
+================================================================================
+
+Backend :
+• Java 17+
+• Spring Boot 3.x (Web, Security, Data JPA, Mail)
+• Hibernate / JPA (ORM)
+• PostgreSQL 16
+• Lombok (réduction du boilerplate)
+• BCrypt (hashage des mots de passe)
+• Google Drive API (gestion fichiers)
+• Gemini API (assistant IA client)
+
+Frontend :
+• React 18 (TypeScript)
+• Vite (build tool rapide)
+• Tailwind CSS (design system)
+• React Router (navigation SPA)
+• Axios (appels API REST)
+• React Icons (Heroicons)
+• Recharts (graphiques et statistiques)
+
+DevOps & Outils :
+• Git + GitHub (versioning)
+• Docker (conteneurisation backend)
+• Render.com (hébergement cloud)
+• Postman (tests API)
+
+
+================================================================================
+DIAPO 13 — MODÈLE DE DONNÉES (ENTITÉS PRINCIPALES)
+================================================================================
+
+35 entités JPA, dont les principales :
+
+• Employe : matricule, CIN, CNSS, nom, prénom, email, salaire,
+  poste, contrat, solde congé, manager, documents
+• Compte : login, mot de passe hashé, rôle, lié à un employé
+• Demande : type (congé, autorisation, télétravail), statut,
+  validations multi-niveaux, historique
+• Projet : nom, statut, dates, chefs de projet, client, tâches,
+  membres, timestamps du cycle de vie
+• Tache : titre, statut (TODO/IN_PROGRESS/DONE), deadline,
+  urgence, assigné, lien Drive auto
+• MediaPlan : date publication, format, plateforme, titre, texte,
+  statut approbation, shooting associé
+• Client : nom, contact, login portail, pages autorisées, logo
+• Reunion : titre, date, heure, type (présentiel/en ligne),
+  lien visio, initiateur, participant
+• Notification : contenu, lu/non lu, destinataire
+• Calendrier : événements unifiés (congés, tournages, réunions)
+
+
+================================================================================
+DIAPO 14 — RÉALISATIONS — CAPTURES D'ÉCRAN
+================================================================================
+
+[Insérer vos captures d'écran ici — suggestions :]
+
+1. Page de connexion
+2. Dashboard Admin (KPIs, graphiques)
+3. Gestion des employés (liste + fiche détaillée)
+4. Gestion des demandes de congé
+5. Page Projets (liste des projets avec barres de progression)
+6. Page Media Plans (tableau avec statuts et filtres par mois)
+7. Calendrier unifié (tournages, deadlines, réunions)
+8. Portail Client — page d'accueil
+9. Portail Client — Mes Media Plans (vitrine)
+10. Portail Client — Mes Projets
+
+
+================================================================================
+DIAPO 15 — PLANNING (GANTT)
+================================================================================
+
+Phase 1 — Analyse & Conception (Semaines 1-2)
+• Étude de l'existant et recueil des besoins
+• Rédaction du cahier des charges
+• Conception de la base de données (MCD/MLD)
+• Maquettage des interfaces
+
+Phase 2 — Développement Module RH (Semaines 3-6)
+• Mise en place du backend Spring Boot + PostgreSQL
+• Développement des entités, services et contrôleurs RH
+• Développement du frontend RH (Dashboard, Employés, Congés, Demandes)
+• Intégration de l'authentification et des rôles
+
+Phase 3 — Développement Module Projets (Semaines 7-10)
+• Gestion des clients et projets
+• Système de tâches avec assignation et deadlines
+• Module Media Plans (création, approbation, workflow)
+• Calendrier unifié et réunions
+• Intégration Google Drive
+
+Phase 4 — Portail Client & Finalisation (Semaines 11-13)
+• Développement du portail client sécurisé
+• Pages vitrine (Media Plans, Projets, Fichiers)
+• Assistant IA client (Gemini API)
+• Tests, corrections et optimisation des performances
+
+Phase 5 — Déploiement & Documentation (Semaines 14-15)
+• Déploiement sur Render.com (Docker)
+• Rédaction du rapport de stage
+• Préparation de la soutenance
+
+
+================================================================================
+DIAPO 16 — CONCLUSION & PERSPECTIVES
+================================================================================
+
+Bilan :
+• Application web complète et fonctionnelle couvrant la gestion RH
+  et le suivi de projets au sein d'Antigone Creative Agency
+• 35 entités, 26 contrôleurs REST, 33 services métier
+• 2 frontends séparés (RH + Projets) et 1 portail client
+• Intégration réussie avec Google Drive et l'IA Gemini
+
+Compétences acquises :
+• Développement full-stack (Spring Boot + React/TypeScript)
+• Conception de bases de données relationnelles complexes
+• Architecture REST et bonnes pratiques de sécurité
+• Déploiement cloud avec Docker et CI/CD
+• Design d'interfaces modernes (Tailwind CSS, Glassmorphism)
+
+Perspectives d'amélioration :
+• Application mobile (React Native) pour le pointage et les notifications
+• Tableau de bord analytique avancé avec prédictions IA
+• Module de facturation et suivi financier des projets
+• Intégration de JWT pour une authentification encore plus robuste
+• Système de chat interne entre employés et clients
+
+================================================================================
+                              FIN DU DOCUMENT
+================================================================================

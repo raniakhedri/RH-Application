@@ -15,6 +15,8 @@ public interface TacheRepository extends JpaRepository<Tache, Long> {
 
     List<Tache> findByAssigneeId(Long assigneeId);
 
+    List<Tache> findByProjetIdIn(List<Long> projetIds);
+
     List<Tache> findByProjetIdAndStatut(Long projetId, StatutTache statut);
 
     long countByProjetIdAndStatut(Long projetId, StatutTache statut);
