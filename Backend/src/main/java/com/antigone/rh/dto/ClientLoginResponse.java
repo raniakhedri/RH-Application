@@ -24,4 +24,5 @@ public class ClientLoginResponse {
     private List<String> permissions;
     /** Page keys the client is allowed to access: MEDIA_PLANS, PROJETS, FICHIERS */
     private List<String> clientPages;
+    private String logoUrl;
 }

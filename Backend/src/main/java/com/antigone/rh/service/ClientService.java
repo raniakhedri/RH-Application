@@ -61,6 +61,8 @@ public class ClientService {
         }
         // Parse allowed pages
         List<String> pages = parsePages(client.getClientPages());
+        String logoUrlStr = (client.getLogoPath() != null) ? "/api/clients/" + client.getId() + "/logo" : null;
+        
         return ClientLoginResponse.builder()
                 .clientId(client.getId())
                 .nom(client.getNom())
@@ -70,6 +72,7 @@ public class ClientService {
                 .roles(java.util.List.of("CLIENT"))
                 .permissions(java.util.List.of("VIEW_CLIENT_PORTAL"))
                 .clientPages(pages)
+                .logoUrl(logoUrlStr)
                 .build();
     }
 
