@@ -109,10 +109,6 @@ const App: React.FC = () => {
           <Route path="admin/dashboard-projets/:projetId" element={<PermissionRoute permission="VIEW_TOUS_PROJETS"><AdminProjectDetailPage /></PermissionRoute>} />
           <Route path="reactifs/intern" element={<PermissionRoute permission="VIEW_PROJETS"><ReactifInternPage /></PermissionRoute>} />
           <Route path="reactifs/extern" element={<PermissionRoute permission="VIEW_PROJETS"><ReactifExternPage /></PermissionRoute>} />
-          {/* ── Client portal ── */}
-          <Route path="client/media-plans" element={<ClientRoute pageKey="MEDIA_PLANS"><ClientMediaPlansPage /></ClientRoute>} />
-          <Route path="client/projets" element={<ClientRoute pageKey="PROJETS"><ClientProjectsDashboardPage /></ClientRoute>} />
-          <Route path="client/fichiers" element={<ClientRoute pageKey="FICHIERS"><ClientDriveFilesPage /></ClientRoute>} />
         </Route>
         
         {/* ── Client Portal ── */}

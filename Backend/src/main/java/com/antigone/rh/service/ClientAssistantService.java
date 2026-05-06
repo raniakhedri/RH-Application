@@ -147,7 +147,7 @@ public class ClientAssistantService {
     private String buildContext(Client client) {
         List<Projet> projets = projetRepository.findByClientId(client.getId());
         List<Long> projetIds = projets.stream().map(Projet::getId).collect(Collectors.toList());
-        List<Tache> taches = projetIds.isEmpty() ? List.of() : tacheRepository.findByProjetIdIn(projetIds);
+        List<Tache> taches = projetIds.isEmpty() ? List.of() : tacheRepository.findByProjetIdInAndArchivedFalse(projetIds);
         Map<Long, List<Tache>> tachesByProjet = taches.stream()
                 .collect(Collectors.groupingBy(t -> t.getProjet().getId()));
 
