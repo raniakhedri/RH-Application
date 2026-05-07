@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { clientService } from '../api/clientService';
-import ClientChatWidget from '../components/client/ClientChatWidget';
 import {
   HiOutlinePhotograph,
   HiOutlineBriefcase,
@@ -67,7 +66,7 @@ const ClientAccueilPage: React.FC = () => {
         
         <div className="relative z-10 max-w-3xl">
           <h1 className="mb-4 text-4xl sm:text-5xl font-extrabold tracking-tight">
-            Bienvenue dans votre <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-200 to-white">Espace Vitrine</span>.
+            Bienvenue dans votre <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-200 to-white">Espace</span>.
           </h1>
           <p className="text-lg sm:text-xl font-medium text-brand-100 opacity-90 max-w-xl">
             Retrouvez tous vos livrables, validez vos Media Plans et suivez l'avancée de vos projets avec une expérience fluide et sur-mesure.
@@ -136,7 +135,6 @@ const ClientAccueilPage: React.FC = () => {
         )}
       </div>
 
-      <ClientChatWidget clientId={user?.clientId} clientName={user?.nom} />
     </div>
   );
 };
