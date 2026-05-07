@@ -15,6 +15,8 @@ public interface TacheRepository extends JpaRepository<Tache, Long> {
     // Explicit queries for active / archived filtering
     List<Tache> findByProjetIdAndArchivedFalse(Long projetId);
 
+    List<Tache> findByProjetIdInAndArchivedFalse(List<Long> projetIds);
+
     List<Tache> findByProjetIdAndArchivedTrue(Long projetId);
 
     // Fallback simple query (used in some test routines or generic counts where
